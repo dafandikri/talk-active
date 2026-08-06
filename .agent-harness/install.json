@@ -1,0 +1,15 @@
+{
+  "version": "0.1.0",
+  "at": "2026-08-05T18:02:04.641Z",
+  "adapters": [
+    "claude",
+    "codex",
+    "gemini",
+    "opencode",
+    "pi",
+    "qwen",
+    "copilot"
+  ],
+  "skills": [],
+  "terminal": false
+}

@@ -1,0 +1,860 @@
+import {
+  AnalysisError,
+  DEFAULT_RUBRIC,
+  STARTER_DRAFT,
+  analyzeSpeech,
+  evaluateDefense,
+  parseRubric,
+} from './analyzer.mjs';
+
+const STORAGE_KEY = 'lancar.workspace.v1';
+
+const initialWorkspace = {
+  version: 1,
+  activeProjectId: 'project-lancar',
+  projects: [
+    {
+      id: 'project-lancar',
+      name: 'Lancar — RISTEK Hackathon',
+      event: '7-minute final pitch · 3-minute Q&A',
+      deadline: '2026-08-16',
+      rubric: DEFAULT_RUBRIC,
+      draft: STARTER_DRAFT,
+      draftDuration: 90,
+      createdAt: '2026-08-03T10:00:00.000Z',
+    },
+  ],
+  sessions: [
+    {
+      id: 'session-1',
+      projectId: 'project-lancar',
+      createdAt: '2026-08-04T14:30:00.000Z',
+      evidenceScore: 34,
+      weakest: 'Differentiation',
+      defenseStatus: 'vulnerable',
+      title: 'First full run-through',
+    },
+    {
+      id: 'session-2',
+      projectId: 'project-lancar',
+      createdAt: '2026-08-06T12:15:00.000Z',
+      evidenceScore: 52,
+      weakest: 'Differentiation',
+      defenseStatus: 'developing',
+      title: 'Revised problem and solution',
+    },
+  ],
+};
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function loadWorkspace() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (stored?.version === 1 && Array.isArray(stored.projects) && stored.projects.length > 0) {
+      return stored;
+    }
+  } catch {
+    // A malformed local snapshot should not prevent the workspace from opening.
+  }
+  return clone(initialWorkspace);
+}
+
+const state = {
+  workspace: loadWorkspace(),
+  route: 'home',
+  practiceStage: 'setup',
+  practiceProjectId: null,
+  analysis: null,
+  defense: null,
+  recognition: null,
+  recordingStartedAt: null,
+  recordingBaseText: '',
+  finalDictation: '',
+  toastTimer: null,
+};
+
+const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+const elements = {
+  views: $$('[data-view]'),
+  routeButtons: $$('[data-route]'),
+  startPracticeButtons: $$('[data-start-practice]'),
+  sidebarProjectList: $('#sidebarProjectList'),
+  currentProjectInitials: $('#currentProjectInitials'),
+  currentProjectName: $('#currentProjectName'),
+  focusTitle: $('#focusTitle'),
+  focusCopy: $('#focusCopy'),
+  lastCoverage: $('#lastCoverage'),
+  coverageTrend: $('#coverageTrend'),
+  lastWeakest: $('#lastWeakest'),
+  eventCountdown: $('#eventCountdown'),
+  eventDate: $('#eventDate'),
+  rubricCount: $('#rubricCount'),
+  homeCriteria: $('#homeCriteria'),
+  recentSessions: $('#recentSessions'),
+  todayLabel: $('#todayLabel'),
+  practiceProject: $('#practiceProject'),
+  setupProjectInitials: $('#setupProjectInitials'),
+  setupProjectName: $('#setupProjectName'),
+  setupProjectEvent: $('#setupProjectEvent'),
+  setupRubricCount: $('#setupRubricCount'),
+  setupCriteria: $('#setupCriteria'),
+  practiceStages: $$('[data-practice-stage]'),
+  practiceIndicators: $$('[data-step-indicator]'),
+  beginAttempt: $('#beginAttempt'),
+  attemptProjectName: $('#attemptProjectName'),
+  attemptTranscript: $('#attemptTranscript'),
+  attemptDuration: $('#attemptDuration'),
+  attemptTimer: $('#attemptTimer'),
+  attemptError: $('#attemptError'),
+  draftStatus: $('#draftStatus'),
+  dictateButton: $('#dictateButton'),
+  dictateLabel: $('#dictateLabel'),
+  analyzeAttempt: $('#analyzeAttempt'),
+  exitPractice: $('#exitPractice'),
+  reviewScore: $('#reviewScore'),
+  reviewWeakest: $('#reviewWeakest'),
+  reviewDrill: $('#reviewDrill'),
+  reviewMissingSignals: $('#reviewMissingSignals'),
+  reviewQuestion: $('#reviewQuestion'),
+  reviewPace: $('#reviewPace'),
+  reviewFillers: $('#reviewFillers'),
+  reviewCriteria: $('#reviewCriteria'),
+  coverageGauge: $('.coverage-gauge'),
+  openDefense: $('#openDefense'),
+  reviseAttempt: $('#reviseAttempt'),
+  saveWithoutDefense: $('#saveWithoutDefense'),
+  defenseCriterion: $('#defenseCriterion'),
+  defenseQuestion: $('#defenseQuestion'),
+  defenseAnswer: $('#defenseAnswer'),
+  defenseError: $('#defenseError'),
+  evaluateDefense: $('#evaluateDefense'),
+  defenseEmpty: $('#defenseEmpty'),
+  defenseResult: $('#defenseResult'),
+  defenseStatus: $('#defenseStatus'),
+  defenseScore: $('#defenseScore'),
+  defenseCopy: $('#defenseCopy'),
+  matchedSignals: $('#matchedSignals'),
+  missingSignals: $('#missingSignals'),
+  defenseFollowUp: $('#defenseFollowUp'),
+  saveSession: $('#saveSession'),
+  backToReview: $('#backToReview'),
+  rubricProject: $('#rubricProject'),
+  rubricProjectName: $('#rubricProjectName'),
+  rubricEditor: $('#rubricEditor'),
+  addCriterion: $('#addCriterion'),
+  saveRubric: $('#saveRubric'),
+  totalSessions: $('#totalSessions'),
+  latestCoverage: $('#latestCoverage'),
+  latestCoverageDelta: $('#latestCoverageDelta'),
+  recurringGap: $('#recurringGap'),
+  progressProject: $('#progressProject'),
+  progressChart: $('#progressChart'),
+  allSessions: $('#allSessions'),
+  projectDialog: $('#projectDialog'),
+  projectForm: $('#projectForm'),
+  projectName: $('#projectName'),
+  projectEvent: $('#projectEvent'),
+  projectDeadline: $('#projectDeadline'),
+  projectError: $('#projectError'),
+  closeProjectDialog: $('#closeProjectDialog'),
+  cancelProject: $('#cancelProject'),
+  sidebarAddProject: $('#sidebarAddProject'),
+  mobileAddProject: $('#mobileAddProject'),
+  toast: $('#toast'),
+  toastCopy: $('#toastCopy'),
+};
+
+function persist() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.workspace));
+}
+
+function idFor(prefix) {
+  const suffix = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `${prefix}-${suffix}`;
+}
+
+function activeProject() {
+  return state.workspace.projects.find((project) => project.id === state.workspace.activeProjectId)
+    ?? state.workspace.projects[0];
+}
+
+function practiceProject() {
+  return state.workspace.projects.find((project) => project.id === state.practiceProjectId)
+    ?? activeProject();
+}
+
+function initials(value) {
+  return String(value)
+    .split(/\s+/u)
+    .filter((part) => /[\p{L}\p{N}]/u.test(part))
+    .slice(0, 2)
+    .map((part) => part[0].toLocaleUpperCase('id-ID'))
+    .join('') || 'LP';
+}
+
+function formatDate(value, options = { day: 'numeric', month: 'short' }) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'No date';
+  return new Intl.DateTimeFormat('en-ID', options).format(date);
+}
+
+function daysUntil(value) {
+  if (!value) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(target.getTime())) return null;
+  return Math.ceil((target - today) / 86_400_000);
+}
+
+function sessionsFor(projectId) {
+  return state.workspace.sessions
+    .filter((session) => session.projectId === projectId)
+    .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt));
+}
+
+function rubricFor(project) {
+  try {
+    return parseRubric(project.rubric);
+  } catch {
+    return [];
+  }
+}
+
+function optionFor(project) {
+  const option = document.createElement('option');
+  option.value = project.id;
+  option.textContent = project.name;
+  return option;
+}
+
+function showToast(copy) {
+  window.clearTimeout(state.toastTimer);
+  elements.toastCopy.textContent = copy;
+  elements.toast.hidden = false;
+  state.toastTimer = window.setTimeout(() => { elements.toast.hidden = true; }, 2400);
+}
+
+function renderProjectSelectors() {
+  for (const select of [elements.practiceProject, elements.rubricProject, elements.progressProject]) {
+    const previous = select.value;
+    select.replaceChildren(...state.workspace.projects.map(optionFor));
+    const desired = state.workspace.projects.some((project) => project.id === previous)
+      ? previous
+      : state.workspace.activeProjectId;
+    select.value = desired;
+  }
+}
+
+function renderSidebar() {
+  elements.sidebarProjectList.replaceChildren(...state.workspace.projects.map((project) => {
+    const button = document.createElement('button');
+    button.className = 'sidebar-project';
+    button.classList.toggle('is-active', project.id === state.workspace.activeProjectId);
+    button.type = 'button';
+    button.dataset.projectId = project.id;
+    const dot = document.createElement('i');
+    dot.setAttribute('aria-hidden', 'true');
+    const label = document.createElement('span');
+    label.textContent = project.name;
+    button.append(dot, label);
+    button.addEventListener('click', () => {
+      state.workspace.activeProjectId = project.id;
+      state.practiceProjectId = project.id;
+      persist();
+      renderAll();
+      setRoute('home');
+    });
+    return button;
+  }));
+}
+
+function miniCriterion(criterion) {
+  const row = document.createElement('div');
+  row.className = 'mini-criterion';
+  const dot = document.createElement('i');
+  dot.setAttribute('aria-hidden', 'true');
+  const label = document.createElement('span');
+  label.textContent = criterion.label;
+  row.append(dot, label);
+  return row;
+}
+
+function sessionRow(session) {
+  const row = document.createElement('article');
+  row.className = 'session-row';
+
+  const date = document.createElement('span');
+  date.className = 'session-date';
+  date.textContent = formatDate(session.createdAt);
+
+  const description = document.createElement('div');
+  const title = document.createElement('strong');
+  title.textContent = session.title || 'Practice attempt';
+  const meta = document.createElement('small');
+  meta.textContent = `Focus: ${session.weakest}`;
+  description.append(title, meta);
+
+  const score = document.createElement('div');
+  score.className = 'session-score';
+  const scoreCopy = document.createElement('span');
+  scoreCopy.textContent = `${session.evidenceScore}%`;
+  const track = document.createElement('span');
+  track.className = 'score-track';
+  const fill = document.createElement('i');
+  fill.style.width = `${Math.max(2, session.evidenceScore)}%`;
+  track.append(fill);
+  score.append(scoreCopy, track);
+
+  const status = document.createElement('span');
+  status.className = `session-status ${session.defenseStatus === 'defensible' ? 'defensible' : ''}`;
+  status.textContent = session.defenseStatus === 'not practiced' ? 'No Q&A' : session.defenseStatus;
+
+  const chevron = document.createElement('span');
+  chevron.textContent = '›';
+  chevron.setAttribute('aria-hidden', 'true');
+  row.append(date, description, score, status, chevron);
+  return row;
+}
+
+function renderSessionList(container, sessions, limit = sessions.length) {
+  if (sessions.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'empty-list';
+    empty.textContent = 'No sessions saved yet. Your first attempt will appear here.';
+    container.replaceChildren(empty);
+    return;
+  }
+  container.replaceChildren(...sessions.slice(0, limit).map(sessionRow));
+}
+
+function renderDashboard() {
+  const project = activeProject();
+  const rubric = rubricFor(project);
+  const sessions = sessionsFor(project.id);
+  const latest = sessions[0];
+  const previous = sessions[1];
+  const dayCount = daysUntil(project.deadline);
+
+  elements.todayLabel.textContent = new Intl.DateTimeFormat('en-ID', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  }).format(new Date());
+  elements.currentProjectInitials.textContent = initials(project.name);
+  elements.currentProjectName.textContent = project.name;
+  elements.lastCoverage.textContent = latest ? `${latest.evidenceScore}%` : '—';
+  elements.lastWeakest.textContent = latest?.weakest ?? 'No attempt yet';
+
+  if (latest && previous) {
+    const delta = latest.evidenceScore - previous.evidenceScore;
+    elements.coverageTrend.textContent = `${delta >= 0 ? '+' : ''}${delta} points from previous attempt`;
+  } else {
+    elements.coverageTrend.textContent = latest ? 'First baseline saved' : 'No attempt saved yet';
+  }
+
+  if (latest) {
+    elements.focusTitle.textContent = `${latest.weakest} is still the claim most likely to be challenged.`;
+    elements.focusCopy.textContent = 'Continue from your saved draft and practice the question grounded in that exact rubric gap.';
+  } else {
+    elements.focusTitle.textContent = 'Build your first evidence baseline.';
+    elements.focusCopy.textContent = 'Complete one attempt to find the claim most worth rehearsing next.';
+  }
+
+  if (dayCount === null) {
+    elements.eventCountdown.textContent = 'Not set';
+    elements.eventDate.textContent = 'Add a deadline';
+  } else if (dayCount < 0) {
+    elements.eventCountdown.textContent = 'Completed';
+    elements.eventDate.textContent = formatDate(project.deadline, { day: 'numeric', month: 'long', year: 'numeric' });
+  } else {
+    elements.eventCountdown.textContent = dayCount === 0 ? 'Today' : `${dayCount} days`;
+    elements.eventDate.textContent = formatDate(project.deadline, { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  elements.rubricCount.textContent = String(rubric.length);
+  elements.homeCriteria.replaceChildren(...rubric.slice(0, 5).map(miniCriterion));
+  renderSessionList(elements.recentSessions, sessions, 3);
+}
+
+function renderSetup() {
+  const project = practiceProject();
+  const rubric = rubricFor(project);
+  elements.practiceProject.value = project.id;
+  elements.setupProjectInitials.textContent = initials(project.name);
+  elements.setupProjectName.textContent = project.name;
+  elements.setupProjectEvent.textContent = project.event;
+  elements.setupRubricCount.textContent = String(rubric.length);
+  elements.setupCriteria.replaceChildren(...rubric.map((criterion, index) => {
+    const row = document.createElement('div');
+    row.className = 'setup-criterion';
+    const number = document.createElement('span');
+    number.textContent = String(index + 1);
+    const label = document.createElement('strong');
+    label.textContent = criterion.label;
+    row.append(number, label);
+    return row;
+  }));
+}
+
+const stages = ['setup', 'attempt', 'review', 'defend'];
+
+function showPracticeStage(stage) {
+  state.practiceStage = stage;
+  const index = stages.indexOf(stage);
+  elements.practiceStages.forEach((panel) => panel.classList.toggle('is-visible', panel.dataset.practiceStage === stage));
+  elements.practiceIndicators.forEach((indicator, indicatorIndex) => {
+    indicator.classList.toggle('is-active', indicatorIndex === index);
+    indicator.classList.toggle('is-complete', indicatorIndex < index);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function timerCopy(seconds) {
+  const safe = Number.isFinite(seconds) ? Math.max(0, Math.round(seconds)) : 0;
+  return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`;
+}
+
+function beginAttempt() {
+  const project = practiceProject();
+  state.analysis = null;
+  state.defense = null;
+  elements.attemptProjectName.textContent = project.name;
+  elements.attemptTranscript.value = project.draft || '';
+  elements.attemptDuration.value = String(project.draftDuration || 90);
+  elements.attemptTimer.textContent = timerCopy(Number(elements.attemptDuration.value));
+  elements.attemptError.hidden = true;
+  showPracticeStage('attempt');
+  elements.attemptTranscript.focus();
+}
+
+function signalChip(signal, variant = '') {
+  const chip = document.createElement('span');
+  chip.className = `signal-chip ${variant}`.trim();
+  chip.textContent = signal;
+  return chip;
+}
+
+function renderReview(result) {
+  elements.reviewScore.textContent = `${result.evidenceScore}%`;
+  elements.coverageGauge.style.setProperty('--gauge', `${result.evidenceScore * 3.6}deg`);
+  elements.reviewWeakest.textContent = result.weakest.label;
+  elements.reviewDrill.textContent = result.drill;
+  elements.reviewMissingSignals.replaceChildren(
+    ...(result.weakest.missingSignals.length
+      ? result.weakest.missingSignals.slice(0, 5).map((signal) => signalChip(signal))
+      : [signalChip('No declared cues missing', 'neutral')]),
+  );
+  elements.reviewQuestion.textContent = result.judgeQuestion;
+  elements.reviewPace.textContent = `${result.delivery.wordsPerMinute} WPM · ${result.delivery.pace}`;
+  elements.reviewFillers.textContent = `${result.delivery.fillerCount} potential fillers`;
+  elements.reviewCriteria.replaceChildren(...result.criteria.map((criterion) => {
+    const card = document.createElement('article');
+    card.className = 'evidence-item';
+    if (criterion.id === result.weakest.id) card.classList.add('is-weak');
+    const topline = document.createElement('div');
+    topline.className = 'evidence-topline';
+    const label = document.createElement('strong');
+    label.textContent = criterion.label;
+    const score = document.createElement('span');
+    score.textContent = `${criterion.score}%`;
+    topline.append(label, score);
+    const track = document.createElement('div');
+    track.className = 'evidence-track';
+    const fill = document.createElement('i');
+    fill.style.width = `${Math.max(2, criterion.score)}%`;
+    track.append(fill);
+    const copy = document.createElement('p');
+    copy.textContent = criterion.excerpt
+      ? `Evidence: “${criterion.excerpt}”`
+      : `Missing: ${criterion.missingSignals.slice(0, 3).join(', ') || 'concrete proof'}`;
+    card.append(topline, track, copy);
+    return card;
+  }));
+}
+
+function analyzeAttempt() {
+  elements.attemptError.hidden = true;
+  const project = practiceProject();
+  try {
+    state.analysis = analyzeSpeech({
+      transcript: elements.attemptTranscript.value,
+      rubricText: project.rubric,
+      durationSeconds: elements.attemptDuration.value,
+    });
+    project.draft = elements.attemptTranscript.value.trim();
+    project.draftDuration = Number(elements.attemptDuration.value);
+    persist();
+    renderReview(state.analysis);
+    showPracticeStage('review');
+  } catch (error) {
+    elements.attemptError.textContent = error instanceof AnalysisError
+      ? error.message
+      : 'This attempt could not be reviewed. Check the transcript and try again.';
+    elements.attemptError.hidden = false;
+  }
+}
+
+function openDefense() {
+  if (!state.analysis) return;
+  state.defense = null;
+  elements.defenseCriterion.textContent = state.analysis.weakest.label;
+  elements.defenseQuestion.textContent = state.analysis.judgeQuestion;
+  elements.defenseAnswer.value = '';
+  elements.defenseError.hidden = true;
+  elements.defenseEmpty.hidden = false;
+  elements.defenseResult.hidden = true;
+  showPracticeStage('defend');
+  elements.defenseAnswer.focus();
+}
+
+function renderDefense(result) {
+  state.defense = result;
+  elements.defenseEmpty.hidden = true;
+  elements.defenseResult.hidden = false;
+  elements.defenseStatus.textContent = result.status;
+  elements.defenseScore.textContent = `${result.score}%`;
+  elements.defenseCopy.textContent = result.feedback;
+  elements.matchedSignals.replaceChildren(
+    ...(result.matchedSignals.length
+      ? result.matchedSignals.map((signal) => signalChip(signal, 'matched'))
+      : [signalChip('None yet', 'neutral')]),
+  );
+  elements.missingSignals.replaceChildren(
+    ...(result.missingSignals.length
+      ? result.missingSignals.map((signal) => signalChip(signal))
+      : [signalChip('Nothing missing', 'matched')]),
+  );
+  elements.defenseFollowUp.textContent = result.followUp;
+}
+
+function checkDefense() {
+  elements.defenseError.hidden = true;
+  try {
+    renderDefense(evaluateDefense({ answer: elements.defenseAnswer.value, criterion: state.analysis?.weakest }));
+  } catch (error) {
+    elements.defenseError.textContent = error instanceof AnalysisError
+      ? error.message
+      : 'This answer could not be reviewed. Check the text and try again.';
+    elements.defenseError.hidden = false;
+  }
+}
+
+function savePracticeSession(defenseStatus = state.defense?.status ?? 'not practiced') {
+  if (!state.analysis) return;
+  const project = practiceProject();
+  const projectSessions = sessionsFor(project.id);
+  state.workspace.sessions.push({
+    id: idFor('session'),
+    projectId: project.id,
+    createdAt: new Date().toISOString(),
+    evidenceScore: state.analysis.evidenceScore,
+    weakest: state.analysis.weakest.label,
+    defenseStatus,
+    defenseScore: state.defense?.score ?? null,
+    title: `Practice attempt ${projectSessions.length + 1}`,
+  });
+  state.workspace.activeProjectId = project.id;
+  persist();
+  renderAll();
+  setRoute('progress');
+  showToast('Practice session saved');
+}
+
+function rubricRow(criterion = { label: '', signals: [] }, index = 0) {
+  const row = document.createElement('div');
+  row.className = 'rubric-row';
+  const number = document.createElement('span');
+  number.className = 'rubric-number';
+  number.textContent = String(index + 1);
+
+  const labelField = document.createElement('div');
+  labelField.className = 'rubric-field';
+  const labelLabel = document.createElement('label');
+  labelLabel.textContent = 'Criterion';
+  const labelInput = document.createElement('input');
+  labelInput.className = 'criterion-label-input';
+  labelInput.value = criterion.label;
+  labelInput.placeholder = 'e.g. Problem urgency';
+  labelInput.setAttribute('aria-label', `Criterion ${index + 1} name`);
+  labelField.append(labelLabel, labelInput);
+
+  const cuesField = document.createElement('div');
+  cuesField.className = 'rubric-field';
+  const cuesLabel = document.createElement('label');
+  cuesLabel.textContent = 'Evidence cues, separated by commas';
+  const cuesInput = document.createElement('input');
+  cuesInput.className = 'criterion-signals-input';
+  cuesInput.value = criterion.signals.join(', ');
+  cuesInput.placeholder = 'users, frequency, evidence';
+  cuesInput.setAttribute('aria-label', `Criterion ${index + 1} evidence cues`);
+  cuesField.append(cuesLabel, cuesInput);
+
+  const remove = document.createElement('button');
+  remove.className = 'remove-criterion';
+  remove.type = 'button';
+  remove.textContent = '×';
+  remove.setAttribute('aria-label', `Remove criterion ${index + 1}`);
+  remove.addEventListener('click', () => {
+    row.remove();
+    renumberRubricRows();
+  });
+  row.append(number, labelField, cuesField, remove);
+  return row;
+}
+
+function renumberRubricRows() {
+  $$('.rubric-row', elements.rubricEditor).forEach((row, index) => {
+    $('.rubric-number', row).textContent = String(index + 1);
+  });
+}
+
+function renderRubricEditor() {
+  const projectId = elements.rubricProject.value || state.workspace.activeProjectId;
+  const project = state.workspace.projects.find((item) => item.id === projectId) ?? activeProject();
+  elements.rubricProject.value = project.id;
+  elements.rubricProjectName.textContent = project.name;
+  elements.rubricEditor.replaceChildren(...rubricFor(project).map(rubricRow));
+}
+
+function saveRubric() {
+  const project = state.workspace.projects.find((item) => item.id === elements.rubricProject.value);
+  if (!project) return;
+  const criteria = $$('.rubric-row', elements.rubricEditor).map((row) => ({
+    label: $('.criterion-label-input', row).value.trim(),
+    cues: $('.criterion-signals-input', row).value.trim(),
+  })).filter((criterion) => criterion.label);
+  if (criteria.length === 0) {
+    showToast('Add at least one named criterion');
+    return;
+  }
+  project.rubric = criteria.map((criterion) => `${criterion.label} | ${criterion.cues}`).join('\n');
+  persist();
+  renderAll();
+  elements.rubricProject.value = project.id;
+  renderRubricEditor();
+  showToast('Rubric saved');
+}
+
+function renderProgress() {
+  const projectId = elements.progressProject.value || state.workspace.activeProjectId;
+  const project = state.workspace.projects.find((item) => item.id === projectId) ?? activeProject();
+  elements.progressProject.value = project.id;
+  const sessions = sessionsFor(project.id);
+  const latest = sessions[0];
+  const previous = sessions[1];
+  elements.totalSessions.textContent = String(sessions.length);
+  elements.latestCoverage.textContent = latest ? `${latest.evidenceScore}%` : '—';
+  if (latest && previous) {
+    const delta = latest.evidenceScore - previous.evidenceScore;
+    elements.latestCoverageDelta.textContent = `${delta >= 0 ? '+' : ''}${delta} points from previous`;
+  } else {
+    elements.latestCoverageDelta.textContent = latest ? 'First baseline' : 'No change yet';
+  }
+
+  const gaps = sessions.reduce((counts, session) => {
+    counts[session.weakest] = (counts[session.weakest] ?? 0) + 1;
+    return counts;
+  }, {});
+  const recurring = Object.entries(gaps).sort((left, right) => right[1] - left[1])[0]?.[0];
+  elements.recurringGap.textContent = recurring ?? 'No data yet';
+
+  const chartSessions = [...sessions].reverse().slice(-8);
+  if (chartSessions.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'chart-empty';
+    empty.textContent = 'Save a practice session to start your evidence trend.';
+    elements.progressChart.replaceChildren(empty);
+  } else {
+    elements.progressChart.replaceChildren(...chartSessions.map((session, index) => {
+      const column = document.createElement('div');
+      column.className = 'chart-column';
+      const value = document.createElement('span');
+      value.className = 'chart-value';
+      value.textContent = `${session.evidenceScore}%`;
+      const bar = document.createElement('div');
+      bar.className = 'chart-bar';
+      bar.style.height = `${Math.max(8, session.evidenceScore * 1.8)}px`;
+      const label = document.createElement('span');
+      label.className = 'chart-label';
+      label.textContent = `Attempt ${index + 1}`;
+      column.append(value, bar, label);
+      return column;
+    }));
+  }
+  renderSessionList(elements.allSessions, sessions);
+}
+
+function renderAll() {
+  renderSidebar();
+  renderProjectSelectors();
+  state.practiceProjectId ??= state.workspace.activeProjectId;
+  renderDashboard();
+  renderSetup();
+  renderRubricEditor();
+  renderProgress();
+}
+
+function setRoute(route) {
+  const allowed = ['home', 'practice', 'rubric', 'progress'];
+  state.route = allowed.includes(route) ? route : 'home';
+  elements.views.forEach((view) => view.classList.toggle('is-visible', view.dataset.view === state.route));
+  elements.routeButtons.forEach((button) => button.classList.toggle('is-active', button.dataset.route === state.route));
+  history.replaceState(null, '', `#${state.route}`);
+  if (state.route === 'practice') renderSetup();
+  if (state.route === 'rubric') renderRubricEditor();
+  if (state.route === 'progress') renderProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function startPractice() {
+  state.practiceProjectId = state.workspace.activeProjectId;
+  state.analysis = null;
+  state.defense = null;
+  showPracticeStage('setup');
+  setRoute('practice');
+}
+
+function openProjectDialog() {
+  elements.projectForm.reset();
+  elements.projectError.hidden = true;
+  elements.projectDialog.showModal();
+  elements.projectName.focus();
+}
+
+function closeProjectDialog() {
+  elements.projectDialog.close();
+}
+
+function createProject(event) {
+  event.preventDefault();
+  const name = elements.projectName.value.trim();
+  const context = elements.projectEvent.value.trim();
+  if (!name || !context) {
+    elements.projectError.textContent = 'Add a project name and event context.';
+    elements.projectError.hidden = false;
+    return;
+  }
+  const project = {
+    id: idFor('project'),
+    name,
+    event: context,
+    deadline: elements.projectDeadline.value,
+    rubric: DEFAULT_RUBRIC,
+    draft: '',
+    draftDuration: 90,
+    createdAt: new Date().toISOString(),
+  };
+  state.workspace.projects.push(project);
+  state.workspace.activeProjectId = project.id;
+  state.practiceProjectId = project.id;
+  persist();
+  closeProjectDialog();
+  renderAll();
+  elements.rubricProject.value = project.id;
+  setRoute('rubric');
+  showToast('Project created — customize its rubric');
+}
+
+function setupDictation() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    elements.dictateButton.disabled = true;
+    elements.dictateLabel.textContent = 'Dictation unavailable';
+    elements.dictateButton.title = 'Paste a transcript instead.';
+    return;
+  }
+  const recognition = new SpeechRecognition();
+  recognition.lang = 'id-ID';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.addEventListener('start', () => {
+    state.recordingStartedAt = Date.now();
+    state.recordingBaseText = elements.attemptTranscript.value.trim();
+    state.finalDictation = '';
+    elements.dictateButton.classList.add('is-recording');
+    elements.dictateLabel.textContent = 'Stop dictating';
+  });
+  recognition.addEventListener('result', (event) => {
+    let interim = '';
+    for (let index = event.resultIndex; index < event.results.length; index += 1) {
+      const text = event.results[index][0].transcript;
+      if (event.results[index].isFinal) state.finalDictation += `${text} `;
+      else interim += text;
+    }
+    elements.attemptTranscript.value = [state.recordingBaseText, state.finalDictation.trim(), interim.trim()].filter(Boolean).join(' ');
+  });
+  recognition.addEventListener('end', () => {
+    if (state.recordingStartedAt) {
+      elements.attemptDuration.value = String(Math.max(1, Math.round((Date.now() - state.recordingStartedAt) / 1000)));
+      elements.attemptTimer.textContent = timerCopy(Number(elements.attemptDuration.value));
+    }
+    state.recordingStartedAt = null;
+    elements.dictateButton.classList.remove('is-recording');
+    elements.dictateLabel.textContent = 'Dictate';
+  });
+  recognition.addEventListener('error', () => {
+    elements.attemptError.textContent = 'Dictation stopped. Keep the captured text or paste a transcript.';
+    elements.attemptError.hidden = false;
+  });
+  elements.dictateButton.addEventListener('click', () => {
+    if (state.recordingStartedAt) recognition.stop();
+    else recognition.start();
+  });
+  state.recognition = recognition;
+}
+
+elements.routeButtons.forEach((button) => button.addEventListener('click', (event) => {
+  event.preventDefault();
+  setRoute(button.dataset.route);
+}));
+elements.startPracticeButtons.forEach((button) => button.addEventListener('click', startPractice));
+elements.practiceProject.addEventListener('change', () => {
+  state.practiceProjectId = elements.practiceProject.value;
+  state.workspace.activeProjectId = state.practiceProjectId;
+  persist();
+  renderSidebar();
+  renderSetup();
+});
+elements.beginAttempt.addEventListener('click', beginAttempt);
+elements.analyzeAttempt.addEventListener('click', analyzeAttempt);
+elements.attemptTranscript.addEventListener('input', () => {
+  const project = practiceProject();
+  project.draft = elements.attemptTranscript.value;
+  persist();
+  elements.draftStatus.textContent = 'Draft saved locally';
+});
+elements.attemptDuration.addEventListener('input', () => {
+  elements.attemptTimer.textContent = timerCopy(Number(elements.attemptDuration.value));
+  const project = practiceProject();
+  project.draftDuration = Number(elements.attemptDuration.value);
+  persist();
+});
+elements.openDefense.addEventListener('click', openDefense);
+elements.reviseAttempt.addEventListener('click', () => showPracticeStage('attempt'));
+elements.saveWithoutDefense.addEventListener('click', () => savePracticeSession('not practiced'));
+elements.evaluateDefense.addEventListener('click', checkDefense);
+elements.saveSession.addEventListener('click', () => savePracticeSession());
+elements.backToReview.addEventListener('click', () => showPracticeStage('review'));
+elements.exitPractice.addEventListener('click', () => setRoute('home'));
+elements.rubricProject.addEventListener('change', renderRubricEditor);
+elements.addCriterion.addEventListener('click', () => {
+  elements.rubricEditor.append(rubricRow(undefined, $$('.rubric-row', elements.rubricEditor).length));
+});
+elements.saveRubric.addEventListener('click', saveRubric);
+elements.progressProject.addEventListener('change', renderProgress);
+elements.projectForm.addEventListener('submit', createProject);
+elements.closeProjectDialog.addEventListener('click', closeProjectDialog);
+elements.cancelProject.addEventListener('click', closeProjectDialog);
+elements.sidebarAddProject.addEventListener('click', openProjectDialog);
+elements.mobileAddProject.addEventListener('click', openProjectDialog);
+
+state.practiceProjectId = state.workspace.activeProjectId;
+persist();
+renderAll();
+showPracticeStage('setup');
+setRoute(location.hash.slice(1) || 'home');
+setupDictation();

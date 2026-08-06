@@ -1,0 +1,18 @@
+{
+  "name": "lancar-workspace",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "A persistent rubric-grounded rehearsal workspace for Indonesian students.",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "start": "node scripts/serve.mjs",
+    "test": "node --test",
+    "test:browser": "node scripts/browser-check.mjs",
+    "project": "node scripts/project.mjs",
+    "check": "node --test && node scripts/browser-check.mjs && node scripts/project.mjs check"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
