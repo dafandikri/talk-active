@@ -14,7 +14,7 @@ const REQUIRED = [
   'src/analyzer.mjs',
   'src/styles.css',
   'scripts/browser-check.mjs',
-  'middleware.mjs',
+  'middleware.js',
   'vercel.json',
   'docs/FEASIBILITY.md',
   'docs/specs/2026-08-06-lancar-mvp.md',

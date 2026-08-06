@@ -76,7 +76,7 @@ students using their own materials.
 
 ## Private Vercel deployment
 
-Production deployment is protected by `middleware.mjs` using HTTP Basic Authentication.
+Production deployment is protected by `middleware.js` using HTTP Basic Authentication.
 Set `SITE_PASSWORD` in Vercel for every deployed environment; the middleware fails closed
 with a `503` if the secret is absent. The username is `lancar`. Never commit the password
 to this repository or place it in client-side JavaScript.

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import protectDeployment from '../middleware.mjs';
+import protectDeployment from '../middleware.js';
 
 function authorization(password) {
   return `Basic ${Buffer.from(`lancar:${password}`).toString('base64')}`;
