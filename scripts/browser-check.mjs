@@ -88,7 +88,7 @@ async function waitForPage(debugPort, attempts = 80) {
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw new Error('headless browser did not expose the Lancar page');
+  throw new Error('headless browser did not expose the Talk-Active page');
 }
 
 function connectCdp(url) {
@@ -258,7 +258,7 @@ async function run() {
     await waitFor(cdp, `document.querySelector('#practiceDefense')?.classList.contains('is-visible')`);
     await evaluate(cdp, `(() => {
       const answer = document.querySelector('#defenseAnswer');
-      answer.value = "Unlike generic competitors, Lancar uses unique logic that keeps every critique traceable to the active rubric and transcript.";
+      answer.value = "Unlike generic competitors, Talk-Active uses unique logic that keeps every critique traceable to the active rubric and transcript.";
       answer.dispatchEvent(new Event('input', { bubbles: true }));
       document.querySelector('#evaluateDefense').click();
     })()`);

@@ -1,0 +1,34 @@
+% ---------------------------------------------------------------- Figure 1 --
+% The core rehearsal loop.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  font=\fontsize{8.5}{10}\selectfont,
+  stage/.style={
+    draw=ristekpurple!55, fill=softpurple, line width=0.6pt,
+    rounded corners=2.5pt, minimum height=1.15cm, text width=1.72cm,
+    align=center, inner sep=3pt
+  },
+  flow/.style={-{Stealth[length=4pt]}, draw=ristekpurple!75, line width=0.7pt}
+]
+
+\node[stage] (p1) {\textbf{1. Project}\\[1pt] real event\\ \& deadline};
+\node[stage, right=0.30cm of p1] (p2) {\textbf{2. Rubric}\\[1pt] evaluator's\\ real criteria};
+\node[stage, right=0.30cm of p2] (p3) {\textbf{3. Attempt}\\[1pt] speak or\\ paste draft};
+\node[stage, right=0.30cm of p3] (p4) {\textbf{4. Evidence}\\[1pt] cited per\\ criterion};
+\node[stage, right=0.30cm of p4] (p5) {\textbf{5. Question}\\[1pt] on weakest\\ claim};
+\node[stage, right=0.30cm of p5] (p6) {\textbf{6. Save}\\[1pt] progress \&\\ recurring gap};
+
+\foreach \a/\b in {p1/p2, p2/p3, p3/p4, p4/p5, p5/p6}{\draw[flow] (\a) -- (\b);}
+
+% return arrow: the loop closes back onto the next attempt
+\draw[flow, dashed]
+  (p6.south) -- ++(0,-0.42)
+  -| node[pos=0.25, below, font=\fontsize{8}{9}\selectfont\itshape, text=ristekpurple!90]
+     {the next attempt starts from what the last one exposed} (p3.south);
+
+\end{tikzpicture}
+\caption{The rubric-grounded rehearsal loop. Each stage feeds the next, and the
+saved session conditions the following attempt.}
+\label{fig:loop}
+\end{figure}

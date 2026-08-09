@@ -1,4 +1,4 @@
-const REALM = 'Lancar Internal';
+const REALM = 'Talk-Active Internal';
 
 async function sameValue(left, right) {
   const encoder = new TextEncoder();

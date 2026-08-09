@@ -1,0 +1,67 @@
+% ---------------------------------------------------------------- Figure ----
+% Competitive positioning: what the category optimises for vs. what we do.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\fontsize{8}{9.5}\selectfont]
+
+\def\W{11.6}   % plot width
+\def\H{4.9}    % plot height
+\pgfmathsetmacro{\Mx}{\W/2}
+\pgfmathsetmacro{\My}{\H/2}
+
+% quadrant background
+\fill[panelgrey, rounded corners=3pt] (0,0) rectangle (\W,\H);
+\fill[softpurple] ({\Mx},{\My}) rectangle ({\W-0.02},{\H-0.02});
+
+% grid + frame
+\draw[rulegrey, line width=0.6pt] ({\Mx},0) -- ({\Mx},\H);
+\draw[rulegrey, line width=0.6pt] (0,{\My}) -- (\W,{\My});
+\draw[rulegrey, line width=0.7pt, rounded corners=3pt] (0,0) rectangle (\W,\H);
+
+% ---- axis labels ----------------------------------------------------------
+\node[font=\fontsize{8.4}{10}\selectfont, text=inkgrey]
+  at ({\Mx},-0.40)
+  {grounded in generic speech → \textbf{in the evaluator's actual rubric}};
+\node[font=\fontsize{8.4}{10}\selectfont, text=inkgrey, rotate=90]
+  at (-0.42,{\My})
+  {targets delivery → \textbf{substance}};
+
+% ---- quadrant captions ----------------------------------------------------
+\node[font=\fontsize{7.6}{9}\selectfont\itshape, text=inkgrey!65, anchor=north west]
+  at (0.14,{\H-0.10}) {substance, but rubric-blind};
+\node[font=\fontsize{7.6}{9}\selectfont\itshape, text=inkgrey!65, anchor=south west]
+  at (0.14,0.12) {delivery coaching};
+\node[font=\fontsize{7.6}{9}\selectfont\itshape, text=inkgrey!65, anchor=south east]
+  at ({\W-0.14},0.12) {rubric-aware, but still delivery};
+\node[font=\fontsize{7.8}{9.4}\selectfont\bfseries, text=ristekpurple, anchor=north east]
+  at ({\W-0.14},{\H-0.10}) {rubric-grounded rehearsal};
+
+% ---- plotted players ------------------------------------------------------
+% #1 x  #2 y  #3 name  #4 sublabel
+\newcommand{\player}[4]{%
+  \node[circle, draw=inkgrey!60, fill=white, line width=0.6pt,
+        minimum size=0.26cm, inner sep=0pt] at (#1,#2) {};
+  \node[anchor=west, align=left, font=\fontsize{8}{9.4}\selectfont, text=inkgrey]
+    at ({#1+0.20},#2)
+    {\textbf{#3}~{\fontsize{6.9}{8}\selectfont\itshape\color{inkgrey!75}#4}};
+}
+
+\player{1.05}{0.72}{Orai}{delivery, streaks}
+\player{1.05}{1.62}{Poised}{live-call cues}
+\player{3.95}{1.17}{Yoodli}{+ generic roleplay}
+\player{1.30}{3.60}{Human mentor}{ideal, but scarce}
+
+% Talk-Active, emphasised
+\node[circle, draw=ristekpurple, fill=ristekpurple, line width=0.8pt,
+      minimum size=0.40cm, inner sep=0pt] at (7.05,3.60) {};
+\node[anchor=west, align=left, text=ristekpurple] at (7.30,3.60)
+  {\fontsize{10.5}{12}\selectfont\bfseries \ProductName{}\\[-1.5pt]
+   {\fontsize{7}{8.2}\selectfont\itshape every verdict cites a criterion}};
+
+\end{tikzpicture}
+\caption{Competitive positioning. The category optimises delivery, leaving the
+quadrant that decides evaluation outcomes unoccupied. A delivery coach cannot
+enter it by adding a feature: the rubric has to be the primary key of the data
+model, not one more input to a prompt.}
+\label{fig:compete}
+\end{figure}

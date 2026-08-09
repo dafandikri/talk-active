@@ -15,7 +15,7 @@ const initialWorkspace = {
   projects: [
     {
       id: 'project-lancar',
-      name: 'Lancar — RISTEK Hackathon',
+      name: 'Talk-Active — RISTEK Hackathon',
       event: '7-minute final pitch · 3-minute Q&A',
       deadline: '2026-08-16',
       rubric: DEFAULT_RUBRIC,

@@ -1,0 +1,75 @@
+% ---------------------------------------------------------------- Figure ----
+% Problem evidence: the selection funnel and the anxiety base rate.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\fontsize{8}{9.5}\selectfont]
+
+% ============================ PANEL A : LPDP selection funnel ==============
+\begin{scope}[xshift=0cm]
+
+  \node[font=\fontsize{9}{11}\selectfont\bfseries, text=inkgrey, anchor=west]
+    at (0,3.25) {(a) LPDP 2025 Stage 2: the interview is the filter};
+
+  % funnel bars (width proportional to volume, log-ish for legibility)
+  \fill[uinavy!75, rounded corners=1.5pt] (0,2.35) rectangle (6.6,2.85);
+  \node[anchor=west, text=white, font=\fontsize{8}{9}\selectfont\bfseries]
+    at (0.12,2.60) {37,459 applicants entered Stage 2};
+
+  \fill[uinavy!45, rounded corners=1.5pt] (0,1.70) rectangle (4.3,2.20);
+  \node[anchor=west, text=white, font=\fontsize{8}{9}\selectfont\bfseries]
+    at (0.12,1.95) {administrative + scholastic screening};
+
+  \fill[uired!85, rounded corners=1.5pt] (0,1.05) rectangle (0.44,1.55);
+  \node[anchor=west, text=uired, font=\fontsize{8}{9}\selectfont\bfseries]
+    at (0.56,1.30) {2,511 passed substance selection};
+
+  % the ratio callout
+  \node[draw=uired!55, fill=uired!7, line width=0.5pt, rounded corners=2pt,
+        inner sep=4pt, text width=6.3cm, align=left,
+        font=\fontsize{8}{9.5}\selectfont, anchor=north west] at (0,0.80)
+    {\textbf{\textcolor{uired}{≈6.7\% pass the interview stage.}}
+     One attempt, no feedback, no rehearsal partner. Applicant volume grew from
+     about 25,000 (2022) to about 78,000 (2025).};
+
+\end{scope}
+
+% ============================ PANEL B : anxiety base rate ==================
+\begin{scope}[xshift=7.9cm]
+
+  \node[font=\fontsize{9}{11}\selectfont\bfseries, text=inkgrey, anchor=west]
+    at (0,3.25) {(b) Public speaking anxiety, first-year students};
+
+  % stacked horizontal bar, total width 6.4cm = 100%
+  \def\W{6.4}
+  \fill[uired!80,   rounded corners=1.5pt] (0,2.30) rectangle ({\W*0.18},2.85);
+  \fill[warnamber!70]                      ({\W*0.18},2.30) rectangle ({\W*0.81},2.85);
+  \fill[goodgreen!55, rounded corners=1.5pt] ({\W*0.81},2.30) rectangle ({\W},2.85);
+
+  \node[text=white, font=\fontsize{7.6}{9}\selectfont\bfseries] at ({\W*0.09},2.575) {18\%};
+  \node[text=white, font=\fontsize{7.6}{9}\selectfont\bfseries] at ({\W*0.50},2.575) {63\%};
+  \node[text=white, font=\fontsize{7.6}{9}\selectfont\bfseries] at ({\W*0.905},2.575) {19\%};
+
+  % legend
+  \fill[uired!80] (0,1.90) rectangle (0.22,2.06);
+  \node[anchor=west, font=\fontsize{7.8}{9}\selectfont] at (0.28,1.98) {High anxiety};
+  \fill[warnamber!70] (2.25,1.90) rectangle (2.47,2.06);
+  \node[anchor=west, font=\fontsize{7.8}{9}\selectfont] at (2.53,1.98) {Moderate};
+  \fill[goodgreen!55] (4.55,1.90) rectangle (4.77,2.06);
+  \node[anchor=west, font=\fontsize{7.8}{9}\selectfont] at (4.83,1.98) {Low};
+
+  \node[draw=warnamber!55, fill=warnamber!7, line width=0.5pt, rounded corners=2pt,
+        inner sep=4pt, text width=6.3cm, align=left,
+        font=\fontsize{8}{9.5}\selectfont, anchor=north west] at (0,1.62)
+    {\textbf{\textcolor{warnamber}{81\% report moderate or high anxiety.}}
+     A separate cohort study of fifth-semester students found 53.3\% at high
+     levels. This is a predictable response to being evaluated without ever
+     having rehearsed under evaluative conditions.};
+
+\end{scope}
+
+\end{tikzpicture}
+\caption{The problem is measurable on two axes: the selection funnel is
+punishing, and the anxiety it produces is close to universal.
+Sources: \cite{lpdp2025,goodstats2025,educasia2024,leea2023}.}
+\label{fig:problem}
+\end{figure}

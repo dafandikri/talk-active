@@ -1,0 +1,140 @@
+% ============================================================================
+%  BACK MATTER — References and Appendices.
+%  Both are explicitly EXCLUDED from the 10-page limit by the Format Guideline:
+%  "Maximum of 10 pages (excluding the cover page, reference, and appendix)".
+%
+%  NOTE: the Originality Statement is submitted as a separate signed document
+%  from the committee's template (ristek.link/RISTEKHackathon2026Originality),
+%  so it is deliberately not reproduced here.
+% ============================================================================
+
+\newpage
+\section*{References}
+\addcontentsline{toc}{section}{References}
+
+{\fontsize{11}{15}\selectfont
+\begin{thebibliography}{9}
+
+\bibitem{pddikti2025}
+Kementerian Pendidikan Tinggi, Sains, dan Teknologi Republik Indonesia,
+\emph{Statistik Pendidikan Tinggi 2025}. Pangkalan Data Pendidikan Tinggi
+(PDDikti), data retrieved December 2025.
+\url{https://kemdiktisaintek.go.id/library/book/statistik-pendidikan-tinggi-2025}
+
+\bibitem{goodstats2025}
+GoodStats Data, ``Jumlah Mahasiswa S1 Tembus 8,2 Juta Tahun 2025,'' 2025.
+\url{https://data.goodstats.id/statistic/jumlah-mahasiswa-s1-tembus-82-juta-tahun-2025-Y7SPD}
+
+\bibitem{lpdp2025}
+Lembaga Pengelola Dana Pendidikan (LPDP), Kementerian Keuangan Republik
+Indonesia, ``LPDP Sambut 2.511 Peserta Lolos Seleksi Substansi Tahap 2 Tahun
+2025,'' 2025.
+\url{https://lpdp.kemenkeu.go.id/informasi/berita/lpdp-sambut-2511-peserta-lolos-seleksi-substansi-tahap-2-tahun-2025/}
+
+\bibitem{educasia2024}
+``Exploring Public Speaking Anxiety among the First-Year College Students in
+West Java Indonesia,'' \emph{EDUCASIA: Jurnal Pendidikan, Pengajaran, dan
+Pembelajaran}.
+\url{https://educasia.or.id/educasia/article/view/300}
+
+\bibitem{leea2023}
+``Exploring Indonesian College Students' Levels and Factors of English Speaking
+Anxiety,'' \emph{Linguistic, English Education and Art (LEEA) Journal}.
+\url{https://journal.ipm2kpe.or.id/index.php/LEEA/article/view/8888}
+
+\bibitem{competitors2026}
+Publicly listed pricing and feature information for Yoodli, Orai, and Poised,
+retrieved August 2026.
+\url{https://yoodli.ai} \textbullet{} \url{https://orai.com}
+\textbullet{} \url{https://poised.com}
+
+\bibitem{uupdp}
+Republik Indonesia, \emph{Undang-Undang Nomor 27 Tahun 2022 tentang
+Pelindungan Data Pribadi} (Personal Data Protection Law), 2022.
+
+\bibitem{guidebook}
+RISTEK Fasilkom UI, \emph{Registration Guidebook --- RISTEK Hackathon 2026}.
+Official competition document.
+
+\end{thebibliography}}
+
+% ============================================================================
+\newpage
+\section*{Appendix A --- Principal Risks and Mitigation}
+\addcontentsline{toc}{section}{Appendix A --- Principal Risks and Mitigation}
+% ============================================================================
+
+{\fontsize{11}{14}\selectfont
+\begin{tabularx}{\textwidth}{@{}L{4.6cm} X@{}}
+\toprule
+\textbf{Risk} & \textbf{Mitigation} \\
+\midrule
+The model misjudges whether a criterion is met &
+Every verdict must cite a transcript span, and the student can override it. The
+rubric parse is confirmed by the student before it is used. \\
+\addlinespace
+Indonesian and code-mixed speech transcribes poorly &
+Pasting a written draft is always a first-class path, so the loop never depends
+on speech-recognition quality. \\
+\addlinespace
+Students will not pay &
+The core loop is free by design; revenue concentrates in the Campus tier, where
+the budget holder is the faculty, not the student. \\
+\addlinespace
+A large incumbent adds a rubric feature &
+Our moat is the Indonesian rubric archetype library and evaluation context,
+accumulated locally rather than shipped as a feature. \\
+\addlinespace
+Privacy harm from unpublished academic work &
+Private-by-default storage, no audio retention, explicit consent, and hard
+deletion under UU PDP No.\ 27/2022. \\
+\addlinespace
+The team over-scopes during Innovation Week &
+The MVP table fixes what is in and out. Semantic evidence mapping is the single
+sprint objective; everything else already works. \\
+\bottomrule
+\end{tabularx}}
+
+% ============================================================================
+\newpage
+\section*{Appendix B --- Format Compliance Checklist}
+\addcontentsline{toc}{section}{Appendix B --- Format Compliance Checklist}
+% ============================================================================
+
+Included so the committee can audit compliance without measuring the document.
+
+\vspace{2pt}
+
+{\fontsize{10}{12.4}\selectfont
+\begin{tabularx}{\textwidth}{@{}L{3.1cm} L{4.6cm} X@{}}
+\toprule
+\textbf{Guidebook rule} & \textbf{Required} & \textbf{This document} \\
+\midrule
+Font & Times New Roman &
+Times New Roman (Monotype), embedded \\
+Font size & Title 14\,pt bold; body 12\,pt &
+Section titles 14\,pt bold; body 12\,pt \\
+Line spacing & 1.5 & 1.5 throughout the body \\
+Alignment & Justified & Justified \\
+Page numbering & Bottom -- Right &
+Bottom-right, 3\,cm from the right edge \\
+Margins & 3\,cm all sides &
+3.00\,cm left, right, top, and bottom \\
+Page limit & Max.\ 10 pages, excl.\ cover, reference, appendix &
+Body is 10 numbered pages \\
+Logo & Must appear on every page &
+All three logos from the official folder, in the header of every page \\
+Language & English & English \\
+File format & PDF & PDF \\
+File name & \textit{Preliminary\_\allowbreak Ristek\-Hackathon2026\_\allowbreak[Team Name]} &
+\textit{Preliminary\_\allowbreak Ristek\-Hackathon2026\_\allowbreak\TeamName} \\
+\midrule
+Structure & Cover; Exec.\ Summary \& Value Proposition; Technical Architecture
+\& Tech Stack; Core Features \& User Journey &
+Cover page; Sections 1, 4, and 5 \\
+Expected Results & Target Metrics; User Benefits; Scalability \& Roadmap &
+Sections 7.1, 7.2, and 8 \\
+Originality Statement & Committee template &
+Submitted separately as a signed copy \\
+\bottomrule
+\end{tabularx}}

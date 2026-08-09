@@ -28,7 +28,7 @@ test('deployment middleware challenges missing or incorrect credentials', async 
       headers: { authorization: authorization('wrong-password') },
     }));
     assert.equal(response.status, 401);
-    assert.match(response.headers.get('www-authenticate'), /Lancar Internal/u);
+    assert.match(response.headers.get('www-authenticate'), /Talk-Active Internal/u);
     assert.match(response.headers.get('x-robots-tag'), /noindex/u);
   } finally {
     if (previous === undefined) delete process.env.SITE_PASSWORD;

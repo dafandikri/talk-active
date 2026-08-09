@@ -1,0 +1,107 @@
+% ============================================================================
+%  COVER PAGE
+%  Guidebook requirement (Technical Implementation, structure item 1):
+%      "Cover Page: Logo, Project/Product Name, and Team Name."
+%  The cover is excluded from the 10-page limit, and therefore carries the
+%  running logo strip but no page number.
+% ============================================================================
+\thispagestyle{ristekcover}
+
+\begin{center}
+
+\vspace*{0.15cm}
+
+{\fontsize{12}{15}\selectfont\bfseries\color{inkgrey}
+RISTEK HACKATHON 2026\par}
+
+\vspace{2pt}
+
+{\fontsize{11}{14}\selectfont\color{inkgrey}
+Preliminary Round --- Product Proposal\par}
+
+\vspace{6pt}
+{\color{rulegrey}\rule{4cm}{0.6pt}}
+\vspace{16pt}
+
+% ------------------------------------------------------------ product mark --
+\begin{tikzpicture}
+  \node[inner sep=0pt] (mark) {
+    \begin{minipage}{0.86\textwidth}
+      \centering
+      {\fontsize{46}{50}\selectfont\bfseries\color{ristekpurple} \ProductName\par}
+      \vspace{8pt}
+      {\fontsize{13}{16}\selectfont\itshape\color{inkgrey} \ProductTagline\par}
+    \end{minipage}
+  };
+\end{tikzpicture}
+
+\vspace{14pt}
+
+% ------------------------------------------------------------- one-liner ----
+\begin{minipage}{0.88\textwidth}
+  \centering
+  {\fontsize{12}{17}\selectfont\color{inkgrey}
+  An AI rehearsal workspace that turns the evaluator's own rubric into
+  traceable practice, so that preparation quality no longer depends on
+  who happens to have a mentor.\par}
+\end{minipage}
+
+\vspace{18pt}
+
+% ---------------------------------------------------------------- theme -----
+\begin{tikzpicture}
+  \node[draw=ristekpurple!40, fill=softpurple, line width=0.6pt,
+        rounded corners=3pt, inner xsep=14pt, inner ysep=9pt] {
+    \begin{minipage}{0.80\textwidth}
+      \centering
+      {\fontsize{11}{14}\selectfont\color{inkgrey}
+      \textbf{Grand Theme:} Tech for Good --- Architecting Sustainable
+      Solutions for Tomorrow's Challenges\par
+      \vspace{2pt}
+      \textbf{Sub-theme:} \SubTheme\par}
+    \end{minipage}
+  };
+\end{tikzpicture}
+
+\vfill
+
+% ----------------------------------------------------------------- team -----
+{\fontsize{14}{17}\selectfont\bfseries\color{inkgrey} Team \TeamName\par}
+
+\vspace{10pt}
+
+{\itshape\color{inkgrey}\fontsize{10}{12}\selectfont
+Team Leader listed first, as required by the Registration Guidebook.\par}
+
+\vspace{6pt}
+
+{\fontsize{11}{14}\selectfont
+\begin{tabularx}{0.92\textwidth}{@{}r@{\hspace{6pt}}>{\raggedright\arraybackslash}X@{\hspace{8pt}}l@{\hspace{8pt}}>{\raggedright\arraybackslash}p{4.6cm}@{}}
+\textbf{1.} & \LeaderName      & \LeaderNPM      & \LeaderFaculty~(\LeaderCohort)      \\
+\textbf{2.} & \MemberTwoName   & \MemberTwoNPM   & \MemberTwoFaculty~(\MemberTwoCohort)   \\
+\textbf{3.} & \MemberThreeName & \MemberThreeNPM & \MemberThreeFaculty~(\MemberThreeCohort) \\
+\ifShowFour
+\textbf{4.} & \MemberFourName  & \MemberFourNPM  & \MemberFourFaculty~(\MemberFourCohort)  \\
+\fi
+\ifShowFive
+\textbf{5.} & \MemberFiveName  & \MemberFiveNPM  & \MemberFiveFaculty~(\MemberFiveCohort)  \\
+\fi
+\end{tabularx}\par}
+
+\vspace{16pt}
+
+{\color{rulegrey}\rule{0.55\textwidth}{0.6pt}}
+
+\vspace{10pt}
+
+{\fontsize{12}{15}\selectfont\color{inkgrey}
+FACULTY OF COMPUTER SCIENCE\par
+UNIVERSITAS INDONESIA\par
+\vspace{3pt}
+2026\par}
+
+\vspace*{0.2cm}
+
+\end{center}
+
+\newpage

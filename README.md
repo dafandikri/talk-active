@@ -1,6 +1,6 @@
-# Lancar
+# Talk-Active
 
-Lancar is a private rehearsal workspace for Indonesian students preparing a rubric-driven
+Talk-Active is a private rehearsal workspace for Indonesian students preparing a rubric-driven
 pitch, scholarship interview, thesis defense, or competition Q&A.
 
 It is designed as software a student returns to throughout preparation—not as a landing
@@ -30,7 +30,7 @@ From the workspace you can:
 7. reload the browser without losing projects, drafts, rubrics, or session history.
 
 All workspace data is stored in browser `localStorage`. Dictation uses the browser's speech
-recognition capability when available; Lancar does not record or persist raw audio.
+recognition capability when available; Talk-Active does not record or persist raw audio.
 
 ## Product loop
 

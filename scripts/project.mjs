@@ -17,7 +17,7 @@ const REQUIRED = [
   'middleware.js',
   'vercel.json',
   'docs/FEASIBILITY.md',
-  'docs/specs/2026-08-06-lancar-mvp.md',
+  'docs/specs/2026-08-06-talk-active-mvp.md',
   '.agent-harness/install.json',
   'test/analyzer.test.mjs',
 ];
@@ -56,9 +56,9 @@ function home() {
   const ready = items.filter((item) => item.status === 'ready').length;
   process.stdout.write([
     `bin: ${quoted(displayPath(SCRIPT_PATH))}`,
-    `description: ${quoted('Inspect the Lancar product workspace and its agent-ready state')}`,
+    `description: ${quoted('Inspect the Talk-Active product workspace and its agent-ready state')}`,
     'project:',
-    '  name: Lancar',
+    '  name: Talk-Active',
     `  version: ${quoted(packageVersion())}`,
     '  milestone: persistent-product-prototype',
     `  readiness: ${ready}/${items.length}`,

@@ -1,0 +1,27 @@
+% ============================================================================
+%  LANCAR — RISTEK HACKATHON 2026 PRELIMINARY ROUND PRODUCT PROPOSAL
+%
+%  Build:  tectonic -X compile main.tex
+%  Output: main.pdf  -> rename to Preliminary_RistekHackathon2026_[Team Name].pdf
+%
+%  Structure:
+%    cover.tex       Cover page (excluded from the 10-page limit)
+%    body.tex        Sections 1-8 (counted against the 10-page limit)
+%    backmatter.tex  References + Appendices A-C (excluded)
+% ============================================================================
+\documentclass[12pt,a4paper]{article}
+
+\input{preamble}
+\input{teaminfo}
+
+\begin{document}
+
+\input{cover}
+
+\setcounter{page}{1}
+
+\input{body}
+
+\input{backmatter}
+
+\end{document}

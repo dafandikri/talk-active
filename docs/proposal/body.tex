@@ -1,0 +1,485 @@
+% ============================================================================
+%  PROPOSAL BODY — counted against the 10-page limit.
+% ============================================================================
+
+% ----------------------------------------------------------------------------
+\section{Executive Summary \& Value Proposition}
+% ----------------------------------------------------------------------------
+
+Every year, millions of Indonesian students are judged against a written rubric
+they have already been given: a hackathon scoring matrix, a scholarship
+interview guide, a thesis examination form. The rubric is rarely secret. What
+students lack is not the criteria but a way to \emph{practise against them} and
+find out, before the room, which of their claims will not survive a question.
+
+The support that closes that gap is a mentor who reads your rubric, listens,
+and asks the hard question. It is also the scarcest resource in Indonesian
+higher education, and it is distributed by luck: by faculty, by alumni network,
+by whether a senior has time. Students without that access do not practise less;
+they practise blindly, rehearsing fluency while their weakest claim stays
+invisible until an evaluator names it.
+
+\ProductName{} is an AI rehearsal workspace that makes the evaluator's own
+rubric the centre of practice. A student enters the real scoring criteria and
+rehearses. \ProductName{} maps every claim in the transcript to a criterion,
+shows which are supported and which are merely asserted, identifies the weakest
+defensible claim, and generates the question a skeptical evaluator would ask
+about it. The student answers, learns which evidence landed, and saves the
+session. Across attempts, the workspace surfaces the weakness that keeps
+recurring.
+
+\callout{\textbf{Value proposition.} Existing AI speaking tools coach
+\emph{delivery}: pace, filler words, confidence. They are rubric-blind: they
+cannot tell a student that a market-size claim is unsupported, because they do
+not know the student is being scored on market size. \ProductName{} inverts the
+input. The rubric comes first, and every piece of feedback cites a criterion and
+the exact sentence that did or did not satisfy it. This is not a better speaking coach.
+It is the rehearsal layer for \emph{evaluation itself}.}
+
+The differentiating loop is \textbf{project → rubric →
+attempt → traceable evidence → hardest question
+→ saved progress}. The loop is narrow and repeatable, which makes it
+testable with real students instead of merely impressive in a demo.
+
+\textbf{Current status.} A working prototype already runs as a deployed web
+application, covering projects, rubric editing, evidence review, question
+generation, and saved history, verified by an automated gate of 15 unit tests
+and 11 browser checks. We also used it on ourselves: \textbf{we entered this
+guidebook's own scoring matrix as a rubric and ran our pitch through it}, and it
+named Business Strategy as our weakest criterion, so we rewrote the pitch to
+lead with market sizing and revenue. Its analysis today is deterministic cue
+matching, not semantic understanding, a boundary Section~4.4 states plainly and
+the Innovation Week sprint is scoped to replace.
+
+% ----------------------------------------------------------------------------
+\section{Problem Identification}
+% ----------------------------------------------------------------------------
+
+\subsection{The problem and its scale}
+
+Indonesia's higher education system enrolled \textbf{9,949,502 students} as of
+December 2025, of whom \textbf{8,281,591} are undergraduates
+\cite{pddikti2025}. Nearly all will face at least one rubric-scored oral
+evaluation before graduating: a thesis defense, a job interview, a scholarship
+panel, a competition pitch. Each one is high-stakes, single-shot, and scored
+against criteria the student can usually read in advance. Two pressures make this
+pressing rather than routine.
+
+\textbf{First, the anxiety is near-universal and documented.} A study of
+first-year Indonesian university students found \textbf{63\% at moderate and
+18\% at high levels} of public speaking anxiety, so 81\% of the cohort was
+affected
+\cite{educasia2024}; a separate study of fifth-semester students reported
+\textbf{53.33\% at high levels} \cite{leea2023}. At this prevalence it is not a
+personality trait to be coached away, but a predictable response to being
+evaluated without ever having rehearsed under evaluative conditions.
+
+\textbf{Second, the selection funnels are narrow and getting narrower.} LPDP, the
+country's flagship government scholarship, grew from roughly 25,000 applicants
+in 2022 to approximately 78,000 in 2025. In Stage~2 of the 2025 cycle,
+\textbf{37,459 applicants} competed and only \textbf{2,511} passed the
+substance selection, an interview-stage pass rate near \textbf{6.7\%}
+\cite{lpdp2025,goodstats2025}. At that ratio the interview is not a formality
+confirming a strong file; it is the decisive filter, and the stage students can
+least afford to practise alone.
+
+\input{fig-problem}
+
+\callout{The gap is not information and not effort. Students can obtain the
+rubric and they do rehearse. What they cannot obtain is an evaluator who will
+read that rubric, listen, and tell them which specific claim is weakest, then
+ask about it. \textbf{Rehearsal quality is currently a function of network
+access, and that is an equity problem.}}
+
+\subsection{Target users and their pain points}
+
+Our initial user is an Indonesian undergraduate facing a rubric-driven oral
+evaluation within the next four to eight weeks, with limited or no mentor
+access. Table~\ref{tab:persona} defines the three segments we design for, in
+priority order.
+
+\begin{table}[htbp]
+\centering
+\caption{Target personas and the specific pain point each one brings.}
+\label{tab:persona}
+{\fontsize{10.5}{13}\selectfont
+\begin{tabularx}{\textwidth}{@{}L{2.6cm} L{3.5cm} X@{}}
+\toprule
+\textbf{Persona} & \textbf{Context} & \textbf{Specific pain point} \\
+\midrule
+\textbf{The competitor}\newline (beachhead) &
+Undergraduate in a hackathon, business case, or scientific paper competition.
+Rubric is published with the guidebook. &
+Knows the scoring matrix but cannot tell which criterion the pitch currently
+under-serves. Discovers the gap during Q\&A, when it is too late to fix. \\
+\addlinespace
+\textbf{The defender} &
+Final-year student preparing a thesis or internship defense against a
+standard examination form. &
+Rehearses the presentation but never the interrogation. Cannot predict which
+claim the examiner will attack, and has no one to play examiner. \\
+\addlinespace
+\textbf{The applicant} &
+Scholarship (LPDP, Chevening, Australia Awards) or first-job candidate. &
+Faces an interview funnel near 6.7\% with one attempt. Practises answers in
+isolation with no feedback on whether an answer is actually defensible. \\
+\bottomrule
+\end{tabularx}}
+\end{table}
+
+Across all three, the same four failures recur: the student cannot locate the
+weakest claim; cannot anticipate the follow-up question; receives feedback on
+delivery rather than substance; and has no record of whether the same weakness
+keeps returning across attempts.
+
+\subsection{Alignment with the grand theme}
+
+The theme asks for technology that looks past commercial metrics to a societal
+problem. Preparation inequality is exactly that: two students of equal ability
+do not get equal outcomes when only one has access to someone who will rehearse
+them properly. \ProductName{} takes the rubric, the one input that is already
+public and equally available, and turns it into the rigorous, repeated,
+question-driven practice currently reserved for the well-connected. This sits
+within the \textbf{\SubTheme{}} sub-theme's call for digital upskilling and
+equitable access, and advances the Indonesia Emas 2045 objective of a
+competitive, future-ready generation.
+
+% ----------------------------------------------------------------------------
+\section{Solution Overview \& Innovation}
+% ----------------------------------------------------------------------------
+
+\subsection{The rubric-grounded rehearsal loop}
+
+\ProductName{} treats the rubric as the primary object in the system, not as
+decoration. Figure~\ref{fig:loop} shows the loop a student repeats.
+
+\input{fig-loop}
+
+Each stage produces something the next stage consumes, and the loop closes: the
+saved session is what makes the next attempt smarter than the last. Two
+properties matter more than the individual steps. Preparation is organised
+around one real event rather than generic exercises, so the rubric stays
+attached to the thing being prepared for. And no verdict reaches the student
+without a citation, so every critique can be traced back to a criterion the
+evaluator wrote and a sentence the student actually said.
+
+\subsection{Differentiation}
+
+The AI speaking-coach category is real and funded, so differentiation must be
+stated precisely rather than claimed. Table~\ref{tab:diff} compares
+\ProductName{} against the established tools.
+
+\begin{table}[htbp]
+\centering
+\caption{Differentiation against existing market alternatives.}
+\label{tab:diff}
+{\fontsize{9.5}{11.2}\selectfont
+\begin{tabularx}{\textwidth}{@{}L{3.15cm} C{1.85cm} C{1.6cm} C{1.5cm} X@{}}
+\toprule
+\textbf{Capability} & \textbf{Yoodli} & \textbf{Orai} & \textbf{Poised} &
+\textbf{\ProductName{}} \\
+\midrule
+Primary input & Speech & Speech & Live call &
+\textbf{The evaluator's rubric} \\
+Feedback target & Delivery & Delivery & Delivery &
+\textbf{Substance per criterion} \\
+Claims cited to a criterion & No & No & No & \textbf{Always} \\
+Generates the judge's next question & Generic roleplay & No & No &
+\textbf{From the weakest claim} \\
+Tracks recurring substantive gaps & Session stats & Streaks & No &
+\textbf{Per-criterion, across attempts} \\
+Indonesian evaluation context & Limited & Limited & No &
+\textbf{Native (ID/EN)} \\
+Indicative price & USD 8--20/mo & USD 10/mo & Subscription &
+\textbf{Free; Rp39k/mo Pro} \\
+\bottomrule
+\end{tabularx}}
+\end{table}
+
+\input{fig-compete}
+
+\callout{\textbf{The unique logic, stated plainly.} A generic coach can tell a
+student they said ``um'' eleven times. Only a rubric-grounded system can tell
+them that \emph{Criterion 3 asks for field data and the pitch offered an
+anecdote}, then ask the question the judge was going to ask. This is not a
+model choice or a prompt; it is an architecture in which the rubric, not the
+audio, is the primary key. That is why it is hard to clone by adding a feature
+to a delivery coach.}
+
+% ----------------------------------------------------------------------------
+\section{Technical Architecture \& Tech Stack}
+% ----------------------------------------------------------------------------
+
+\subsection{System architecture}
+
+\ProductName{} is a web application built on a serverless platform, chosen so
+that a five-person student team can operate it reliably without managing
+infrastructure. Figure~\ref{fig:arch} shows the target architecture for the
+Innovation Week build.
+
+\input{fig-arch}
+
+\subsection{How data flows through the system}
+
+\begin{enumerate}[label=\textbf{\arabic*.}]
+  \item \textbf{Rubric ingestion.} The student pastes criteria or uploads the
+        guidebook; an LLM call structures it into discrete criteria with their
+        required evidence. The student confirms the parse before it is saved, because the
+        system should never silently guess what an evaluator meant.
+  \item \textbf{Attempt capture.} Audio is streamed to speech-to-text and
+        returned as a timestamped transcript; pasting a draft is always
+        available as the reliable path.
+  \item \textbf{Evidence mapping.} The transcript is segmented into claims. Per
+        criterion, retrieval selects candidate spans and a constrained LLM call
+        judges support. \textbf{The model must return the transcript span
+        justifying its verdict}; a verdict with no span is rejected before it
+        reaches the user.
+  \item \textbf{Question generation.} The lowest-scoring criterion, its missing
+        evidence, and the student's own source documents condition one
+        adversarial question.
+  \item \textbf{Defense evaluation and persistence.} The answer is scored
+        against the same criterion; the session is written to Postgres, and the
+        per-criterion history drives the recurring-weakness view.
+\end{enumerate}
+
+\subsection{Technology stack}
+
+\begin{table}[htbp]
+\centering
+\caption{Technology stack and the reason for each choice.}
+\label{tab:stack}
+{\fontsize{9.5}{11.2}\selectfont
+\begin{tabularx}{\textwidth}{@{}L{2.2cm} L{4.1cm} X@{}}
+\toprule
+\textbf{Layer} & \textbf{Technology} & \textbf{Rationale} \\
+\midrule
+Frontend & Next.js (App Router), React, TypeScript, Tailwind &
+One language across the stack suits a small team under a five-day sprint. \\
+Compute & Vercel Functions on Fluid Compute (Node.js) &
+Full Node.js with streaming and low cold-start cost; no servers to operate
+during the competition. \\
+AI routing & Vercel AI Gateway + AI SDK &
+Automatic provider failover, so one outage cannot break a live demo. \\
+Reasoning & Frontier LLM, constrained to cite spans &
+Semantic evidence mapping and question generation with schema-enforced output. \\
+Transcription & Whisper-class speech-to-text (ID/EN) &
+Indonesian and code-mixed accuracy is a hard requirement for our users. \\
+Database & Postgres (Neon, via Vercel Marketplace) &
+Per-criterion history is exactly what the progress view queries; scales to
+zero when idle. \\
+File storage & Vercel Blob (private) &
+Documents held privately with signed, expiring reads. \\
+Auth & Clerk &
+Managed sessions and MFA; no hand-rolled credential storage. \\
+Cache \& limits & Upstash Redis &
+Rate limiting on model-backed routes to bound cost and abuse. \\
+\bottomrule
+\end{tabularx}}
+\end{table}
+
+\subsection{Security, privacy, and responsible AI}
+
+These are design constraints, not future work, because the product handles
+unpublished academic work and recordings of students.
+
+\begin{itemize}
+  \item \textbf{Raw audio is not retained.} Audio is transcribed then discarded;
+        only the transcript persists, and the student can delete it.
+  \item \textbf{Least-privilege data handling.} Documents are private by default
+        with signed, expiring reads, and all user content is rendered with safe
+        text assignment, which is already enforced and tested in the prototype.
+  \item \textbf{Grounded output only.} A criterion verdict without a transcript
+        citation is discarded by application code, not merely discouraged in a
+        prompt.
+  \item \textbf{No ability scores.} We report evidence coverage against a
+        rubric, never a confidence, talent, or employability score, and we do
+        not analyse faces or body language. Such scoring is unvalidated and
+        ethically unsafe in selection contexts.
+  \item \textbf{Consent and deletion.} Explicit consent, export, and hard
+        deletion, in line with UU PDP No.\ 27/2022.
+\end{itemize}
+
+\callout{\textbf{Honest boundary.} The deployed prototype's analysis is
+deterministic keyword-and-cue matching. It demonstrates the loop, the
+persistence, and the interface contract, but it does not yet understand meaning.
+Replacing that layer with grounded semantic evidence mapping, while keeping the
+citation requirement, is the primary engineering objective of Innovation Week.
+We state this explicitly rather than describe the prototype as production AI.}
+
+% ----------------------------------------------------------------------------
+\section{Core Features \& User Journey}
+% ----------------------------------------------------------------------------
+
+\subsection{MVP scope}
+
+The MVP is the smallest system that lets one student complete the full loop
+twice and see that something changed. Table~\ref{tab:mvp} fixes what is in and
+what is deliberately out.
+
+\begin{table}[htbp]
+\centering
+\caption{Minimum Viable Product scope for Innovation Week.}
+\label{tab:mvp}
+{\fontsize{9.5}{11.2}\selectfont
+\begin{tabularx}{\textwidth}{@{}L{3.1cm} X L{2.9cm}@{}}
+\toprule
+\textbf{Feature} & \textbf{Scope} & \textbf{Status} \\
+\midrule
+Projects \& persistence & Multiple projects, each with context, deadline,
+rubric, draft, and history. & Built \\
+Rubric editor & Add, edit, remove criteria and their required evidence. & Built \\
+Rubric import & Upload a guidebook or examination form; AI structures it;
+student confirms. & Sprint target \\
+Attempt capture & Paste a draft, or record and transcribe (ID/EN). &
+Paste built; ASR is sprint target \\
+Evidence map & Per-criterion verdict, each citing a transcript span. &
+Deterministic built; semantic is sprint target \\
+Judge question & One adversarial question from the weakest claim. & Built \\
+Defense evaluation & Names evidence made explicit and still missing. & Built \\
+Progress & Coverage trend and most recurring gap across sessions. & Built \\
+\midrule
+\multicolumn{3}{@{}X@{}}{\textbf{Explicitly out of scope:} body-language or
+facial scoring, gamified streaks, generic speaking drills, institutional
+dashboards, and any numeric ``confidence'' or ability score.} \\
+\bottomrule
+\end{tabularx}}
+\end{table}
+
+\subsection{User journey and interface}
+
+Figure~\ref{fig:mockup} shows the three screens that carry the loop.
+
+\input{fig-mockup}
+
+A first session runs about twelve minutes: three to set up the project and
+rubric, four to deliver the attempt, three to read the evidence map, and two to
+answer the judge question. A returning student skips setup and lands straight on
+their recurring weakness, which is the behaviour we want the workspace to
+produce.
+
+% ----------------------------------------------------------------------------
+\section{Business Strategy \& Viability}
+% ----------------------------------------------------------------------------
+
+\subsection{Market segments and sizing}
+
+The total market is every student who faces a rubric-scored oral evaluation;
+the serviceable market is those in an active evaluation cycle in a given year;
+we start somewhere small on purpose, because competition and scholarship
+communities already gather in organised groups, already hold a written rubric,
+and can be reached without paid acquisition.
+
+\input{fig-market}
+
+\subsection{Revenue model}
+
+\begin{table}[htbp]
+\centering
+\caption{Revenue model: free core loop, paid depth, institutional scale.}
+\label{tab:revenue}
+{\fontsize{10.5}{13}\selectfont
+\begin{tabularx}{\textwidth}{@{}L{2.5cm} L{3.5cm} X@{}}
+\toprule
+\textbf{Tier} & \textbf{Price} & \textbf{Includes} \\
+\midrule
+\textbf{Free} & Rp0 &
+One active project, three analysed sessions per month. The full loop is
+never paywalled, because equity is the point of the product. \\
+\addlinespace
+\textbf{Pro} & Rp39,000/month &
+Unlimited projects and sessions, document import, recording and
+transcription, deeper evidence analysis, and export. \\
+\addlinespace
+\textbf{Campus} & Rp25--50 million/year per faculty &
+Site licence for a faculty or study programme, cohort-level recurring-weakness
+analytics for lecturers, and thesis-defense rubric templates. \\
+\addlinespace
+\textbf{Partner} & Sponsored &
+Scholarship providers and graduate recruiters sponsoring preparation tracks
+for their own published criteria. \\
+\bottomrule
+\end{tabularx}}
+\end{table}
+
+Unit economics are governed by model inference. A full analysed session costs
+an estimated Rp900--1,800, so a Pro subscriber carries a gross margin above
+70\%, and the free tier's three-session cap bounds subsidy to roughly Rp5,400
+per user per month. Caching rubric parses and reserving the largest model for
+evidence mapping are the levers that control this cost.
+
+\textbf{Go-to-market.} We start where we already stand: UI student
+organisations, competition communities, and the Fasilkom UI thesis cohort.
+Distribution runs through the same channels students already use to find
+rubrics. Institutional conversations follow evidence of student outcomes, not
+before it. The Campus tier is sold on cohort data the free tier generates.
+
+% ----------------------------------------------------------------------------
+\section{Expected Results}
+% ----------------------------------------------------------------------------
+
+\subsection{Target metrics}
+
+\begin{table}[htbp]
+\centering
+\caption{Quantifiable targets. Product metrics are primary; delivery metrics
+are supporting context only.}
+\label{tab:metrics}
+{\fontsize{10.5}{13}\selectfont
+\begin{tabularx}{\textwidth}{@{}X L{3.0cm} L{2.6cm}@{}}
+\toprule
+\textbf{Metric} & \textbf{Target} & \textbf{Horizon} \\
+\midrule
+Students who return for a second session (core validity signal) &
+≥40\% & 3 months \\
+Rubric-criterion coverage improvement between attempt 1 and attempt 3 &
+≥25 percentage points & Per user \\
+Students who revise a specific claim after the evidence review &
+≥60\% & 3 months \\
+Rubric import parsed correctly without manual correction &
+≥85\% & 6 months \\
+Registered students / paying conversion & 10,000 / 5\% & 12 months \\
+Faculty site licences & 3 & 12 months \\
+\bottomrule
+\end{tabularx}}
+\end{table}
+
+The first metric is the one that matters. A student who does not come back has
+not been helped, whatever the interface looked like.
+
+\subsection{User benefits}
+
+\begin{itemize}
+  \item \textbf{Equitable access.} Rigorous, rubric-grounded rehearsal without
+        needing a mentor, an alumni network, or the money for a coach.
+  \item \textbf{Actionable rather than generic feedback.} ``Criterion 3 asks
+        for field data; your pitch offered an anecdote'' is something a student
+        can fix tonight. ``Be more confident'' is not.
+  \item \textbf{Rehearsed under pressure.} The interrogation is practised, not
+        just the presentation, which is the part students consistently skip.
+  \item \textbf{Cumulative and low risk.} Progress is retained across sessions,
+        so a student can see whether a weakness is closing, and nothing is kept
+        beyond the transcript they control.
+\end{itemize}
+
+% ----------------------------------------------------------------------------
+\section{Scalability \& Future Roadmap}
+% ----------------------------------------------------------------------------
+
+\input{fig-roadmap}
+
+Scaling is a matter of \textbf{rubric coverage}, not infrastructure: the
+serverless stack already scales with demand and to zero when idle. What
+compounds is the library of parsed rubric archetypes. Every thesis form,
+scholarship guide, and competition matrix the system learns to structure makes
+the next student's setup faster. Because rubrics are institution-specific, a
+global competitor cannot replicate that library from outside Indonesia.
+
+\textbf{Post-hackathon path.} Straight after Innovation Week we run the
+validation study with the Fasilkom UI thesis cohort, then extend to two further
+faculties. UI Incubate is the intended vehicle for turning the first Campus
+licences into a sustainable operation.
+
+\textbf{Validation before scale.} We will give ten students their own rubric
+and observe two sessions each. Success is not a satisfaction score but whether a
+student \emph{changes a specific claim} because the review exposed it.
+Appendix~A sets out the principal risks.
