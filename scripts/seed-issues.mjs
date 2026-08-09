@@ -408,8 +408,15 @@ function body(task) {
 
 const dryRun = process.argv.includes('--dry-run');
 
+// gh colourises output when it believes it is attached to a terminal, which
+// corrupts --json payloads. Force plain output and strip escapes defensively.
 function gh(args) {
-  return execFileSync('gh', args, { encoding: 'utf8' });
+  const raw = execFileSync('gh', args, {
+    encoding: 'utf8',
+    env: { ...process.env, NO_COLOR: '1', CLICOLOR: '0', GH_FORCE_TTY: '', GH_PAGER: 'cat' },
+  });
+  // eslint-disable-next-line no-control-regex
+  return raw.replace(/\u001B\[[0-9;]*[A-Za-z]/gu, '');
 }
 
 if (dryRun) {
