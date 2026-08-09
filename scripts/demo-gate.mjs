@@ -268,9 +268,9 @@ async function run() {
 
     // ---- adversarial: the laptop lid closes, someone hits refresh ---------
     await step('survives-reload', async () => {
-      const before = await evaluate(cdp, `JSON.parse(localStorage.getItem('lancar.workspace.v1')).sessions.length`);
+      const before = await evaluate(cdp, `JSON.parse(localStorage.getItem('talkactive.workspace.v1')).sessions.length`);
       await reload(cdp);
-      const after = await evaluate(cdp, `JSON.parse(localStorage.getItem('lancar.workspace.v1')).sessions.length`);
+      const after = await evaluate(cdp, `JSON.parse(localStorage.getItem('talkactive.workspace.v1')).sessions.length`);
       assert.equal(after, before, 'saved sessions did not survive a reload');
     });
 

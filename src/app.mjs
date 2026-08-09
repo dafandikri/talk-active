@@ -7,14 +7,14 @@ import {
   parseRubric,
 } from './analyzer.mjs';
 
-const STORAGE_KEY = 'lancar.workspace.v1';
+const STORAGE_KEY = 'talkactive.workspace.v1';
 
 const initialWorkspace = {
   version: 1,
-  activeProjectId: 'project-lancar',
+  activeProjectId: 'project-talk-active',
   projects: [
     {
-      id: 'project-lancar',
+      id: 'project-talk-active',
       name: 'Talk-Active — RISTEK Hackathon',
       event: '7-minute final pitch · 3-minute Q&A',
       deadline: '2026-08-16',
@@ -27,7 +27,7 @@ const initialWorkspace = {
   sessions: [
     {
       id: 'session-1',
-      projectId: 'project-lancar',
+      projectId: 'project-talk-active',
       createdAt: '2026-08-04T14:30:00.000Z',
       evidenceScore: 34,
       weakest: 'Differentiation',
@@ -36,7 +36,7 @@ const initialWorkspace = {
     },
     {
       id: 'session-2',
-      projectId: 'project-lancar',
+      projectId: 'project-talk-active',
       createdAt: '2026-08-06T12:15:00.000Z',
       evidenceScore: 52,
       weakest: 'Differentiation',
@@ -50,7 +50,24 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+const LEGACY_STORAGE_KEY = 'lancar.workspace.v1';
+
+// The product was renamed after this key shipped. Anyone who practised under
+// the old name keeps their sessions instead of losing them to a rebrand.
+function migrateLegacyWorkspace() {
+  try {
+    if (localStorage.getItem(STORAGE_KEY)) return;
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (!legacy) return;
+    localStorage.setItem(STORAGE_KEY, legacy);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch {
+    // Storage can be unavailable in private mode; the seed workspace covers it.
+  }
+}
+
 function loadWorkspace() {
+  migrateLegacyWorkspace();
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (stored?.version === 1 && Array.isArray(stored.projects) && stored.projects.length > 0) {

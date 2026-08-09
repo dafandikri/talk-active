@@ -75,7 +75,7 @@ scripts/project.mjs           agent-facing context and artifact doctor
 test/*.test.mjs               analyzer, CLI, and HTTP boundary tests
 ```
 
-The workspace snapshot is stored under `lancar.workspace.v1` in browser `localStorage`.
+The workspace snapshot is stored under `talkactive.workspace.v1` in browser `localStorage`.
 Raw audio is never created or stored by the application.
 
 ## Acceptance evidence

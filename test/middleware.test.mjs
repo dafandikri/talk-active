@@ -4,14 +4,14 @@ import assert from 'node:assert/strict';
 import protectDeployment from '../middleware.js';
 
 function authorization(password) {
-  return `Basic ${Buffer.from(`lancar:${password}`).toString('base64')}`;
+  return `Basic ${Buffer.from(`talkactive:${password}`).toString('base64')}`;
 }
 
 test('deployment middleware fails closed when no private password is configured', async () => {
   const previous = process.env.SITE_PASSWORD;
   delete process.env.SITE_PASSWORD;
   try {
-    const response = await protectDeployment(new Request('https://lancar.example/'));
+    const response = await protectDeployment(new Request('https://talkactive.example/'));
     assert.equal(response.status, 503);
     assert.equal(response.headers.get('cache-control'), 'no-store');
   } finally {
@@ -24,7 +24,7 @@ test('deployment middleware challenges missing or incorrect credentials', async 
   const previous = process.env.SITE_PASSWORD;
   process.env.SITE_PASSWORD = 'correct-password';
   try {
-    const response = await protectDeployment(new Request('https://lancar.example/', {
+    const response = await protectDeployment(new Request('https://talkactive.example/', {
       headers: { authorization: authorization('wrong-password') },
     }));
     assert.equal(response.status, 401);
@@ -40,7 +40,7 @@ test('deployment middleware allows the configured credentials', async () => {
   const previous = process.env.SITE_PASSWORD;
   process.env.SITE_PASSWORD = 'correct-password';
   try {
-    const result = await protectDeployment(new Request('https://lancar.example/src/app.mjs', {
+    const result = await protectDeployment(new Request('https://talkactive.example/src/app.mjs', {
       headers: { authorization: authorization('correct-password') },
     }));
     assert.equal(result, undefined);

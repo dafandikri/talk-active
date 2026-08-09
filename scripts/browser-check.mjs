@@ -171,7 +171,7 @@ async function run() {
   const address = await listen(appServer, 0, '127.0.0.1');
   const appPort = typeof address === 'object' && address ? address.port : 0;
   const debugPort = await freePort();
-  const profile = mkdtempSync(join(tmpdir(), 'lancar-browser-'));
+  const profile = mkdtempSync(join(tmpdir(), 'talkactive-browser-'));
   const url = `http://127.0.0.1:${appPort}`;
   const browser = spawn(browserPath, [
     '--headless', '--disable-gpu', '--hide-scrollbars',
@@ -197,7 +197,7 @@ async function run() {
       marketingHero: Boolean(document.querySelector('.hero, #runDemo')),
       projects: document.querySelectorAll('.sidebar-project').length,
       sessions: document.querySelectorAll('#recentSessions .session-row').length,
-      stored: Boolean(localStorage.getItem('lancar.workspace.v1')),
+      stored: Boolean(localStorage.getItem('talkactive.workspace.v1')),
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       inaccessibleFields: [...document.querySelectorAll('textarea, input, select')].filter((field) => {
         const hasLabel = field.id && document.querySelector('label[for="' + field.id + '"]');
@@ -280,7 +280,7 @@ async function run() {
     const progress = await evaluate(cdp, `(() => ({
       sessions: document.querySelectorAll('#allSessions .session-row').length,
       bars: document.querySelectorAll('#progressChart .chart-bar').length,
-      storedSessions: JSON.parse(localStorage.getItem('lancar.workspace.v1')).sessions.length,
+      storedSessions: JSON.parse(localStorage.getItem('talkactive.workspace.v1')).sessions.length,
       toast: document.querySelector('#toast')?.hidden === false
     }))()`);
     assert.equal(progress.sessions, 3);
@@ -300,7 +300,7 @@ async function run() {
     const created = await evaluate(cdp, `(() => ({
       projectName: document.querySelector('#rubricProjectName')?.textContent,
       rubricRows: document.querySelectorAll('#rubricEditor .rubric-row').length,
-      storedProjects: JSON.parse(localStorage.getItem('lancar.workspace.v1')).projects.length
+      storedProjects: JSON.parse(localStorage.getItem('talkactive.workspace.v1')).projects.length
     }))()`);
     assert.equal(created.projectName, 'Scholarship Interview');
     assert.equal(created.rubricRows, 4);
@@ -311,14 +311,14 @@ async function run() {
       firstLabel.value = 'User need';
       document.querySelector('#saveRubric').click();
     })()`);
-    await waitFor(cdp, `JSON.parse(localStorage.getItem('lancar.workspace.v1')).projects.find((project) => project.name === 'Scholarship Interview')?.rubric.startsWith('User need')`);
+    await waitFor(cdp, `JSON.parse(localStorage.getItem('talkactive.workspace.v1')).projects.find((project) => project.name === 'Scholarship Interview')?.rubric.startsWith('User need')`);
 
     await cdp.call('Page.reload');
     await waitFor(cdp, `document.readyState === 'complete' && document.querySelectorAll('.sidebar-project').length === 2`);
     const persisted = await evaluate(cdp, `(() => ({
-      projects: JSON.parse(localStorage.getItem('lancar.workspace.v1')).projects.length,
-      sessions: JSON.parse(localStorage.getItem('lancar.workspace.v1')).sessions.length,
-      rubric: JSON.parse(localStorage.getItem('lancar.workspace.v1')).projects.find((project) => project.name === 'Scholarship Interview')?.rubric
+      projects: JSON.parse(localStorage.getItem('talkactive.workspace.v1')).projects.length,
+      sessions: JSON.parse(localStorage.getItem('talkactive.workspace.v1')).sessions.length,
+      rubric: JSON.parse(localStorage.getItem('talkactive.workspace.v1')).projects.find((project) => project.name === 'Scholarship Interview')?.rubric
     }))()`);
     assert.equal(persisted.projects, 2);
     assert.equal(persisted.sessions, 3);
@@ -380,7 +380,7 @@ async function run() {
 run().catch((error) => {
   process.stdout.write([
     `error: ${quoted(error.message)}`,
-    `help: ${quoted('Run `pnpm test:browser -- --screenshot /tmp/lancar.png` to inspect the rendered state')}`,
+    `help: ${quoted('Run `pnpm test:browser -- --screenshot /tmp/talkactive.png` to inspect the rendered state')}`,
   ].join('\n') + '\n');
   process.exitCode = 1;
 });

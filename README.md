@@ -78,11 +78,11 @@ students using their own materials.
 
 Production deployment is protected by `middleware.js` using HTTP Basic Authentication.
 Set `SITE_PASSWORD` in Vercel for every deployed environment; the middleware fails closed
-with a `503` if the secret is absent. The username is `lancar`. Never commit the password
+with a `503` if the secret is absent. The username is `talkactive`. Never commit the password
 to this repository or place it in client-side JavaScript.
 
 The decision brief is in [docs/FEASIBILITY.md](docs/FEASIBILITY.md), and the product contract
-is in [docs/specs/2026-08-06-lancar-mvp.md](docs/specs/2026-08-06-lancar-mvp.md).
+is in [docs/specs/2026-08-06-talk-active-mvp.md](docs/specs/2026-08-06-talk-active-mvp.md).
 
 ## Agent harness
 

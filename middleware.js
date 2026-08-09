@@ -29,7 +29,7 @@ export default async function middleware(request) {
   }
 
   const supplied = request.headers.get('authorization') ?? '';
-  const expected = `Basic ${btoa(`lancar:${password}`)}`;
+  const expected = `Basic ${btoa(`talkactive:${password}`)}`;
   if (!(await sameValue(supplied, expected))) {
     return new Response('Authentication required.', {
       status: 401,
