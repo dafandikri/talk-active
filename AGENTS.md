@@ -190,6 +190,9 @@ surface trade-offs, and keep the captain focused on strategy.
 ## Guardrails
 
 - Never auto-run git operations (commit/push/PR) unless the captain asks.
+- Never name an AI tool or agent as a commit author, co-author, or repository
+  collaborator. Do not add AI `Co-Authored-By` trailers; disclose assistance
+  through the designated originality statement instead.
 - Keep this file lean. Move task-specific detail into skills, not here.
 - Preserve `docs/Guidebook Registration RISTEK Hackathon.pdf` as the authoritative source.
 - Disclose AI assistance accurately: the originality statement covers "misrepresentation of
