@@ -27,8 +27,22 @@ import { analyzeSpeech, parseRubric } from './analyzer.mjs';
 // https://generativelanguage.googleapis.com/v1beta/openai/chat/completions.
 // Pointing TALKACTIVE_API_URL at one of those, with TALKACTIVE_API_KEY, buys
 // semantic mode for nothing. Nothing else in this file changes.
-export const GATEWAY_URL = process.env.TALKACTIVE_API_URL
-  ?? 'https://ai-gateway.vercel.sh/v1/chat/completions';
+const DIRECT_API_URL = process.env.TALKACTIVE_API_URL?.trim();
+
+export const GATEWAY_URL = DIRECT_API_URL
+  || 'https://ai-gateway.vercel.sh/v1/chat/completions';
+
+// Credentials are paired with their endpoint. In particular, a custom URL
+// must never inherit Vercel's OIDC token: that token belongs only at Vercel's
+// gateway and forwarding it to another provider would disclose it.
+export function selectApiCredential({
+  directUrl = DIRECT_API_URL,
+  directKey = process.env.TALKACTIVE_API_KEY,
+  gatewayKey = process.env.AI_GATEWAY_API_KEY,
+  oidcToken = process.env.VERCEL_OIDC_TOKEN,
+} = {}) {
+  return directUrl ? directKey : (gatewayKey ?? oidcToken);
+}
 
 // Availability comes from PROVIDER diversity, not model diversity. Three models
 // from one vendor share one outage; these three share nothing but the gateway.
@@ -277,11 +291,7 @@ export async function analyzeWithSemantics({
   transcript,
   rubricText,
   durationSeconds,
-  // TALKACTIVE_API_KEY wins so a direct provider key can override the gateway
-  // without unsetting anything Vercel injects on its own.
-  apiKey = process.env.TALKACTIVE_API_KEY
-    ?? process.env.AI_GATEWAY_API_KEY
-    ?? process.env.VERCEL_OIDC_TOKEN,
+  apiKey = selectApiCredential(),
   models = MODEL_CHAIN,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   totalBudgetMs = DEFAULT_TOTAL_BUDGET_MS,

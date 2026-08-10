@@ -11,6 +11,7 @@ import {
   analyzeWithSemantics,
   applySemanticVerdicts,
   buildMessages,
+  selectApiCredential,
 } from '../src/semantic.mjs';
 
 // Read the chain rather than hardcoding vendor names: the chain is expected to
@@ -123,6 +124,33 @@ test('the gateway is never called without credentials', async () => {
     fetchImpl: async () => { called = true; throw new Error('should not happen'); },
   });
   assert.equal(called, false, 'we must not attempt an unauthenticated call');
+});
+
+test('a direct provider never inherits Vercel gateway credentials', () => {
+  const credential = selectApiCredential({
+    directUrl: 'https://provider.example/v1/chat/completions',
+    directKey: undefined,
+    gatewayKey: 'gateway-key-not-real',
+    oidcToken: 'oidc-token-not-real',
+  });
+
+  assert.equal(credential, undefined, 'a custom endpoint must require its explicitly paired key');
+});
+
+test('each endpoint selects only its paired credential', () => {
+  assert.equal(selectApiCredential({
+    directUrl: 'https://provider.example/v1/chat/completions',
+    directKey: 'direct-key-not-real',
+    gatewayKey: 'gateway-key-not-real',
+    oidcToken: 'oidc-token-not-real',
+  }), 'direct-key-not-real');
+
+  assert.equal(selectApiCredential({
+    directUrl: '',
+    directKey: 'direct-key-not-real',
+    gatewayKey: 'gateway-key-not-real',
+    oidcToken: 'oidc-token-not-real',
+  }), 'gateway-key-not-real');
 });
 
 test('invalid user input still fails loudly, even in semantic mode (INV-7)', async () => {
