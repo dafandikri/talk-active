@@ -47,6 +47,16 @@ supplied palette:
 The bird may welcome, explain an empty state, or invite the next answer. It
 never congratulates a pass, scolds a failure, or claims to understand a person.
 
+For large welcome and explanation surfaces, use
+`src/assets/cockatoo-mascot-3d.webp`: the full-body bird on a deep-leaf field,
+speaking from a black bubble with one wing gesturing forward. Animate only a
+slow greeting/breathing motion and stop it for `prefers-reduced-motion`. Keep the
+SVG mark for navigation, identity, print, and small states.
+
+The Talk-Active logo lockup always pairs that mark with the hyphenated
+`Talk-Active` wordmark. Keep the wordmark primarily black or white; `Active`
+may use one bird-colour accent appropriate to the surface.
+
 ## Colour roles
 
 Use semantic roles, never raw values in components.
@@ -97,10 +107,22 @@ step ranges from 29 to 37px and must be able to outrank the 29px page title.
 
 Do not use blurred card shadows. Depth comes from crisp outlined paper edges, a
 heavier bottom border, one asymmetric speech-bubble corner, and thin sound-wave
-contours on a dark hero surface. The canvas may carry a nearly invisible paper
-grain.
+contours on a dark hero surface. The public landing page and dashboard home may
+use two-pixel black outlines with small, unblurred offset shadows in the bird
+palette, like printed-poster registration. The canvas may carry a nearly
+invisible paper grain.
 
-No glassmorphism, decorative gradients, glow, fake 3D, or drop shadows on type.
+No glassmorphism, decorative gradients, glow, fake depth across the interface,
+or drop shadows on type. Dimensional rendering is reserved for the mascot.
+Keep practice and evidence screens calmer than the expressive dashboard home.
+
+Use a deliberate intensity ladder: landing 200%, dashboard home 60%, workflow
+screens 30%. The landing may use large arrows, illustrated explanatory assets,
+tilted cards, and 8–16px hard offsets. The dashboard keeps offsets to 4px.
+Practice, review, judge, rubric, and progress use a compact logo cue, the same
+pale-yellow header and deep-green actions as Home, warm-white cards, and black
+outlines. They use no decorative shadows or route-specific colour stripes and
+never decorate over cited evidence.
 
 ## Priority components
 

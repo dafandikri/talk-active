@@ -60,6 +60,27 @@ a student to answer in their own words. It never celebrates a “pass,” scolds
 - On apparel, use `src/assets/cockatoo-mark-white.svg`; never recolour the
   full-colour application asset by eye.
 
+### Talk-Active lockup
+
+The product logo is the full-colour speaking-bird mark plus the `Talk-Active`
+wordmark. Keep the hyphen: speaking and acting read as one connected idea.
+`Active` may take one bird-palette accent—yellow on the dark application shell,
+deep leaf on light landing surfaces—but the rest of the name stays black or
+white. Do not show a generic text-only product name where the lockup fits.
+
+### Character render
+
+`src/assets/cockatoo-mascot-3d.webp` is the larger character expression for
+welcome and explanation surfaces. It keeps the same full-body bird, supplied
+palette, and black speech-bubble ground as the small mark, but adds dimensional
+feather forms and a forward wing gesture. The SVG remains the source for logos,
+navigation, small empty states, print, and apparel; the render never replaces
+the mark at identity sizes.
+
+Character movement is restrained: a slow greeting motion and one short speech
+bubble. It stops under `prefers-reduced-motion`. The bird points to the next
+rehearsal action; it does not celebrate scores or become a game mechanic.
+
 ---
 
 ## 3. Colour
@@ -138,16 +159,35 @@ Talk-Active does not use blurred floating-card shadows. They made the product
 look assembled from a generic UI kit and competed with the authenticity of the
 bird identity.
 
-Depth comes from three more specific devices:
+Depth comes from four more specific devices:
 
 - **Crisp paper edges:** a one-pixel outline with a heavier bottom rule.
+- **Character-led display surfaces:** the public landing page and dashboard home may use
+  two-pixel black outlines with small, unblurred offset shadows in bird colours. This is
+  printed-poster registration, not floating-card depth.
 - **Speech-bubble asymmetry:** three rounded corners and one tighter corner.
 - **Voice contours:** thin concentric lines on dark hero surfaces, suggesting
   sound travelling outward rather than a decorative glow.
+- **Dimensional character:** 3D rendering is reserved for the bird itself. The
+  surrounding product UI stays crisp, flat, and readable.
 
 The canvas carries a nearly invisible paper grain. It must disappear before it
 reduces text clarity. There are no decorative gradients, glass cards, or soft
-drop shadows.
+drop shadows. Hard offset shadows stay on the landing and dashboard home; dense
+practice and review screens keep the calmer paper treatment.
+
+### Expressiveness hierarchy
+
+- **Landing page — 200%:** large character art, visible directional assets,
+  tilted paper, bold black outlines, and 8–16px hard offsets. Each numbered
+  section earns one useful visual that explains the product.
+- **Dashboard home — 60%:** full character plus 4px hard offsets. It feels
+  recognizably related to the landing page without becoming a poster.
+- **Practice, review, judge room, rubric, progress — 30%:** a small Kato mark in
+  a pale-yellow Home-style header, deep-green actions, warm-white cards, and
+  plain black outlines. These work surfaces use no decorative shadows or
+  route-specific colour stripes. Evidence remains more visually dominant than
+  brand decoration.
 
 Spacing follows the 4px scale in `tokens.css`. Raw spacing literals do not enter
 component CSS.
@@ -212,12 +252,16 @@ lighting.
 
 - Warm-white cards sit on a quiet off-white canvas.
 - The sidebar and focus hero use deep leaf green.
+- The dashboard home carries the same crisp black outlines, bird-colour offset
+  shadows, and full-body character as the public landing page.
 - Yellow marks current attention and time.
 - Blue guides practice and owns evidence.
 - Orange remains a micro-accent, primarily in the mascot.
 
 The interface should feel colourful because the roles are visible, not because
-every card has a different background.
+every card has a different background. The expressive dashboard home invites
+the next rehearsal; practice and evidence screens then become quieter so the
+student's words remain dominant.
 
 ---
 
@@ -258,7 +302,8 @@ Young-adult appeal is a behaviour requirement, not an excuse for novelty.
 - Personal: a recognizable speaking bird and direct, non-corporate language.
 - Interactive: quick transitions and visible state changes, with reduced-motion
   support.
-- Serious: no fake 3D, neon glow, cartoon scoring, or gamified streaks.
+- Serious: dimensional character art is allowed; fake depth across the UI,
+  neon glow, cartoon scoring, and gamified streaks are not.
 
 ---
 

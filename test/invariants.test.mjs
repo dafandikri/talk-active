@@ -34,7 +34,7 @@ function assertContains(text, pattern, message) {
 }
 
 // Files that make claims to a user or an evaluator.
-const PRODUCT_SURFACES = ['index.html', 'src/app.mjs', 'src/analyzer.mjs'];
+const PRODUCT_SURFACES = ['index.html', 'brief.html', 'src/app.mjs', 'src/analyzer.mjs'];
 const PROPOSAL_BODY = 'docs/proposal/body.tex';
 const PROPOSAL_REFS = 'docs/proposal/backmatter.tex';
 

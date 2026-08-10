@@ -12,6 +12,7 @@ const MIME_TYPES = {
   '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8',
   '.svg': 'image/svg+xml; charset=utf-8',
+  '.webp': 'image/webp',
 };
 
 function responseHeaders(contentType) {
@@ -29,7 +30,7 @@ function publicPath(urlValue) {
   const pathname = decodeURIComponent(new URL(urlValue, 'http://localhost').pathname);
   if (pathname === '/') return 'index.html';
   const normalized = normalize(pathname).replace(/^[/\\]+/u, '');
-  if (normalized === 'index.html' || normalized.startsWith('src/')) return normalized;
+  if (normalized === 'index.html' || normalized === 'brief.html' || normalized.startsWith('src/')) return normalized;
   return null;
 }
 
@@ -121,7 +122,7 @@ if (isDirectRun) {
         'server:',
         '  status: listening',
         `  url: ${quoted(`http://127.0.0.1:${actualPort}`)}`,
-        `  privacy: ${quoted('serves only index.html and src/*')}`,
+        `  privacy: ${quoted('serves only index.html, brief.html, and src/*')}`,
       ].join('\n') + '\n');
     });
   }

@@ -8,7 +8,7 @@
       content="Talk-Active is a private rehearsal workspace for rubric-grounded pitches and judge Q&A."
     >
     <title>Talk-Active — Rehearsal workspace</title>
-    <meta name="theme-color" content="#4a32c8">
+    <meta name="theme-color" content="#2f5923">
     <link rel="stylesheet" href="/src/tokens.css">
     <link rel="stylesheet" href="/src/styles.css">
   </head>
@@ -17,7 +17,7 @@
       <aside class="sidebar" aria-label="Main navigation">
         <a class="brand" href="#home" data-route="home" aria-label="Talk-Active home">
           <img class="brand-mark" src="/src/assets/cockatoo-mark.svg" alt="">
-          <span>Talk-Active</span>
+          <span class="brand-wordmark">Talk-<strong class="brand-wordmark-accent">Active</strong></span>
         </a>
 
         <nav class="main-nav">
@@ -33,6 +33,9 @@
           <button class="nav-item" type="button" data-route="progress">
             <span class="nav-icon" aria-hidden="true">↗</span><span>Progress</span>
           </button>
+          <a class="nav-item" href="/brief.html">
+            <span class="nav-icon" aria-hidden="true">◎</span><span>How it works</span>
+          </a>
         </nav>
 
         <div class="sidebar-projects">
@@ -54,10 +57,14 @@
       </aside>
 
       <header class="mobile-header">
-        <a class="brand" href="#home" data-route="home">
-          <img class="brand-mark" src="/src/assets/cockatoo-mark.svg" alt=""><span>Talk-Active</span>
+        <a class="brand" href="#home" data-route="home" aria-label="Talk-Active home">
+          <img class="brand-mark" src="/src/assets/cockatoo-mark.svg" alt="">
+          <span class="brand-wordmark">Talk-<strong class="brand-wordmark-accent">Active</strong></span>
         </a>
-        <button class="icon-button" id="mobileAddProject" type="button" aria-label="Create project">+</button>
+        <div class="mobile-header-actions">
+          <a class="icon-button" href="/brief.html" aria-label="See how Talk-Active works">?</a>
+          <button class="icon-button" id="mobileAddProject" type="button" aria-label="Create project">+</button>
+        </div>
       </header>
 
       <main class="workspace">
@@ -65,7 +72,7 @@
           <header class="page-header home-header">
             <div>
               <p class="overline" id="todayLabel">Your workspace</p>
-              <h1 id="homeTitle">Keep the next answer from catching you off guard.</h1>
+              <h1 id="homeTitle">Make your next answer harder to challenge.</h1>
             </div>
             <button class="button button-primary" type="button" data-start-practice>
               <span aria-hidden="true">▶</span> Start practice
@@ -85,6 +92,16 @@
                 <button class="button button-ghost-light" type="button" data-route="rubric">Review rubric</button>
               </div>
             </div>
+            <aside class="focus-coach" aria-label="Talk-Active rehearsal guide">
+              <img
+                class="focus-mascot"
+                src="/src/assets/cockatoo-mascot-3d.webp"
+                alt=""
+                width="1254"
+                height="1254"
+              >
+              <p class="coach-bubble" id="coachPrompt">Ready for the hard question?</p>
+            </aside>
             <div class="focus-stats">
               <div class="focus-stat">
                 <span>Last evidence coverage</span>
@@ -148,10 +165,13 @@
         </section>
 
         <section class="view" id="practiceView" data-view="practice" aria-labelledby="practiceTitle">
-          <header class="page-header compact-header">
-            <div>
-              <p class="overline">Practice room</p>
-              <h1 id="practiceTitle">Rehearse one attempt at a time.</h1>
+          <header class="page-header compact-header workflow-header">
+            <div class="workflow-heading">
+              <img class="workflow-mark" src="/src/assets/cockatoo-mark.svg" alt="">
+              <div>
+                <p class="overline">Practice room</p>
+                <h1 id="practiceTitle">Rehearse one attempt at a time.</h1>
+              </div>
             </div>
             <button class="button button-secondary" id="exitPractice" type="button">Exit session</button>
           </header>
@@ -307,8 +327,11 @@
         </section>
 
         <section class="view" id="rubricView" data-view="rubric" aria-labelledby="rubricTitle">
-          <header class="page-header compact-header">
-            <div><p class="overline">Evaluation setup</p><h1 id="rubricTitle">Make feedback follow the real rules.</h1><p class="page-lede">Define what evaluators need to hear. Talk-Active will trace every practice result back to these cues.</p></div>
+          <header class="page-header compact-header workflow-header">
+            <div class="workflow-heading">
+              <img class="workflow-mark" src="/src/assets/cockatoo-mark.svg" alt="">
+              <div><p class="overline">Evaluation setup</p><h1 id="rubricTitle">Make feedback follow the real rules.</h1><p class="page-lede">Define what evaluators need to hear. Talk-Active will trace every practice result back to these cues.</p></div>
+            </div>
             <button class="button button-primary" id="saveRubric" type="button">Save rubric</button>
           </header>
           <div class="rubric-layout">
@@ -326,8 +349,11 @@
         </section>
 
         <section class="view" id="progressView" data-view="progress" aria-labelledby="progressTitle">
-          <header class="page-header compact-header">
-            <div><p class="overline">Practice history</p><h1 id="progressTitle">See what changed between attempts.</h1><p class="page-lede">Track explicit evidence and recurring weak claims without inventing a universal speaking score.</p></div>
+          <header class="page-header compact-header workflow-header">
+            <div class="workflow-heading">
+              <img class="workflow-mark" src="/src/assets/cockatoo-mark.svg" alt="">
+              <div><p class="overline">Practice history</p><h1 id="progressTitle">See what changed between attempts.</h1><p class="page-lede">Track explicit evidence and recurring weak claims without inventing a universal speaking score.</p></div>
+            </div>
             <button class="button button-primary" type="button" data-start-practice>New practice</button>
           </header>
           <div class="progress-stats">
