@@ -1,7 +1,12 @@
 .DS_Store
 node_modules/
-.vercel/
 coverage/
-.env
-.env.*
+
+# Vercel project linkage is per-developer.
+.vercel/
+
+# Secrets. The negation must come AFTER the pattern it negates, or it does
+# nothing — which is what happened when `.env*` was appended below
+# `!.env.example`.
+.env*
 !.env.example
