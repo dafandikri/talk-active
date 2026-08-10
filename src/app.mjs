@@ -8,6 +8,9 @@ import {
 } from './analyzer.mjs';
 
 const STORAGE_KEY = 'talkactive.workspace.v1';
+// Kept out of the workspace blob: it is a property of this device's microphone
+// habits, not of the project, and it should survive a workspace reset.
+const DICTATION_LANGUAGE_KEY = 'talkactive.dictation.language';
 
 const initialWorkspace = {
   version: 1,
@@ -132,6 +135,7 @@ const elements = {
   draftStatus: $('#draftStatus'),
   dictateButton: $('#dictateButton'),
   dictateLabel: $('#dictateLabel'),
+  dictateLanguage: $('#dictateLanguage'),
   analyzeAttempt: $('#analyzeAttempt'),
   exitPractice: $('#exitPractice'),
   reviewScore: $('#reviewScore'),
@@ -923,7 +927,18 @@ function setupDictation() {
     return;
   }
   const recognition = new SpeechRecognition();
-  recognition.lang = 'id-ID';
+  // Indonesian is the default because that is who this is for, but a pitch to
+  // these judges is routinely mixed, and a rehearsal tool that mistranscribes
+  // half of it is worse than one that asks which language you are about to use.
+  try {
+    const saved = localStorage.getItem(DICTATION_LANGUAGE_KEY);
+    if (saved && [...elements.dictateLanguage.options].some((option) => option.value === saved)) {
+      elements.dictateLanguage.value = saved;
+    }
+  } catch {
+    // Private mode; the markup default (Bahasa Indonesia) stands.
+  }
+  recognition.lang = elements.dictateLanguage.value;
   recognition.continuous = true;
   recognition.interimResults = true;
   recognition.addEventListener('start', () => {
@@ -957,7 +972,24 @@ function setupDictation() {
   });
   elements.dictateButton.addEventListener('click', () => {
     if (state.recordingStartedAt) recognition.stop();
-    else recognition.start();
+    // The Web Speech API recognises one language per session — it cannot detect
+    // a switch mid-sentence — so the choice has to be the speaker's, read at
+    // the moment they start rather than fixed when the page loaded.
+    else {
+      recognition.lang = elements.dictateLanguage.value;
+      recognition.start();
+    }
+  });
+  // Changing language mid-recording would silently keep the old one, so restart
+  // rather than leave the control lying about what is being transcribed.
+  elements.dictateLanguage.addEventListener('change', () => {
+    try {
+      localStorage.setItem(DICTATION_LANGUAGE_KEY, elements.dictateLanguage.value);
+    } catch {
+      // Private mode. The choice still applies to this session.
+    }
+    if (!state.recordingStartedAt) return;
+    recognition.stop();
   });
   state.recognition = recognition;
 }

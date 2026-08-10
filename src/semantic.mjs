@@ -18,7 +18,17 @@
 // ============================================================================
 import { analyzeSpeech, parseRubric } from './analyzer.mjs';
 
-export const GATEWAY_URL = 'https://ai-gateway.vercel.sh/v1/chat/completions';
+// The Vercel AI Gateway is the default, but it is not the only way in. Its free
+// tier rate-limits every model and BYOK requires purchased credits, so a team
+// with no budget cannot reach semantic mode through it at all.
+//
+// The request below is plain OpenAI-compatible `chat/completions`, which most
+// providers now speak — including Google's free-tier endpoint at
+// https://generativelanguage.googleapis.com/v1beta/openai/chat/completions.
+// Pointing TALKACTIVE_API_URL at one of those, with TALKACTIVE_API_KEY, buys
+// semantic mode for nothing. Nothing else in this file changes.
+export const GATEWAY_URL = process.env.TALKACTIVE_API_URL
+  ?? 'https://ai-gateway.vercel.sh/v1/chat/completions';
 
 // Availability comes from PROVIDER diversity, not model diversity. Three models
 // from one vendor share one outage; these three share nothing but the gateway.
@@ -267,7 +277,11 @@ export async function analyzeWithSemantics({
   transcript,
   rubricText,
   durationSeconds,
-  apiKey = process.env.AI_GATEWAY_API_KEY ?? process.env.VERCEL_OIDC_TOKEN,
+  // TALKACTIVE_API_KEY wins so a direct provider key can override the gateway
+  // without unsetting anything Vercel injects on its own.
+  apiKey = process.env.TALKACTIVE_API_KEY
+    ?? process.env.AI_GATEWAY_API_KEY
+    ?? process.env.VERCEL_OIDC_TOKEN,
   models = MODEL_CHAIN,
   timeoutMs = DEFAULT_TIMEOUT_MS,
   totalBudgetMs = DEFAULT_TOTAL_BUDGET_MS,

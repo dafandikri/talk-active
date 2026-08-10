@@ -573,25 +573,57 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
    filler actually is. */
 .delivery-section { margin-top: var(--space-5); }
 .delivery-boundary {
-  max-width: var(--measure); margin-bottom: var(--space-4);
+  max-width: var(--measure); margin-bottom: var(--space-5);
   color: var(--text-muted); font-size: var(--step-0);
 }
+
+/* Outlined paper, matching the rest of the workflow screens. The numbers get a
+   box each so they read as three separate facts rather than one running total,
+   which is the difference between a panel of context and something that looks
+   like a scorecard. */
 .delivery-metrics {
-  display: flex; flex-wrap: wrap; gap: var(--space-5);
-  margin-bottom: var(--space-5);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-3); margin-bottom: var(--space-6);
 }
-.delivery-metric { display: flex; flex-direction: column; }
-.delivery-metric strong { color: var(--text-primary); font-size: var(--step-3); font-weight: var(--weight-bold); }
+.delivery-metric {
+  display: flex; flex-direction: column; gap: var(--space-1);
+  padding: var(--space-4);
+  border: 2px solid var(--text-primary); border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.delivery-metric strong {
+  color: var(--text-primary); font-size: var(--step-4);
+  font-weight: var(--weight-bold); line-height: 1;
+}
 .delivery-metric span { color: var(--text-muted); font-size: var(--step-0); }
-.filler-list { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+
+.delivery-filler-heading {
+  padding-top: var(--space-5); border-top: 1px solid var(--border);
+}
+.filler-list {
+  display: flex; flex-wrap: wrap; gap: var(--space-2);
+  margin-top: var(--space-3);
+}
 .filler-chip {
-  display: inline-flex; align-items: baseline; gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
+  display: inline-flex; align-items: baseline; gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
   color: var(--accent-sun-strong); background: var(--accent-sun-wash);
-  border-radius: var(--radius-full); font-size: var(--step-0);
+  border: 1px solid var(--accent-sun); border-radius: var(--radius-full);
+  font-size: var(--step-1);
 }
 .filler-chip strong { font-weight: var(--weight-bold); }
-.filler-empty { margin-top: var(--space-2); color: var(--text-muted); font-size: var(--step-1); }
+.filler-chip span { font-variant-numeric: tabular-nums; opacity: 0.75; }
+.filler-empty { margin-top: var(--space-3); color: var(--text-muted); font-size: var(--step-1); }
+
+/* The Web Speech API listens in exactly one language, so this control is not a
+   preference — it states what the microphone is actually doing. */
+.dictate-language { display: inline-flex; margin-left: auto; }
+.dictate-language select {
+  padding: var(--space-1) var(--space-3);
+  color: var(--text-secondary); background: var(--surface);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-full);
+  font-family: var(--font-ui); font-size: var(--step-0);
+}
 
 .delivery-context { display: flex; gap: var(--space-2); }
 .delivery-context span {

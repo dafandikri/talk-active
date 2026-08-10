@@ -73,8 +73,11 @@ node scripts/browser-check.mjs --screenshot docs/proposal/assets/screens/shot.pn
 ## Open items before submitting
 
 1. Fill in `teaminfo.tex`.
-2. Confirm the deployed URL if you want to cite one; `lancar.vercel.app` belongs
-   to an unrelated site, so do not use it.
+2. Cite `talk-active-id.vercel.app` as the deployed URL. Two near-misses belong
+   to unrelated sites and must never reach the deck, the one-pager, or the QR
+   code: `lancar.vercel.app` serves a shoe retailer, and `talk-active.vercel.app`
+   is someone else's app that returns 200 on every path, so it looks like ours
+   until a judge actually reads the page.
 3. Submit the signed Originality Statement separately.
 4. Confirm the organizer's policy on AI coding assistance and disclose it
    accurately — the originality statement covers "misrepresentation of AI usage."

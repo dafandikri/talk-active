@@ -223,6 +223,13 @@
                 <div class="capture-tabs" role="tablist" aria-label="Input method">
                   <button class="is-active" type="button" role="tab" aria-selected="true">Transcript</button>
                   <button id="dictateButton" type="button" role="tab" aria-selected="false"><span class="record-dot"></span><span id="dictateLabel">Dictate</span></button>
+                  <label class="dictate-language">
+                    <span class="sr-only">Dictation language</span>
+                    <select id="dictateLanguage">
+                      <option value="id-ID">Bahasa Indonesia</option>
+                      <option value="en-US">English</option>
+                    </select>
+                  </label>
                 </div>
                 <label class="sr-only" for="attemptTranscript">Practice transcript</label>
                 <textarea id="attemptTranscript" rows="15" placeholder="Start your pitch here. You can paste an existing script or dictate a fresh attempt..."></textarea>
@@ -296,7 +303,7 @@
                 <div class="delivery-metric"><strong id="deliveryWords">—</strong><span>words spoken</span></div>
                 <div class="delivery-metric"><strong id="deliveryFillerTotal">—</strong><span>filler words</span></div>
               </div>
-              <p class="overline">Filler words in this attempt</p>
+              <p class="overline delivery-filler-heading">Filler words in this attempt</p>
               <div class="filler-list" id="deliveryFillers"></div>
             </section>
 
