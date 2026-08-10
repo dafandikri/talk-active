@@ -31,3 +31,9 @@ test('agent completion is grounded in the environment and human control', () => 
 test('canonical instructions point to the durable workflow', () => {
   assert.match(agents, /docs\/AGENT-WORKFLOW\.md/u);
 });
+
+test('workflow finals map points to the enforced rubric and readiness artifacts', () => {
+  assert.match(workflow, /docs\/rubrics\/2026-finals\.json/u);
+  assert.match(workflow, /docs\/finals-readiness\.json/u);
+  assert.doesNotMatch(workflow, /docs\/finals-rubric\.yaml/u);
+});

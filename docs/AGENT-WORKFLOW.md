@@ -104,7 +104,7 @@ and commands that agents and contributors actually execute.
 | Block a broken push locally | `.githooks/pre-push` | runs `pnpm check`; installed with `pnpm setup:hooks` |
 | Re-run the same gate remotely | `.github/workflows/check.yml` | every push and pull request; fails when browser gates skip |
 | Preserve review discipline | `.github/pull_request_template.md` | requires green checks and prohibits weakened tests |
-| Keep finals evidence current | `docs/finals-rubric.yaml` and referenced artifacts | `pnpm finals` |
+| Keep finals evidence current | `docs/rubrics/2026-finals.json` and `docs/finals-readiness.json` | `pnpm finals` |
 
 `pnpm check` is the single integration command. A new skill, adapter, or quality gate is not
 finished until it is reachable from the canonical instructions, represented in this map, and

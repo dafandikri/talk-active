@@ -235,6 +235,17 @@ async function run() {
     assert.equal(workspace.overflow, 0);
     assert.equal(workspace.inaccessibleFields, 0);
 
+    await cdp.call('Emulation.setEmulatedMedia', {
+      features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
+    });
+    const reducedMotion = await evaluate(cdp, `(() => ({
+      preferenceMatches: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      mascotAnimation: getComputedStyle(document.querySelector('.focus-mascot')).animationName
+    }))()`);
+    assert.equal(reducedMotion.preferenceMatches, true);
+    assert.equal(reducedMotion.mascotAnimation, 'none');
+    await cdp.call('Emulation.setEmulatedMedia', { features: [] });
+
     const screenshotPath = screenshotArgument(process.argv.slice(2));
     const briefLink = await evaluate(cdp, `document.querySelector('.sidebar a[href="/brief.html"]')?.href`);
     assert.equal(briefLink, `${url}/brief.html`);
@@ -493,6 +504,7 @@ async function run() {
 
     const checks = [
       ['product-workspace', 'passed'],
+      ['reduced-motion', 'passed'],
       ['product-brief', 'passed'],
       ['product-brief-mobile', 'passed'],
       ['accessible-fields', 'passed'],

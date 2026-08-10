@@ -276,6 +276,10 @@ test('the full-body dimensional mascot is local, visible, and motion-safe', () =
   assert.match(INDEX, /src\/assets\/cockatoo-mascot-3d\.webp/u);
   assert.match(STYLES, /@keyframes mascot-greet/u);
   assert.match(STYLES, /@media \(prefers-reduced-motion: reduce\)/u);
+  assert.match(
+    STYLES,
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.focus-mascot\s*\{\s*animation:\s*none !important;\s*\}/u,
+  );
 });
 
 test('the apparel mark remains a one-ink warm-white speaking bird', () => {

@@ -1042,4 +1042,5 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
     animation-duration: .01ms !important;
     transition-duration: .01ms !important;
   }
+  .focus-mascot { animation: none !important; }
 }
