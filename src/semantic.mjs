@@ -50,10 +50,16 @@ export const MODEL_CHAIN = (process.env.TALKACTIVE_MODELS ?? '')
   ];
 export const DEFAULT_MODEL = MODEL_CHAIN[0];
 
-// Per-attempt budget. Three attempts must still fit inside a judge's patience,
-// so the whole chain is capped below.
-export const DEFAULT_TIMEOUT_MS = 8_000;
-export const DEFAULT_TOTAL_BUDGET_MS = 20_000;
+// Per-attempt budget. Measured live: a vendor that rejects us (403/429) answers
+// in well under a second, so the failing-fast cases cost almost nothing. The
+// budget has to accommodate the slow case instead — gpt-5-nano is a reasoning
+// model and regularly needs more than 8s, which silently cost us semantic mode
+// until it was measured.
+//
+// The whole chain is still capped, because a judge waiting is worse than a
+// deterministic answer arriving promptly.
+export const DEFAULT_TIMEOUT_MS = 12_000;
+export const DEFAULT_TOTAL_BUDGET_MS = 22_000;
 
 export class SemanticUnavailable extends Error {
   constructor(reason) {
