@@ -20,6 +20,17 @@ export const config = {
 };
 
 export default async function middleware(request) {
+  // The exhibition scores 15 points for "the working prototype is easily
+  // accessible and ready for visitors/judges to try on-site". A credential
+  // prompt scores zero on that criterion, so the deployment is PUBLIC by
+  // default and locks only when we explicitly ask it to.
+  //
+  // Nothing sensitive lives server-side: the workspace is in the visitor's own
+  // browser storage, and the analysis endpoint holds no user data.
+  if (process.env.PRIVATE_DEPLOYMENT !== '1') return undefined;
+
+  // When privacy IS requested we still fail closed rather than silently
+  // serving a site someone believes is protected.
   const password = process.env.SITE_PASSWORD;
   if (!password) {
     return new Response('Private access is not configured.', {

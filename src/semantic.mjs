@@ -19,8 +19,30 @@
 import { analyzeSpeech, parseRubric } from './analyzer.mjs';
 
 export const GATEWAY_URL = 'https://ai-gateway.vercel.sh/v1/chat/completions';
-export const DEFAULT_MODEL = 'anthropic/claude-sonnet-4.6';
-export const DEFAULT_TIMEOUT_MS = 12_000;
+
+// Availability comes from PROVIDER diversity, not model diversity. Three models
+// from one vendor share one outage; these three share nothing but the gateway.
+// Ordered by fitness for our task: exact verbatim quoting under a strict schema.
+//
+//   anthropic/claude-sonnet-5   $2/$10 per M, 1M context — strongest at
+//                               reproducing an exact sentence and obeying
+//                               "do not invent a quote", which is INV-3.
+//   openai/gpt-5.4              $2.50/$15 — different vendor, different network.
+//   google/gemini-3-flash       $0.50/$3 — third vendor, fastest, cheapest.
+//
+// A full analysis is roughly 1.5k in / 0.5k out, so about $0.008 on the primary.
+// The $5 monthly free tier covers ~600 analyses, far more than a demo needs.
+export const MODEL_CHAIN = [
+  'anthropic/claude-sonnet-5',
+  'openai/gpt-5.4',
+  'google/gemini-3-flash',
+];
+export const DEFAULT_MODEL = MODEL_CHAIN[0];
+
+// Per-attempt budget. Three attempts must still fit inside a judge's patience,
+// so the whole chain is capped below.
+export const DEFAULT_TIMEOUT_MS = 8_000;
+export const DEFAULT_TOTAL_BUDGET_MS = 20_000;
 
 export class SemanticUnavailable extends Error {
   constructor(reason) {
@@ -222,9 +244,11 @@ export async function analyzeWithSemantics({
   rubricText,
   durationSeconds,
   apiKey = process.env.AI_GATEWAY_API_KEY ?? process.env.VERCEL_OIDC_TOKEN,
-  model = DEFAULT_MODEL,
+  models = MODEL_CHAIN,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  totalBudgetMs = DEFAULT_TOTAL_BUDGET_MS,
   fetchImpl = globalThis.fetch,
+  onAttempt = () => {},
 } = {}) {
   // Deterministic first: this validates input and guarantees a usable result.
   const base = analyzeSpeech({ transcript, rubricText, durationSeconds });
@@ -236,23 +260,52 @@ export async function analyzeWithSemantics({
     return { ...base, mode: 'deterministic', degradedReason: 'fetch unavailable' };
   }
 
+  const cleanTranscript = String(transcript).trim();
+  let rubric;
   try {
-    const rubric = parseRubric(rubricText);
-    const payload = await callGateway({
-      messages: buildMessages(String(transcript).trim(), rubric),
-      apiKey,
-      model,
-      timeoutMs,
-      fetchImpl,
-    });
-    const enriched = applySemanticVerdicts(base, payload, String(transcript).trim());
-    return { ...enriched, mode: 'semantic' };
-  } catch (error) {
-    // AD-3: degrade, never fail. The demo must survive a dead API.
-    return {
-      ...base,
-      mode: 'deterministic',
-      degradedReason: error instanceof SemanticUnavailable ? error.message : 'semantic analysis failed',
-    };
+    rubric = parseRubric(rubricText);
+  } catch {
+    return { ...base, mode: 'deterministic', degradedReason: 'rubric could not be parsed' };
   }
+
+  const messages = buildMessages(cleanTranscript, rubric);
+  const startedAt = Date.now();
+  const attempts = [];
+
+  // Walk the provider chain. A model that errors, times out, returns prose, or
+  // fabricates a quote hands off to the next vendor. Only when every vendor has
+  // failed do we degrade — and even then the user still gets a full review.
+  for (const model of models) {
+    const remaining = totalBudgetMs - (Date.now() - startedAt);
+    if (remaining <= 500) {
+      attempts.push({ model, error: 'skipped: total budget exhausted' });
+      break;
+    }
+
+    try {
+      const payload = await callGateway({
+        messages,
+        apiKey,
+        model,
+        timeoutMs: Math.min(timeoutMs, remaining),
+        fetchImpl,
+      });
+      const enriched = applySemanticVerdicts(base, payload, cleanTranscript);
+      attempts.push({ model, ok: true });
+      onAttempt(attempts);
+      return { ...enriched, mode: 'semantic', model, attempts };
+    } catch (error) {
+      const reason = error instanceof SemanticUnavailable ? error.message : (error?.message ?? 'failed');
+      attempts.push({ model, error: reason });
+    }
+  }
+
+  onAttempt(attempts);
+  // AD-3: degrade, never fail. The demo must survive every provider being down.
+  return {
+    ...base,
+    mode: 'deterministic',
+    degradedReason: attempts.at(-1)?.error ?? 'semantic analysis unavailable',
+    attempts,
+  };
 }
