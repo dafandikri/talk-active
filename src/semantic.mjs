@@ -22,21 +22,32 @@ export const GATEWAY_URL = 'https://ai-gateway.vercel.sh/v1/chat/completions';
 
 // Availability comes from PROVIDER diversity, not model diversity. Three models
 // from one vendor share one outage; these three share nothing but the gateway.
-// Ordered by fitness for our task: exact verbatim quoting under a strict schema.
 //
-//   anthropic/claude-sonnet-5   $2/$10 per M, 1M context — strongest at
-//                               reproducing an exact sentence and obeying
-//                               "do not invent a quote", which is INV-3.
-//   openai/gpt-5.4              $2.50/$15 — different vendor, different network.
-//   google/gemini-3-flash       $0.50/$3 — third vendor, fastest, cheapest.
+// Verified live against the gateway on 10 Aug 2026:
+//   * The FREE tier rate-limits every model with a 429 telling you to top up.
+//     Paid credits are required for any of this to work at all.
+//   * Premium models (claude-sonnet-5, gpt-5.4) additionally 403 on free tier.
 //
-// A full analysis is roughly 1.5k in / 0.5k out, so about $0.008 on the primary.
-// The $5 monthly free tier covers ~600 analyses, far more than a demo needs.
-export const MODEL_CHAIN = [
-  'anthropic/claude-sonnet-5',
-  'openai/gpt-5.4',
-  'google/gemini-3-flash',
-];
+// This chain is chosen to be cheap enough that the whole competition costs
+// small change, while keeping the instruction-following needed for verbatim
+// quoting. Override with TALKACTIVE_MODELS="a,b,c" to trade cost for quality
+// without touching code.
+//
+//   anthropic/claude-haiku-4.5   $1.00/$5.00 per M — strong at reproducing an
+//                                exact sentence, which is what INV-3 needs.
+//   openai/gpt-5-nano            $0.05/$0.40 — different vendor, very cheap.
+//   google/gemini-2.5-flash-lite $0.10/$0.40 — third vendor.
+//
+// About $0.004 per analysis on the primary, so $5 of credits covers well over
+// a thousand runs.
+export const MODEL_CHAIN = (process.env.TALKACTIVE_MODELS ?? '')
+  .split(',').map((name) => name.trim()).filter(Boolean).length > 0
+  ? process.env.TALKACTIVE_MODELS.split(',').map((name) => name.trim()).filter(Boolean)
+  : [
+    'anthropic/claude-haiku-4.5',
+    'openai/gpt-5-nano',
+    'google/gemini-2.5-flash-lite',
+  ];
 export const DEFAULT_MODEL = MODEL_CHAIN[0];
 
 // Per-attempt budget. Three attempts must still fit inside a judge's patience,
@@ -205,17 +216,24 @@ async function callGateway({ messages, apiKey, model, timeoutMs, fetchImpl }) {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model,
-        messages,
-        temperature: 0,
-        response_format: { type: 'json_object' },
-      }),
+      // No response_format: the gateway rejects it outright ("Invalid input").
+      // No token cap either: vendors disagree on max_tokens vs
+      // max_completion_tokens and the minimums differ. The prompt asks for JSON
+      // and extractJson() copes with fences or stray prose, which is the
+      // portable way to get structured output across three vendors.
+      body: JSON.stringify({ model, messages, temperature: 0 }),
       signal: controller.signal,
     });
 
     if (!response.ok) {
-      throw new SemanticUnavailable(`gateway responded ${response.status}`);
+      // Include the gateway's explanation. A bare status code turned a simple
+      // "you must add paid credits" into a debugging session.
+      let detail = '';
+      try {
+        const problem = await response.json();
+        detail = problem?.error?.message ? `: ${String(problem.error.message).slice(0, 160)}` : '';
+      } catch { /* body was not JSON */ }
+      throw new SemanticUnavailable(`gateway responded ${response.status}${detail}`);
     }
     const body = await response.json();
     const text = body?.choices?.[0]?.message?.content;

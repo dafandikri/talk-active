@@ -6,11 +6,17 @@ import assert from 'node:assert/strict';
 
 import { DEFAULT_RUBRIC, STARTER_DRAFT } from '../src/analyzer.mjs';
 import {
+  MODEL_CHAIN,
   SemanticUnavailable,
   analyzeWithSemantics,
   applySemanticVerdicts,
   buildMessages,
 } from '../src/semantic.mjs';
+
+// Read the chain rather than hardcoding vendor names: the chain is expected to
+// change as pricing and availability move, and these tests are about failover
+// behaviour, not about which vendor happens to be first today.
+const [PRIMARY, SECOND, THIRD] = MODEL_CHAIN;
 
 const INPUT = {
   transcript: STARTER_DRAFT,
@@ -169,7 +175,13 @@ function chainedGateway(behaviour) {
     if (act === 'prose') {
       return { ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'Certainly! Here is my take.' } }] }) };
     }
-    if (act === '429') return { ok: false, status: 429, json: async () => ({}) };
+    if (act === '429') {
+      return {
+        ok: false,
+        status: 429,
+        json: async () => ({ error: { message: 'Free tier requests on this model are rate-limited.' } }),
+      };
+    }
     return {
       ok: true,
       status: 200,
@@ -184,32 +196,30 @@ function chainedGateway(behaviour) {
 }
 
 test('a dead primary vendor fails over to the next vendor', async () => {
-  const { fetchImpl, seen } = chainedGateway({ 'anthropic/claude-sonnet-5': 'down' });
+  const { fetchImpl, seen } = chainedGateway({ [PRIMARY]: 'down' });
   const result = await analyzeWithSemantics({ ...INPUT, apiKey: 'test-key-not-real', fetchImpl });
 
   assert.equal(result.mode, 'semantic');
-  assert.equal(result.model, 'openai/gpt-5.4', 'should have moved to the second vendor');
-  assert.deepEqual(seen, ['anthropic/claude-sonnet-5', 'openai/gpt-5.4']);
-  assert.equal(result.attempts[0].error, 'anthropic/claude-sonnet-5 unreachable');
+  assert.equal(result.model, SECOND, 'should have moved to the second vendor');
+  assert.deepEqual(seen, [PRIMARY, SECOND]);
+  assert.equal(result.attempts[0].error, `${PRIMARY} unreachable`);
 });
 
 test('rate limiting on two vendors still lands on the third', async () => {
   const { fetchImpl, seen } = chainedGateway({
-    'anthropic/claude-sonnet-5': '429',
-    'openai/gpt-5.4': 'prose',
+    [PRIMARY]: '429',
+    [SECOND]: 'prose',
   });
   const result = await analyzeWithSemantics({ ...INPUT, apiKey: 'test-key-not-real', fetchImpl });
 
   assert.equal(result.mode, 'semantic');
-  assert.equal(result.model, 'google/gemini-3-flash');
+  assert.equal(result.model, THIRD);
   assert.equal(seen.length, 3, 'every vendor in the chain should have been tried');
 });
 
 test('every vendor down still returns a usable review (INV-8)', async () => {
   const { fetchImpl, seen } = chainedGateway({
-    'anthropic/claude-sonnet-5': 'down',
-    'openai/gpt-5.4': 'down',
-    'google/gemini-3-flash': 'down',
+    [PRIMARY]: 'down', [SECOND]: 'down', [THIRD]: 'down',
   });
   const result = await analyzeWithSemantics({ ...INPUT, apiKey: 'test-key-not-real', fetchImpl });
 
