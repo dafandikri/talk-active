@@ -264,3 +264,49 @@ test('INV-7 invalid input raises a typed error instead of guessing', () => {
     'invalid duration must fail loudly',
   );
 });
+
+// ---------------------------------------------------------------------------
+// INV-4  Delivery coaching is real, and bounded.
+//        Filler and pace feedback is genuinely useful, but it is the second
+//        thing on the review screen, not the product. The moment it reads as a
+//        score, we are selling the generic speaking-coach we said we are not.
+// ---------------------------------------------------------------------------
+test('INV-4 delivery coaching names its own limit and stays subordinate to evidence', () => {
+  const index = read('index.html');
+
+  assertContains(
+    index,
+    /not a measure of speaking ability/u,
+    'the delivery panel must state that it does not measure speaking ability',
+  );
+  assertContains(
+    index,
+    /does not change the rubric evidence/u,
+    'the delivery panel must state that it does not affect the rubric verdicts',
+  );
+
+  // Position encodes priority. If delivery ever moves above the evidence map,
+  // the screen starts arguing that HOW you spoke matters more than WHETHER you
+  // supported the criterion, which inverts the entire product thesis.
+  const evidenceAt = index.indexOf('id="reviewCriteria"');
+  const deliveryAt = index.indexOf('class="surface delivery-section"');
+  assert.ok(evidenceAt !== -1 && deliveryAt !== -1, 'both the evidence map and the delivery panel must exist');
+  assert.ok(
+    evidenceAt < deliveryAt,
+    'the rubric evidence map must come before delivery notes; rubric grounding is the product, delivery is support',
+  );
+});
+
+test('INV-2 filler feedback is written out, not reduced to a grade', () => {
+  const app = read('src/app.mjs');
+
+  // "7 fillers" is a number a student cannot practise against. The individual
+  // words are the actionable part, so the code must actually render them.
+  assertContains(app, /filler\.label/u, 'each filler word must be rendered by name, not just counted');
+  assertContains(app, /filler\.count/u, 'each filler word must carry its own count');
+
+  // A grade on delivery is exactly the ability score INV-2 forbids.
+  for (const forbidden of [/delivery\s*score/iu, /speaking\s*score/iu, /fluency\s*score/iu]) {
+    assert.ok(!forbidden.test(app), `delivery feedback must not be presented as a score (${forbidden})`);
+  }
+});

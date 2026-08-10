@@ -566,6 +566,33 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .judge-preview .button-primary { color: var(--brand-contrast); background: var(--brand); }
 
 .evidence-section { padding: var(--space-6); }
+/* Delivery coaching is a supporting surface, so it stays quiet: neutral paper,
+   no evidence blue, no leaf green, no red. Colouring a filler count as a
+   failure would reassert the ability score INV-2 forbids, and colouring it
+   green would read as "passed". Yellow means attention, which is what a
+   filler actually is. */
+.delivery-section { margin-top: var(--space-5); }
+.delivery-boundary {
+  max-width: var(--measure); margin-bottom: var(--space-4);
+  color: var(--text-muted); font-size: var(--step-0);
+}
+.delivery-metrics {
+  display: flex; flex-wrap: wrap; gap: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+.delivery-metric { display: flex; flex-direction: column; }
+.delivery-metric strong { color: var(--text-primary); font-size: var(--step-3); font-weight: var(--weight-bold); }
+.delivery-metric span { color: var(--text-muted); font-size: var(--step-0); }
+.filler-list { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.filler-chip {
+  display: inline-flex; align-items: baseline; gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  color: var(--accent-sun-strong); background: var(--accent-sun-wash);
+  border-radius: var(--radius-full); font-size: var(--step-0);
+}
+.filler-chip strong { font-weight: var(--weight-bold); }
+.filler-empty { margin-top: var(--space-2); color: var(--text-muted); font-size: var(--step-1); }
+
 .delivery-context { display: flex; gap: var(--space-2); }
 .delivery-context span {
   padding: var(--space-1) var(--space-2); color: var(--text-muted);

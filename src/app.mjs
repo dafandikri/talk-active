@@ -142,6 +142,11 @@ const elements = {
   reviewQuestion: $('#reviewQuestion'),
   reviewPace: $('#reviewPace'),
   reviewFillers: $('#reviewFillers'),
+  deliveryPace: $('#deliveryPace'),
+  deliveryPaceLabel: $('#deliveryPaceLabel'),
+  deliveryWords: $('#deliveryWords'),
+  deliveryFillerTotal: $('#deliveryFillerTotal'),
+  deliveryFillers: $('#deliveryFillers'),
   reviewCriteria: $('#reviewCriteria'),
   coverageGauge: $('.coverage-gauge'),
   openDefense: $('#openDefense'),
@@ -459,6 +464,37 @@ function signalChip(signal, variant = '') {
   return chip;
 }
 
+// Delivery is real coaching, but it is deliberately the second thing on this
+// screen. Writing the filler words out is what makes it actionable — "7
+// fillers" tells a student nothing they can practise, "kayak ×4" does.
+function renderDelivery(delivery) {
+  elements.deliveryPace.textContent = String(delivery.wordsPerMinute);
+  elements.deliveryPaceLabel.textContent = `words per minute · ${delivery.pace}`;
+  elements.deliveryWords.textContent = String(delivery.wordCount);
+  elements.deliveryFillerTotal.textContent = String(delivery.fillerCount);
+
+  if (delivery.fillers.length === 0) {
+    const clear = document.createElement('p');
+    clear.className = 'filler-empty';
+    clear.textContent = 'No filler patterns matched in this attempt.';
+    elements.deliveryFillers.replaceChildren(clear);
+    return;
+  }
+
+  elements.deliveryFillers.replaceChildren(...[...delivery.fillers]
+    .sort((left, right) => right.count - left.count)
+    .map((filler) => {
+      const chip = document.createElement('span');
+      chip.className = 'filler-chip';
+      const word = document.createElement('strong');
+      word.textContent = filler.label;
+      const count = document.createElement('span');
+      count.textContent = `×${filler.count}`;
+      chip.append(word, count);
+      return chip;
+    }));
+}
+
 function renderReview(result) {
   elements.reviewScore.textContent = `${result.evidenceScore}%`;
   elements.coverageGauge.style.setProperty('--gauge', `${result.evidenceScore * 3.6}deg`);
@@ -472,6 +508,7 @@ function renderReview(result) {
   elements.reviewQuestion.textContent = result.judgeQuestion;
   elements.reviewPace.textContent = `${result.delivery.wordsPerMinute} WPM · ${result.delivery.pace}`;
   elements.reviewFillers.textContent = `${result.delivery.fillerCount} potential fillers`;
+  renderDelivery(result.delivery);
   elements.reviewCriteria.replaceChildren(...result.criteria.map(evidenceCard));
 }
 

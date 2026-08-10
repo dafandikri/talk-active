@@ -376,6 +376,7 @@ const CONTRAST_PAIRS = [
   ['--text-primary', '--evidence-wash', 4.5, 'the quoted span itself, on its highlight'],
   ['--evidence', '--evidence-wash', 3.0, 'the 4px rule down the citation card — UI, not text'],
   ['--absence', '--surface', 3.0, 'the "no cue matched" marker is UI, not text'],
+  ['--accent-sun-strong', '--accent-sun-wash', 4.5, 'the filler-word chip on the delivery panel'],
   ['--text-on-inverse', '--surface-inverse', 4.5, 'copy on the dark hero panel'],
   // These four exist because a screenshot caught what the suite did not: chips
   // on the dark sidebar were given a light-theme wash, which made the active
