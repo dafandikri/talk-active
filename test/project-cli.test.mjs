@@ -24,7 +24,8 @@ test('project CLI home view returns compact live content instead of a manual', (
   assert.match(result.stdout, /technical-meeting,"docs\/TECHNICAL-MEETING-2026\.md"/u);
   assert.match(result.stdout, /finals-rubric,"docs\/rubrics\/2026-finals\.json"/u);
   assert.match(result.stdout, /finals-readiness,"docs\/finals-readiness\.json"/u);
-  assert.match(result.stdout, /checks\[18\]\{id,status\}:/u);
+  assert.match(result.stdout, /checks\[19\]\{id,status\}:/u);
+  assert.match(result.stdout, /"brief\.html",ready/u);
   assert.match(result.stdout, /help\[3\]:/u);
 });
 
@@ -32,7 +33,7 @@ test('project CLI check is definitive and self-contained', () => {
   const result = run('scripts/project.mjs', ['check']);
   assert.equal(result.status, 0);
   assert.equal(result.stderr, '');
-  assert.match(result.stdout, /summary: "18\/18 required artifacts ready"/u);
+  assert.match(result.stdout, /summary: "19\/19 required artifacts ready"/u);
   assert.doesNotMatch(result.stdout, /help/u);
 });
 

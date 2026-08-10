@@ -17,6 +17,16 @@ test('static server exposes the product workspace but not research documents', a
   assert.match(await home.text(), /Rehearsal workspace/u);
   assert.match(home.headers.get('content-security-policy'), /default-src 'self'/u);
 
+  const brief = await fetch(`${origin}/brief.html?from=judge`);
+  assert.equal(brief.status, 200);
+  assert.match(brief.headers.get('content-type'), /text\/html/u);
+  assert.match(await brief.text(), /Practise the claims judges will score/u);
+
+  const briefHead = await fetch(`${origin}/brief.html`, { method: 'HEAD' });
+  assert.equal(briefHead.status, 200);
+  assert.match(briefHead.headers.get('content-security-policy'), /default-src 'self'/u);
+  assert.equal(await briefHead.text(), '');
+
   const analyzer = await fetch(`${origin}/src/analyzer.mjs`);
   assert.equal(analyzer.status, 200);
   assert.match(analyzer.headers.get('content-type'), /text\/javascript/u);

@@ -10,6 +10,7 @@ const REQUIRED = [
   'README.md',
   'AGENTS.md',
   'index.html',
+  'brief.html',
   'src/app.mjs',
   'src/analyzer.mjs',
   'src/styles.css',

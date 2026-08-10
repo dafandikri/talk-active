@@ -215,6 +215,57 @@ async function run() {
     assert.equal(workspace.overflow, 0);
     assert.equal(workspace.inaccessibleFields, 0);
 
+    const screenshotPath = screenshotArgument(process.argv.slice(2));
+    const briefLink = await evaluate(cdp, `document.querySelector('.sidebar a[href="/brief.html"]')?.href`);
+    assert.equal(briefLink, `${url}/brief.html`);
+
+    await cdp.call('Page.navigate', { url: `${url}/brief.html` });
+    await waitFor(cdp, `document.readyState === 'complete' && document.querySelector('#briefTitle')`);
+    const brief = await evaluate(cdp, `(() => ({
+      title: document.title,
+      heading: document.querySelector('#briefTitle')?.textContent,
+      main: Boolean(document.querySelector('main.brief-shell')),
+      problem: document.querySelector('#problemTitle')?.textContent,
+      loopSteps: document.querySelectorAll('.brief-loop-grid > li').length,
+      boundary: document.querySelector('.brief-boundaries')?.textContent,
+      workspaceTarget: document.querySelector('.brief-closing a')?.getAttribute('href'),
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
+    }))()`);
+    assert.match(brief.title, /Product brief/u);
+    assert.match(brief.heading, /claims judges will score/u);
+    assert.equal(brief.main, true);
+    assert.match(brief.problem, /evidence implicit/u);
+    assert.equal(brief.loopSteps, 6);
+    assert.match(brief.boundary, /not confidence or speaking ability/u);
+    assert.equal(brief.workspaceTarget, '/#home');
+    assert.equal(brief.overflow, 0);
+    if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'brief-desktop'));
+
+    await cdp.call('Emulation.setDeviceMetricsOverride', {
+      width: 390, height: 844, deviceScaleFactor: 1, mobile: true,
+    });
+    await cdp.call('Page.reload');
+    await waitFor(cdp, `document.readyState === 'complete' && document.querySelector('#briefTitle')`);
+    const briefMobile = await evaluate(cdp, `(() => ({
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      clippedElements: [...document.querySelectorAll('body *')].filter((element) => element.getBoundingClientRect().right > document.documentElement.clientWidth + 1).length,
+      loopColumns: getComputedStyle(document.querySelector('.brief-loop-grid')).gridTemplateColumns,
+      ctaHeight: document.querySelector('.brief-topbar-cta').getBoundingClientRect().height
+    }))()`);
+    assert.equal(briefMobile.overflow, 0);
+    assert.equal(briefMobile.clippedElements, 0);
+    assert.ok(!briefMobile.loopColumns.includes(' '));
+    assert.ok(briefMobile.ctaHeight >= 44);
+    if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'brief-mobile'));
+
+    await evaluate(cdp, `document.querySelector('.brief-closing a').click()`);
+    await waitFor(cdp, `document.readyState === 'complete' && document.querySelector('#homeView')?.classList.contains('is-visible')`);
+    await cdp.call('Emulation.setDeviceMetricsOverride', {
+      width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false,
+    });
+    await cdp.call('Page.reload');
+    await waitFor(cdp, `document.readyState === 'complete' && document.querySelector('#homeView')?.classList.contains('is-visible')`);
+
     await evaluate(cdp, `document.querySelector('[data-start-practice]').click()`);
     await waitFor(cdp, `document.querySelector('#practiceView')?.classList.contains('is-visible') && document.querySelector('#practiceSetup')?.classList.contains('is-visible')`);
     const setup = await evaluate(cdp, `(() => ({
@@ -252,7 +303,6 @@ async function run() {
     assert.equal(review.criteria, 4);
     assert.equal(review.completedSteps, 2);
 
-    const screenshotPath = screenshotArgument(process.argv.slice(2));
     if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'review'));
 
     await evaluate(cdp, `document.querySelector('#openDefense').click()`);
@@ -352,6 +402,8 @@ async function run() {
 
     const checks = [
       ['product-workspace', 'passed'],
+      ['product-brief', 'passed'],
+      ['product-brief-mobile', 'passed'],
       ['accessible-fields', 'passed'],
       ['persistent-project-state', 'passed'],
       ['practice-setup', 'passed'],
