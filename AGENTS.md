@@ -20,6 +20,15 @@ Read it before starting work. It holds the scope, the architecture decisions, th
 schedule, the task list with owners, and the risk register. Scope changes are made by editing
 that file in a commit, never by informal agreement.
 
+**The official technical-meeting record is [`docs/TECHNICAL-MEETING-2026.md`](docs/TECHNICAL-MEETING-2026.md).**
+Read it for submission, event-day, pitch, exhibition, scoring, and penalty requirements. Its
+source coverage and high-risk facts are enforced by `test/technical-meeting.test.mjs`.
+
+**The enforced finals rubric is [`docs/rubrics/2026-finals.json`](docs/rubrics/2026-finals.json).**
+Run `pnpm rubric` for the three-surface scorecard and `pnpm finals` for the strict,
+evidence-backed product, presentation, and booth readiness gate. `pnpm check` prevents the
+official weights, requirements, ownership, and evidence obligations from drifting.
+
 ---
 
 # THE INVARIANTS
@@ -135,7 +144,7 @@ Roles are ownership, not walls. Anyone may edit anything; the owner is who answe
 4. **Feature-flag anything risky.** Semantic analysis ships behind a flag with the
    deterministic path as fallback, so a failed API call degrades instead of dying.
 5. **Freeze at 13 August, 18:00.** After the freeze: bug fixes only, and only if `pnpm check`
-   stays green. Submission deadline is 13 August 23.55.
+   stays green. The official submission deadline is 13 August at 18.00 WIB; submit earlier.
 6. **Rehearse on the real machine.** The demo laptop, the real screen, once per day from Day 2.
 
 ### Making strengths visible

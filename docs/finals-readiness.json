@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "rubricId": "ristek-hackathon-2026-finals",
+  "asOf": "2026-08-10",
+  "criteria": [
+    {"criterionId": "FP-PROBLEM", "status": "pending", "evidence": [], "note": "Add the exact deck section and cited validation sources."},
+    {"criterionId": "FP-SOLUTION", "status": "pending", "evidence": [], "note": "Add the deck section and live path proving problem-to-feature alignment."},
+    {"criterionId": "FP-INNOVATION", "status": "pending", "evidence": [], "note": "Add the comparison and hero-demo proof."},
+    {"criterionId": "FP-TECHNICAL", "status": "pending", "evidence": [], "note": "Add the green submission check, architecture slide, and offline rehearsal evidence."},
+    {"criterionId": "FP-DESIGN", "status": "pending", "evidence": [], "note": "Add browser/mobile results and real-screen visual review evidence."},
+    {"criterionId": "PP-PITCH-QA", "status": "pending", "evidence": [], "note": "Add three timed runs, the final deck, operator rehearsal, and Q&A bank."},
+    {"criterionId": "EX-BOOTH", "status": "pending", "evidence": [], "note": "Add booth-display, one-pager, identity, and QR test evidence."},
+    {"criterionId": "EX-DEMO", "status": "pending", "evidence": [], "note": "Add public-phone, kiosk-reset, fallback, mobile, reload, and offline demo evidence."},
+    {"criterionId": "EX-COMMUNICATION", "status": "pending", "evidence": [], "note": "Add staff talk track, visitor test, and simultaneous staffing plan."},
+    {"criterionId": "EX-IMPACT", "status": "pending", "evidence": [], "note": "Add impact narrative, bounded roadmap, and observable innovation proof."}
+  ],
+  "requirements": [
+    {"requirementId": "TM-SUB-001", "status": "pending", "evidence": [], "note": "Add submission confirmation before 18.00 WIB."},
+    {"requirementId": "TM-SUB-002", "status": "pending", "evidence": [], "note": "Add the final PDF or PPTX path."},
+    {"requirementId": "TM-SUB-003", "status": "pending", "evidence": [], "note": "Add the checked cover-slide path."},
+    {"requirementId": "TM-SUB-004", "status": "pending", "evidence": [], "note": "Add cover proof using the official logo."},
+    {"requirementId": "TM-SUB-005", "status": "pending", "evidence": [], "note": "Add the tested final-product URL."},
+    {"requirementId": "TM-SUB-006", "status": "pending", "evidence": [], "note": "Add the tested public GitHub URL."},
+    {"requirementId": "TM-BOOTH-001", "status": "pending", "evidence": [], "note": "Add arrival roster and packed display-device checklist."},
+    {"requirementId": "TM-BOOTH-002", "status": "pending", "evidence": [], "note": "Add the named forum and booth staffing roster."},
+    {"requirementId": "TM-PITCH-001", "status": "pending", "evidence": [], "note": "Add the event attendance plan and committee-notice protocol."},
+    {"requirementId": "TM-PITCH-002", "status": "pending", "evidence": [], "note": "Add the team dress-code check."},
+    {"requirementId": "TM-PITCH-003", "status": "pending", "evidence": [], "note": "Add a rehearsal log covering 2 + 7 + 3 minutes."},
+    {"requirementId": "TM-PITCH-004", "status": "pending", "evidence": [], "note": "Add the rehearsed hard-stop cue."},
+    {"requirementId": "TM-PITCH-005", "status": "pending", "evidence": [], "note": "Add operator handoff and submitted-deck playback proof."},
+    {"requirementId": "TM-INTEGRITY-001", "status": "pending", "evidence": [], "note": "Add originality, source, and assistance review evidence."},
+    {"requirementId": "TM-DAY5-001", "status": "pending", "evidence": [], "note": "Add the 06.30 arrival and 07.30 setup plan."},
+    {"requirementId": "TM-DAY5-002", "status": "pending", "evidence": [], "note": "Add coverage for simultaneous forum and exhibition hours."},
+    {"requirementId": "TM-OPEN-001", "status": "pending", "evidence": [], "note": "Confirm the exact file naming format with the organizer."},
+    {"requirementId": "TM-OPEN-002", "status": "pending", "evidence": [], "note": "Confirm AI-assistance policy and record the final disclosure."}
+  ]
+}

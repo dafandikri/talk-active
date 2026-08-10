@@ -133,7 +133,7 @@ in the group chat. If it is not written down, it is not the plan.
 2. A visitor who cannot open the app — Interactive Demo is 30 points
 3. Running past 7 minutes — the pitch is cut off, you lose your ending
 4. Fewer than 4 of us at a 19.00 mentoring session — it is a scored requirement
-5. Missing the 13 Aug 23.55 submission — counts as withdrawal
+5. Missing the 13 Aug 18.00 WIB submission deadline — late penalties begin immediately
 
 ## Ask early
 

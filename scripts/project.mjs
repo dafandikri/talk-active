@@ -17,7 +17,12 @@ const REQUIRED = [
   'middleware.js',
   'vercel.json',
   'docs/FEASIBILITY.md',
+  'docs/TECHNICAL-MEETING-2026.md',
+  'docs/rubrics/2026-finals.json',
+  'docs/finals-readiness.json',
   'docs/specs/2026-08-06-talk-active-mvp.md',
+  'docs/specs/2026-08-10-innovation-week.md',
+  'scripts/finals-rubric.mjs',
   '.agent-harness/install.json',
   'test/analyzer.test.mjs',
 ];
@@ -62,8 +67,13 @@ function home() {
     `  version: ${quoted(packageVersion())}`,
     '  milestone: persistent-product-prototype',
     `  readiness: ${ready}/${items.length}`,
+    'requirements[4]{id,path}:',
+    `  active-plan,${quoted('docs/specs/2026-08-10-innovation-week.md')}`,
+    `  technical-meeting,${quoted('docs/TECHNICAL-MEETING-2026.md')}`,
+    `  finals-rubric,${quoted('docs/rubrics/2026-finals.json')}`,
+    `  finals-readiness,${quoted('docs/finals-readiness.json')}`,
     renderFacts(items),
-    `help[2]: ${quoted('pnpm dev')},${quoted('pnpm check')}`,
+    `help[3]: ${quoted('pnpm dev')},${quoted('pnpm check')},${quoted('pnpm rubric')}`,
   ].join('\n') + '\n');
 }
 

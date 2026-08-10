@@ -12,7 +12,7 @@
 // ============================================================================
 import { execFileSync } from 'node:child_process';
 
-const DEADLINE = new Date('2026-08-13T23:55:00+07:00'); // WIB, from the guidebook
+const DEADLINE = new Date('2026-08-13T18:00:00+07:00'); // WIB, technical meeting slide 11
 const EXHIBITION = new Date('2026-08-14T09:00:00+07:00');
 
 const c = {
@@ -47,7 +47,7 @@ function countdown() {
     return `${colour}${d}d ${h}h${c.reset}`;
   };
   console.log(`${c.bold}COUNTDOWN${c.reset}`);
-  console.log(`  submission (13 Aug 23.55)  ${fmt(toSubmit)}`);
+  console.log(`  submission (13 Aug 18.00)  ${fmt(toSubmit)}`);
   console.log(`  exhibition (14 Aug 09.00)  ${fmt(toShow)}`);
   console.log();
 }
