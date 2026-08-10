@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# ============================================================================
+#  The gate, on your machine, before anything leaves it.
+#
+#  CI catching a break is good. Not pushing the break in the first place is
+#  better, because during a four-day sprint a red main blocks four other people.
+#
+#  Enable once:  pnpm setup:hooks
+#  Bypass once:  git push --no-verify   (you will answer for it)
+# ============================================================================
+set -uo pipefail
+
+# Reading the gate output is the point, so run it attached to the terminal.
+printf '\n\033[1mpre-push: running pnpm check\033[0m\n'
+printf 'This is the definition of done and the permission to merge.\n\n'
+
+if pnpm check; then
+  printf '\n\033[32m✓ gate green — pushing\033[0m\n\n'
+  exit 0
+fi
+
+cat <<'MESSAGE'
+
+────────────────────────────────────────────────────────────────────
+  ✗ GATE RED — push blocked
+────────────────────────────────────────────────────────────────────
+
+  Fix the work. Do not weaken a test to go green: a silently disabled
+  test is a lost point on the 14th.
+
+  If an invariant is genuinely wrong, change it deliberately in
+  AGENTS.md with the team's agreement, in its own commit.
+
+  Genuinely need to push anyway (broken build you are handing off,
+  end of the night):
+
+      git push --no-verify
+
+  Then say so in the group chat so nobody builds on top of it.
+
+────────────────────────────────────────────────────────────────────
+
+MESSAGE
+exit 1

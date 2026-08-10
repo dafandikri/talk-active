@@ -1,0 +1,68 @@
+# ============================================================================
+#  The gate, in CI.
+#
+#  `pnpm check` is the definition of done and the permission to merge. It runs
+#  on every push and every pull request so that "it works on my machine" is
+#  never the last word, and so a broken main is visible within minutes rather
+#  than at 2am on the night before the exhibition.
+#
+#  Same command locally and here. There is no CI-only configuration to drift.
+# ============================================================================
+name: check
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  # A newer push makes an in-flight run irrelevant. Cancel it so the queue
+  # always reflects the latest commit.
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The browser gates (browser-check, demo-gate) skip themselves when no
+      # Chromium is present, which would let a broken demo path pass silently.
+      # Install one so the gate actually runs, then assert it did.
+      - name: Install Chromium
+        run: npx -y playwright@latest install --with-deps chromium
+
+      - name: Run the gate
+        run: pnpm check | tee gate.log
+
+      - name: Assert the browser gates actually ran
+        run: |
+          if grep -q 'status: skipped' gate.log; then
+            echo "::error::A browser gate skipped instead of running. The demo path was not verified."
+            exit 1
+          fi
+          echo "browser gates executed"
+
+      - name: Upload gate log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-log
+          path: gate.log
+          retention-days: 7
