@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ============================================================================
-//  Render the design system to a set of screenshots.
+//  Render the design system to a set of screenshots: app, booth, and apparel.
 //
 //    pnpm design:preview                 # writes to docs/design/preview/
 //    pnpm design:preview --out /tmp/x    # somewhere else
@@ -9,8 +9,8 @@
 //    1. Let a human LOOK at the system. Two contrast bugs shipped past a green
 //       test suite and were caught by looking at a screenshot, so looking is
 //       part of the gate now, not a nicety.
-//    2. Give Claude Design (and the team) a reference render of every
-//       component in every state, on one page, light and booth.
+//    2. Give the team a reference render of every component in every state,
+//       plus the production apparel lockup.
 //
 //  Reuses the browser plumbing from browser-check.mjs so there is one way to
 //  drive Chrome in this repo, not two.
@@ -108,9 +108,73 @@ const PREVIEW_CSS = `
 .t3 { font-size: var(--step-3); } .t4 { font-size: var(--step-4); } .t5 { font-size: var(--step-5); }
 .t6 { font-size: var(--step-6); }
 .tev { font-size: var(--step-evidence); font-family: var(--font-voice); }
+.apparel-spec { min-height: 100vh; padding: var(--space-7); background: var(--canvas); color: var(--text-primary); }
+.apparel-heading { max-width: 760px; margin: 0 auto var(--space-7); text-align: center; }
+.apparel-heading h1 { margin: var(--space-2) 0 var(--space-3); }
+.apparel-stage { display: grid; grid-template-columns: repeat(2, minmax(0, 420px)); justify-content: center; gap: var(--space-7); }
+.shirt-view { text-align: center; }
+.shirt-view > p { margin-top: var(--space-3); color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-bold); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+.shirt { position: relative; width: 100%; aspect-ratio: 4 / 5; overflow: hidden; color: var(--text-on-inverse); background: var(--accent-sky); clip-path: polygon(22% 0, 37% 0, 42% 8%, 58% 8%, 63% 0, 78% 0, 100% 14%, 88% 35%, 79% 29%, 79% 100%, 21% 100%, 21% 29%, 12% 35%, 0 14%); }
+.shirt::before { position: absolute; top: -1%; left: 42%; width: 16%; height: 11%; border-radius: 0 0 var(--radius-full) var(--radius-full); background: var(--canvas); content: ""; }
+.shirt-lockup { position: absolute; top: 22%; left: 28%; display: flex; align-items: center; gap: var(--space-2); color: var(--text-on-inverse); font-size: var(--step-1); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-tight); }
+.shirt-lockup img { width: 46px; height: 46px; }
+.shirt-back-art { position: absolute; inset: 18% 23% auto; text-align: left; }
+.shirt-back-art img { width: 78px; height: 78px; margin-bottom: var(--space-4); }
+.shirt-back-art strong { display: block; max-width: 10ch; font-size: var(--step-4); line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); }
+.shirt-back-art span { display: block; margin-top: var(--space-5); padding-top: var(--space-3); border-top: 2px solid currentColor; font-size: var(--step-0); font-weight: var(--weight-bold); letter-spacing: var(--tracking-wide); line-height: var(--leading-normal); text-transform: uppercase; }
+.apparel-notes { display: flex; justify-content: center; gap: var(--space-3); margin-top: var(--space-6); }
+.apparel-note { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--surface); font-size: var(--step-0); color: var(--text-secondary); }
+.apparel-swatch { width: 18px; height: 18px; border: 2px solid var(--surface); border-radius: var(--radius-full); background: var(--accent-sky); }
+.apparel-swatch.leaf { background: var(--accent-leaf); }
 `;
 
+function apparelHtml() {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Talk-Active design system — apparel</title>
+<link rel="stylesheet" href="/src/tokens.css">
+<link rel="stylesheet" href="/src/styles.css">
+<link rel="stylesheet" href="/src/_preview.css">
+</head>
+<body>
+<main class="apparel-spec">
+  <header class="apparel-heading">
+    <p class="overline">Talk-Active team apparel</p>
+    <h1>One bird. One ink. Recognizable across the room.</h1>
+    <p class="page-lede">The shirt carries the colour; the speaking-bird mark and typography print in warm white.</p>
+  </header>
+  <div class="apparel-stage">
+    <article class="shirt-view">
+      <div class="shirt">
+        <div class="shirt-lockup"><img src="/src/assets/cockatoo-mark-white.svg" alt=""><span>Talk-Active</span></div>
+      </div>
+      <p>Front · compact left-chest lockup</p>
+    </article>
+    <article class="shirt-view">
+      <div class="shirt">
+        <div class="shirt-back-art">
+          <img src="/src/assets/cockatoo-mark-white.svg" alt="">
+          <strong>Practice the answer before the question.</strong>
+          <span>Project → rubric → attempt → evidence → defend</span>
+        </div>
+      </div>
+      <p>Back · product promise and rehearsal loop</p>
+    </article>
+  </div>
+  <div class="apparel-notes">
+    <span class="apparel-note"><i class="apparel-swatch"></i>Primary · Sky blue #1B7EA6</span>
+    <span class="apparel-note"><i class="apparel-swatch leaf"></i>Approved alternate · Deep leaf #2F5923</span>
+    <span class="apparel-note">One warm-white ink · #FFFEF9</span>
+  </div>
+</main>
+</body>
+</html>`;
+}
+
 function previewHtml(surface) {
+  if (surface === 'apparel') return apparelHtml();
   const booth = surface === 'booth';
   return `<!doctype html>
 <html lang="en">
@@ -240,7 +304,7 @@ async function main() {
     await cdp.call('Page.enable');
     await cdp.call('Runtime.enable');
 
-    for (const surface of ['app', 'booth']) {
+    for (const surface of ['app', 'booth', 'apparel']) {
       // The preview must be served, not loaded from file://, or the CSP and the
       // stylesheet paths do not match what ships.
       const cssFile = join(ROOT, 'src', '_preview.css');
@@ -263,10 +327,12 @@ async function main() {
 
     cdp.close();
   } finally {
+    const chromeStopped = new Promise((resolve) => chrome.once('exit', resolve));
     chrome.kill();
     server.kill();
+    await Promise.race([chromeStopped, delay(1000)]);
     for (const file of temporary) rmSync(file, { force: true });
-    rmSync(profile, { recursive: true, force: true });
+    rmSync(profile, { recursive: true, force: true, maxRetries: 4, retryDelay: 100 });
   }
 
   process.stdout.write(`design-preview:\n  status: ok\n`);

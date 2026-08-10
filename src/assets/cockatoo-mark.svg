@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Talk-Active speaking bird</title>
+  <desc id="desc">A full-body blue, green, yellow, and orange parrot speaking inside a black speech bubble.</desc>
+  <path fill="#101312" d="M12 4h40a8 8 0 0 1 8 8v34a8 8 0 0 1-8 8h-4l3 8-13-8H12a8 8 0 0 1-8-8V12a8 8 0 0 1 8-8Z"/>
+  <path fill="#1b7ea6" d="M27 48c1-5 0-12 1-19 1-8 6-14 13-15 6-1 11 2 12 7 1 4-2 8-7 10-1 7-3 13-7 17l-7 11-1-11-6 10 2-10Z"/>
+  <path fill="#3a731f" d="M28 30c1-9 6-15 13-16 6-1 10 2 12 6-5-1-9 1-11 5-5-2-9 0-14 5Z"/>
+  <path fill="#f2b90c" d="M37 25c5 3 7 8 6 14-1 5-4 9-8 13 1-7 0-15-3-22 1-2 3-4 5-5Z"/>
+  <path fill="#145f7e" d="M32 28c5 3 7 7 7 12 0 5-3 9-7 13 2-8 1-17 0-25Z"/>
+  <path fill="#fffef9" d="M39 18c5-2 10 0 13 4 0 4-2 7-6 9-4-1-7-5-7-9v-4Z"/>
+  <path fill="#bf6b04" d="M50 19c6 0 10 3 12 7-2 3-5 6-10 7 1-6 1-10-2-14Z"/>
+  <path fill="#101312" d="M52 27c4-1 7-1 9-1-2 3-5 5-9 6Z"/>
+  <circle cx="45" cy="20" r="1.8" fill="#101312"/>
+</svg>

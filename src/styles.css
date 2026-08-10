@@ -15,7 +15,9 @@ body {
   margin: 0;
   min-width: 320px;
   color: var(--text-primary);
-  background: var(--canvas);
+  background-color: var(--canvas);
+  background-image: var(--canvas-grain);
+  background-size: 22px 22px;
   font-family: var(--font-ui);
   font-size: var(--step-1);
   line-height: var(--leading-normal);
@@ -26,8 +28,8 @@ button, input, textarea, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { color: inherit; }
 
-/* One focus treatment everywhere. Amethyst reads as "the system is pointing at
-   this", which is the same job it does for a citation. */
+/* One warm, high-contrast focus treatment everywhere. Evidence keeps its own
+   blue channel; keyboard focus uses sunlight so the meanings never collide. */
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
@@ -84,14 +86,8 @@ h3 { margin-bottom: 0; font-size: var(--step-2); line-height: var(--leading-snug
 .brand-mark {
   width: 36px;
   height: 36px;
-  display: grid;
-  place-items: center;
+  display: block;
   flex: 0 0 auto;
-  color: var(--brand-contrast);
-  background: var(--brand);
-  border-radius: 50% 50% 50% var(--radius-md);
-  font-size: var(--step-2);
-  font-weight: var(--weight-bold);
 }
 
 .main-nav { display: grid; gap: var(--space-1); margin-top: var(--space-7); }
@@ -106,6 +102,7 @@ h3 { margin-bottom: 0; font-size: var(--step-2); line-height: var(--leading-snug
   color: var(--text-on-inverse-muted);
   background: transparent;
   border: 0;
+  border-left: 3px solid transparent;
   border-radius: var(--radius-md);
   font-size: var(--step-0);
   font-weight: var(--weight-bold);
@@ -115,7 +112,10 @@ h3 { margin-bottom: 0; font-size: var(--step-2); line-height: var(--leading-snug
 }
 
 .nav-item:hover { color: var(--text-on-inverse); background: var(--inverse-raised); }
-.nav-item.is-active { color: var(--text-on-inverse); background: var(--brand); }
+.nav-item.is-active {
+  color: var(--surface-inverse); background: var(--text-on-inverse);
+  border-left-color: var(--accent-sun);
+}
 .nav-icon { width: 20px; color: inherit; font-size: var(--step-2); text-align: center; }
 
 .sidebar-projects { margin-top: var(--space-6); }
@@ -193,13 +193,13 @@ h3 { margin-bottom: 0; font-size: var(--step-2); line-height: var(--leading-snug
   min-height: 46px;
   display: inline-flex; align-items: center; justify-content: center;
   gap: var(--space-2); padding: 0 var(--space-5);
-  border: 0; border-radius: var(--radius-md);
+  border: 0; border-radius: var(--radius-full);
   font-size: var(--step-0); font-weight: var(--weight-heavy);
   cursor: pointer;
   transition: transform var(--duration-fast) var(--ease), background var(--duration-fast) var(--ease);
 }
 .button:hover { transform: translateY(-1px); }
-.button-primary { color: var(--brand-contrast); background: var(--brand); box-shadow: var(--shadow-1); }
+.button-primary { color: var(--brand-contrast); background: var(--brand); }
 .button-primary:hover { background: var(--brand-hover); }
 .button-secondary { color: var(--text-primary); background: var(--surface); border: 1px solid var(--border); }
 .button-light { color: var(--brand); background: var(--surface); }
@@ -216,8 +216,8 @@ h3 { margin-bottom: 0; font-size: var(--step-2); line-height: var(--leading-snug
 .surface {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-1);
+  border-bottom-width: 3px;
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm);
 }
 
 label { display: block; margin-bottom: var(--space-2); font-size: var(--step-0); font-weight: var(--weight-heavy); }
@@ -236,19 +236,23 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(340px, .8fr);
   margin-bottom: var(--space-5);
   color: var(--text-on-inverse); background: var(--surface-inverse);
-  border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) var(--radius-sm);
+  overflow: hidden;
 }
 .focus-main { position: relative; padding: clamp(1.875rem, 4vw, 3.3125rem); overflow: hidden; }
 .focus-main::after {
-  content: ""; position: absolute; right: -100px; bottom: -210px;
+  content: ""; position: absolute; right: -82px; bottom: -188px;
   width: 420px; height: 420px;
-  border: 1px solid var(--inverse-raised); border-radius: 50%;
+  border-radius: 50%; opacity: .55;
+  background: repeating-radial-gradient(circle at center, transparent 0 38px, var(--inverse-raised) 39px 40px);
 }
 .project-kicker { position: relative; z-index: 1; display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-6); }
 .project-avatar {
   width: 42px; height: 42px; display: grid; place-items: center; flex: 0 0 auto;
-  color: var(--brand-contrast); background: var(--brand);
-  border-radius: var(--radius-md); font-size: var(--step-0); font-weight: var(--weight-heavy);
+  color: var(--surface-inverse); background: var(--inverse-accent);
+  border: 1px solid var(--inverse-accent);
+  border-radius: var(--radius-full); font-size: var(--step-0); font-weight: var(--weight-heavy);
 }
 .project-kicker small, .project-kicker strong { display: block; }
 .project-kicker small { color: var(--text-on-inverse-muted); font-size: var(--step-0); font-weight: var(--weight-bold); }
@@ -266,7 +270,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-bold);
   text-transform: uppercase; letter-spacing: var(--tracking-wide);
 }
-.focus-stat strong { margin: var(--space-1) 0; color: var(--brand); font-size: var(--step-4); font-weight: var(--weight-bold); line-height: 1; }
+.focus-stat strong { margin: var(--space-1) 0; color: var(--text-primary); font-size: var(--step-4); font-weight: var(--weight-bold); line-height: 1; }
 .focus-stat .stat-word { font-size: var(--step-2); }
 .focus-stat small { color: var(--text-muted); font-size: var(--step-0); }
 
@@ -275,15 +279,15 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .section-title-row { display: flex; align-items: start; justify-content: space-between; gap: var(--space-5); }
 .section-title-row h2 { font-size: var(--step-3); }
 .time-pill {
-  padding: var(--space-1) var(--space-3); color: var(--text-muted);
-  background: var(--surface-sunken); border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-3); color: var(--accent-sun-strong);
+  background: var(--accent-sun-wash); border-radius: var(--radius-full);
   font-size: var(--step-0); font-weight: var(--weight-heavy);
 }
 .session-plan { display: grid; gap: var(--space-4); margin: var(--space-5) 0; padding: 0; list-style: none; }
 .session-plan li { display: flex; gap: var(--space-3); align-items: start; }
 .session-plan li > span {
   width: 28px; height: 28px; display: grid; place-items: center; flex: 0 0 auto;
-  color: var(--brand); background: var(--brand-wash); border-radius: 50%;
+  color: var(--accent-sky); background: var(--accent-sky-wash); border-radius: 50%;
   font-size: var(--step-0); font-weight: var(--weight-heavy);
 }
 .session-plan strong, .session-plan small { display: block; }
@@ -291,13 +295,13 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .session-plan small { margin-top: var(--space-1); color: var(--text-muted); font-size: var(--step-0); }
 .health-ring {
   width: 42px; height: 42px; display: grid; place-items: center;
-  color: var(--brand-contrast); background: var(--brand); border-radius: 50%;
+  color: var(--accent-sun-strong); background: var(--accent-sun-wash); border-radius: 50%;
   font-size: var(--step-0); font-weight: var(--weight-heavy);
 }
 .rubric-health > p { margin: var(--space-4) 0; color: var(--text-muted); font-size: var(--step-0); }
 .mini-criteria { display: grid; gap: var(--space-2); margin-bottom: var(--space-5); }
 .mini-criterion { display: flex; align-items: center; gap: var(--space-2); min-width: 0; font-size: var(--step-0); font-weight: var(--weight-bold); }
-.mini-criterion i { width: 8px; height: 8px; flex: 0 0 auto; background: var(--brand); border-radius: 50%; }
+.mini-criterion i { width: 8px; height: 8px; flex: 0 0 auto; background: var(--accent-leaf); border-radius: 50%; }
 .mini-criterion span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .recent-section { margin-bottom: var(--space-5); }
@@ -318,13 +322,13 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .session-row small { margin-top: var(--space-1); color: var(--text-muted); font-size: var(--step-0); }
 .session-score { display: flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); font-size: var(--step-0); font-weight: var(--weight-heavy); }
 .score-track { width: 55px; height: 5px; background: var(--surface-sunken); border-radius: var(--radius-full); overflow: hidden; }
-.score-track i { display: block; height: 100%; background: var(--brand); border-radius: inherit; }
+.score-track i { display: block; height: 100%; background: var(--accent-sky); border-radius: inherit; }
 .session-status {
   width: max-content; padding: var(--space-1) var(--space-2);
   color: var(--text-muted); background: var(--surface-sunken);
   border-radius: var(--radius-full); font-size: var(--step-0); font-weight: var(--weight-heavy);
 }
-.session-status.defensible { color: var(--brand); background: var(--brand-wash); }
+.session-status.defensible { color: var(--text-secondary); background: var(--surface-sunken); }
 .empty-list { padding: var(--space-6) 0; color: var(--text-muted); font-size: var(--step-0); text-align: center; }
 
 /* ---------------------------------------------------------------------------
@@ -359,8 +363,8 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .setup-rubric h3 { font-size: var(--step-2); }
 .setup-criteria-list { display: grid; gap: var(--space-2); margin: var(--space-5) 0; }
 .setup-criterion { display: grid; grid-template-columns: 26px 1fr; gap: var(--space-3); align-items: center; color: var(--text-secondary); font-size: var(--step-0); font-weight: var(--weight-bold); }
-.setup-criterion span { width: 26px; height: 26px; display: grid; place-items: center; color: var(--brand); background: var(--brand-wash); border-radius: var(--radius-sm); font-size: var(--step-0); }
-.trust-note { display: flex; gap: var(--space-2); margin: 0; padding: var(--space-3); color: var(--text-muted); background: var(--surface-sunken); border-radius: var(--radius-sm); font-size: var(--step-0); }
+.setup-criterion span { width: 26px; height: 26px; display: grid; place-items: center; color: var(--accent-leaf); background: var(--accent-leaf-wash); border-radius: var(--radius-sm); font-size: var(--step-0); }
+.trust-note { display: flex; gap: var(--space-2); margin: 0; padding: var(--space-3); color: var(--accent-leaf); background: var(--accent-leaf-wash); border-radius: var(--radius-sm); font-size: var(--step-0); }
 
 .attempt-layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(260px, .55fr); gap: var(--space-5); }
 .capture-panel { padding: clamp(1.5625rem, 4vw, 2.625rem); }
@@ -373,7 +377,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   background: transparent; border: 0; border-radius: var(--radius-sm);
   font-size: var(--step-0); font-weight: var(--weight-bold); cursor: pointer;
 }
-.capture-tabs button.is-active { color: var(--brand); background: var(--brand-wash); }
+.capture-tabs button.is-active { color: var(--accent-sky); background: var(--accent-sky-wash); }
 /* Recording is live SYSTEM state, not a verdict — caution is correct here. */
 .capture-tabs button.is-recording { color: var(--caution); background: var(--caution-wash); }
 .record-dot { width: 8px; height: 8px; display: inline-block; margin-right: var(--space-2); background: var(--caution); border-radius: 50%; }
@@ -391,7 +395,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .session-goal h3 { margin-bottom: var(--space-3); font-size: var(--step-3); }
 .session-goal p:last-child, .privacy-card p { margin-bottom: 0; color: var(--text-muted); font-size: var(--step-0); }
 .privacy-card { display: flex; gap: var(--space-3); }
-.privacy-icon { width: 32px; height: 32px; display: grid; place-items: center; flex: 0 0 auto; color: var(--brand); background: var(--brand-wash); border-radius: 50%; }
+.privacy-icon { width: 32px; height: 32px; display: grid; place-items: center; flex: 0 0 auto; color: var(--accent-sky); background: var(--accent-sky-wash); border-radius: 50%; }
 .privacy-card strong { font-size: var(--step-0); }
 .privacy-card p { margin-top: var(--space-1); }
 
@@ -448,7 +452,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 }
 #reviewMissingSignals, #matchedSignals, #missingSignals { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
-/* Cue chips. Matched cues are amethyst because a matched cue IS evidence.
+/* Cue chips. Matched cues are blue because a matched cue IS evidence.
    Missing cues are neutral: a thing to rehearse, not a thing you failed. */
 .signal-chip {
   padding: var(--space-1) var(--space-2);
@@ -570,9 +574,8 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .answer-panel { border-right: 1px solid var(--border); }
 #defenseAnswer { min-height: 250px; }
 .feedback-empty { min-height: 360px; display: grid; place-content: center; justify-items: center; text-align: center; }
-.feedback-empty > span {
-  width: 64px; height: 64px; display: grid; place-items: center; margin-bottom: var(--space-4);
-  color: var(--brand); background: var(--brand-wash); border-radius: 50%; font-size: var(--step-3);
+.mascot-guide {
+  width: 72px; height: 72px; display: block; margin-bottom: var(--space-4);
 }
 .feedback-empty h3 { margin-bottom: var(--space-2); }
 .feedback-empty p { max-width: 34ch; margin: 0; color: var(--text-muted); font-size: var(--step-0); }
@@ -642,7 +645,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-bold);
   text-transform: uppercase; letter-spacing: var(--tracking-wide);
 }
-.progress-stats strong { margin: var(--space-2) 0 var(--space-1); color: var(--brand); font-size: var(--step-4); font-weight: var(--weight-bold); }
+.progress-stats strong { margin: var(--space-2) 0 var(--space-1); color: var(--text-primary); font-size: var(--step-4); font-weight: var(--weight-bold); }
 .progress-stats .stat-word { font-size: var(--step-2); }
 .progress-stats small { color: var(--text-muted); font-size: var(--step-0); }
 .progress-chart-card, .history-card { padding: var(--space-6); margin-bottom: var(--space-5); }
@@ -654,8 +657,8 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 }
 .chart-empty { align-self: center; width: 100%; color: var(--text-muted); font-size: var(--step-0); text-align: center; }
 .chart-column { height: 210px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: end; min-width: 38px; }
-.chart-value { margin-bottom: var(--space-1); color: var(--brand); font-size: var(--step-0); font-weight: var(--weight-heavy); }
-.chart-bar { width: min(52px, 80%); min-height: 4px; background: var(--brand); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+.chart-value { margin-bottom: var(--space-1); color: var(--accent-sky); font-size: var(--step-0); font-weight: var(--weight-heavy); }
+.chart-bar { width: min(52px, 80%); min-height: 4px; background: var(--accent-sky); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
 .chart-label { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); white-space: nowrap; }
 .full-session-list .session-row { grid-template-columns: 44px minmax(180px, 1.3fr) minmax(120px, .7fr) 120px 24px; }
 
@@ -665,7 +668,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .project-dialog {
   width: min(520px, calc(100% - 30px)); padding: 0;
   color: var(--text-primary); background: var(--surface);
-  border: 0; border-radius: var(--radius-lg); box-shadow: var(--shadow-3);
+  border: 2px solid var(--border-strong); border-radius: var(--radius-lg);
 }
 .project-dialog::backdrop { background: var(--backdrop); backdrop-filter: blur(3px); }
 .project-dialog form { padding: var(--space-6); }
@@ -683,7 +686,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   display: flex; align-items: center; gap: var(--space-2);
   padding: var(--space-3) var(--space-4);
   color: var(--text-on-inverse); background: var(--surface-inverse);
-  border-radius: var(--radius-md); box-shadow: var(--shadow-2);
+  border: 1px solid var(--border-strong); border-radius: var(--radius-md);
   font-size: var(--step-0); font-weight: var(--weight-bold);
 }
 .toast[hidden] { display: none; }

@@ -26,6 +26,7 @@ const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 
 const TOKENS = read('src/tokens.css');
 const STYLES = read('src/styles.css');
+const APPAREL_MARK = read('src/assets/cockatoo-mark-white.svg');
 
 // Comments carry the reasoning, and the reasoning mentions the very literals
 // these tests ban. Strip them before linting so documentation is not a defect.
@@ -155,14 +156,14 @@ test('styles.css contains no raw colour literals', () => {
 });
 
 test('styles.css uses semantic tokens, never primitives', () => {
-  // A component asking for `--indigo-500` knows too much. It should ask for
-  // `--brand`, so the palette can move without touching components.
+  // A component asking for `--blue-600` knows too much. It should ask for
+  // `--evidence` or `--accent-sky`, so the palette can move without touching components.
   // --step-* and --space-* are scales, not palettes: components are supposed to
   // reach for those directly. Colour ramps are the ones that must stay hidden.
-  const offenders = linesMatching(STYLES_CODE, /var\(\s*--(indigo|amethyst|slate)-|var\(\s*--white\s*\)/u);
+  const offenders = linesMatching(STYLES_CODE, /var\(\s*--(mono|blue|leaf|sun|orange)-|var\(\s*--paper\s*\)/u);
   assert.equal(
     offenders.length, 0,
-    report(offenders, 'Components may not reference colour primitives (--indigo-*, --amethyst-*, --slate-*, --white). Use a semantic role token so the palette can move without touching components.'),
+    report(offenders, 'Components may not reference colour primitives (--mono-*, --blue-*, --leaf-*, --sun-*, --orange-*, --paper). Use a semantic role token so the palette can move without touching components.'),
   );
 });
 
@@ -186,7 +187,7 @@ test('spacing comes from the spacing scale', () => {
 const EVIDENCE_CONTEXT = /evidence|quote|blockquote|transcript|verdict|citation|cited|matched|voice/iu;
 
 test('the evidence colour is reserved for evidence', () => {
-  // INV-3: every verdict cites the evidence behind it. If amethyst also means
+  // INV-3: every verdict cites the evidence behind it. If evidence blue also means
   // "primary button" then it means nothing, and the citation stops reading as
   // special the moment a visitor sees it twice on unrelated things.
   const offenders = [];
@@ -244,16 +245,48 @@ test('no verdict is coloured as a pass or a fail', () => {
   );
 });
 
-test('no green anywhere in the palette', () => {
-  // Green is excluded on purpose, not by accident: it is half of the traffic
-  // light, and its absence is what stops a reviewer reading verdicts as marks.
-  const greens = [];
-  for (const [name, value] of ROOT_TOKENS) {
-    if (!/^#[0-9a-f]{6}$/iu.test(value)) continue;
-    const [r, g, b] = [1, 3, 5].map((i) => parseInt(value.slice(i, i + 2), 16));
-    if (g > r + 24 && g > b + 24) greens.push(`${name}: ${value}`);
+test('the captain-supplied speaking-bird palette remains exact', () => {
+  const supplied = {
+    '--blue-600': '#1b7ea6',
+    '--leaf-600': '#2f5923',
+    '--leaf-500': '#3a731f',
+    '--sun-500': '#f2b90c',
+    '--orange-500': '#bf6b04',
+  };
+  for (const [name, expected] of Object.entries(supplied)) {
+    assert.equal(ROOT_TOKENS.get(name), expected, `${name} drifted from the supplied bird palette`);
   }
-  assert.deepEqual(greens, [], `green primitives found — the palette deliberately has none:\n    ${greens.join('\n    ')}`);
+});
+
+test('the apparel mark remains a one-ink warm-white speaking bird', () => {
+  assert.match(APPAREL_MARK, /full-body speaking bird inside a white speech-bubble outline/u);
+  assert.match(APPAREL_MARK, /#fffef9/iu, 'the visible apparel artwork must use warm white ink');
+
+  // Black and pure white are permitted only inside the SVG mask: they remove
+  // the eye and wing line from the warm-white print and never render as ink.
+  const visibleArtwork = APPAREL_MARK.replace(/<defs>[\s\S]*?<\/defs>/u, '');
+  const visibleColours = [...visibleArtwork.matchAll(/(?:fill|stroke)="(#[0-9a-f]{3,8})"/giu)]
+    .map((match) => match[1].toLowerCase());
+  assert.deepEqual(
+    [...new Set(visibleColours)],
+    ['#fffef9'],
+    'the apparel mark must remain one visible warm-white ink; fabric supplies every other colour',
+  );
+});
+
+test('green structure never colours a verdict or score', () => {
+  const offenders = [];
+  for (const block of STYLES_CODE.matchAll(/([^{}]+)\{([^{}]*)\}/gu)) {
+    const [, selector, body] = block;
+    if (!/var\(\s*--(accent-leaf|brand)/u.test(body)) continue;
+    if (/evidence|criterion-result|coverage|score|session-status|verdict/iu.test(selector)) {
+      offenders.push({ number: 0, line: `${selector.trim().slice(0, 70)} { … green structure … }` });
+    }
+  }
+  assert.equal(
+    offenders.length, 0,
+    report(offenders, 'Leaf green is structure and setup context only. Using it on verdicts or scores would imply a pass state.'),
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -365,7 +398,7 @@ for (const [fg, bg, minimum, why] of BOOTH_PAIRS) {
 
 // Hue angle, because luminance contrast is the wrong question here. Two colours
 // can have identical luminance and be obviously different (red and green), so a
-// contrast ratio cannot tell you whether indigo and amethyst read as one colour
+// contrast ratio cannot tell you whether brand green and evidence blue read as separate colours
 // or two. Hue separation can.
 function hueAngle(hex) {
   const clean = hex.trim().replace('#', '');
@@ -389,16 +422,16 @@ function hueSeparation(a, b) {
 }
 
 test('evidence and brand read as two colours, not one', () => {
-  // The reserved-hue idea is the whole differentiator: amethyst means "this is
-  // quoted from your transcript" and nothing else. If it reads as "indigo,
-  // slightly off" under exhibition lighting, the idea silently dies and the
+  // The reserved-hue idea is the whole differentiator: blue means "this is
+  // quoted from your transcript" and nothing else. If it reads as the brand
+  // colour under exhibition lighting, the idea silently dies and the
   // citation stops standing out. 18° is the floor; the palette ships ~28°.
   for (const [label, overrides] of [['light', new Map()], ['booth', BOOTH_TOKENS]]) {
     const separation = hueSeparation(resolve('--evidence', overrides), resolve('--brand', overrides));
     assert.ok(
       separation >= 18,
       `${label}: --evidence and --brand are only ${separation.toFixed(1)}° apart in hue. `
-      + 'Reserving amethyst for citations only works if it is visibly not indigo.',
+      + 'Reserving blue for citations only works if it is visibly not brand green.',
     );
   }
 });

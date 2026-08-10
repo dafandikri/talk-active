@@ -1,214 +1,148 @@
-# Prompt for Claude Design
+# Talk-Active design brief
 
-Paste everything below the line into [claude.ai/design](https://claude.ai/design).
-It is self-contained: it carries the product thesis, the exact tokens, and the
-constraints, so a fresh session produces work that drops into this repo without
-translation.
+Use this brief when generating or reviewing product, booth, print, or apparel
+work. Attach `docs/design/preview/app.png` and
+`docs/design/preview/booth.png`; they render from the shipped token source.
 
-Attach `docs/design/preview/app.png` and `docs/design/preview/booth.png` if you
-can — they show the system as it currently renders.
+## Product
 
-**Keep the constraints section intact.** It is doing most of the work. The parts
-that read like arbitrary restrictions ("no green", "no percentage") are load
-bearing: each one is an invariant we are scored against, and dropping it
-produces confident, attractive, wrong work.
+Talk-Active is a rubric-grounded rehearsal workspace for Indonesian university
+students. A student brings the evaluator's actual rubric, rehearses an attempt,
+and sees either the exact sentence that supports each criterion or the exact
+cues that were missing. They then answer one judge-style question grounded in
+their weakest claim and save the session.
 
----
+The loop is:
 
-You are designing Talk-Active, and I need you to work from a thesis rather than
-from taste.
+> project → rubric → attempt → cited evidence → hardest question → progress
 
-## What it is
+It is not a landing page, generic public-speaking scorecard, confidence meter,
+or gamified habit app.
 
-Talk-Active is a rehearsal workspace for Indonesian university students
-preparing for judged presentations — thesis defences, competition pitches,
-scholarship interviews. The student pastes in the *actual rubric the judge will
-use*, rehearses an answer, and gets back, per criterion, either **the exact
-sentence from their own transcript that satisfies it**, or **the list of cues
-that were missing**.
+## Thesis
 
-It is built by team FAM for the RISTEK Hackathon 2026 at Universitas Indonesia.
-We placed 2nd in the preliminary round. The finals are a live demo plus a booth
-exhibition, judged on Technical Execution (30), Interactive Demo (30),
-Communication (30), Booth & Visual Display (20), Design & UX (10).
+Every competitor gives you a score. Talk-Active gives you the quote.
 
-## The one idea everything serves
+The cited transcript span is therefore the largest thing on the review screen.
+It outranks the page title and every supporting metric. Blue identifies cited
+evidence and nothing else. A criterion without evidence remains neutral and
+lists the missing cues; it never appears as a red failure or green success.
 
-Every competitor gives you a score. **We give you the quote.**
+## Identity: a bird that speaks
 
-Nothing else about the product matters as much as that. So the design has one
-job: make the citation the thing you cannot miss. When you are unsure about a
-decision, ask which option makes the quoted sentence easier to find, and pick
-that one.
+The mascot is a simplified full-body speaking bird in profile—face, wing,
+chest, and long tail visible—inside a black speech bubble. It is not a floating head,
+assistant orb, emoji, or cartoon scorekeeper.
 
-Three rules follow, and they are non-negotiable:
+Use `src/assets/cockatoo-mark.svg` as the source. The bird itself carries the
+supplied palette:
 
-**1. Evidence is the largest thing on screen.** The quoted transcript span
-outranks the page title. Not "is prominent" — literally larger in the type
-scale. Before this system, the quote rendered at 9px underneath a percentage
-and a progress bar, which is how a differentiator becomes a slogan.
+- sky blue `#1B7EA6` — wing and tail;
+- deep leaf `#2F5923` and bright leaf `#3A731F` — crown and back;
+- sunlight `#F2B90C` — chest and attention;
+- warm orange `#BF6B04` — open beak and small warm details;
+- warm white `#FFFEF9` — face patch;
+- near black `#101312` — speech-bubble ground and text.
 
-**2. One colour means evidence and nothing else.** Indigo carries structure.
-Amethyst appears *only* where the product points at the user's own words. Put
-amethyst on a primary button and it stops meaning anything, and rule 1 dies
-with it.
+The bird may welcome, explain an empty state, or invite the next answer. It
+never congratulates a pass, scolds a failure, or claims to understand a person.
 
-**3. Nothing is graded.** We do deterministic cue matching. We cannot measure
-how good a speaker is, so we must never imply that we can. A criterion is
-either *evidence found* or *no cue matched*. There is no percentage, no letter,
-no ring filling up, no green tick, no red cross.
+## Colour roles
 
-## Voice
+Use semantic roles, never raw values in components.
 
-Plain, specific, calm. Indonesian university students who are nervous about a
-real evaluation. Never gamified, never congratulatory, never scolding. "No cue
-matched" — not "You failed this criterion" and not "Almost there!"
+```text
+--brand / --brand-hover / --brand-wash
+  leaf green: shell, primary action, selection, setup
 
-A criterion with no evidence is the next thing to rehearse, not a mark against
-the person.
+--evidence / --evidence-strong / --evidence-wash / --evidence-border
+  sky blue: cited speech and matched cues only
 
-## Tokens — use these exactly
+--absence / --absence-wash / --absence-border
+  neutral: no cue matched
 
-Colour is expressed only through role tokens. Never a raw hex.
+--accent-sky
+  non-verdict practice guidance
 
-```
-STRUCTURE (indigo, hue 250°)
-  --brand              #4A32C8   nav, primary action, headings
-  --brand-hover        #3A26A8
-  --brand-wash         #ECE8FB
-  --brand-contrast     #FFFFFF
-  --surface-inverse    #14093F   dark hero panels, sidebar
-  --inverse-raised     #2A1C8A   chips on a dark ground
-  --inverse-accent     #9186EC   accents on a dark ground
+--accent-leaf
+  setup and navigation only; never a result
 
-EVIDENCE (amethyst, hue 278° — RESERVED)
-  --evidence           #9C38D6   the citation rule and marker
-  --evidence-strong    #631D8C   citation labels and text
-  --evidence-wash      #F8EBFF   the citation card ground
-  --evidence-border    #CE8AF5
+--accent-sun
+  attention, timing, current context
 
-ABSENCE (neutral — never red)
-  --absence            #8F8AA3
-  --absence-wash       #EFEEF4
-
-TEXT / SURFACE
-  --text-primary       #16141F
-  --text-secondary     #3E3A50
-  --text-muted         #6B6680
-  --canvas             #F8F8FB
-  --surface            #FFFFFF
-  --surface-sunken     #EFEEF4
-  --border             #DCDAE6
-
-SYSTEM STATE — failed analysis or degraded service ONLY, never a verdict
-  --danger             #B3261E
-  --caution            #8A5A00
+--accent-orange
+  small warm detail; never a large field
 ```
 
-The 28° hue gap between indigo and amethyst is deliberate and is enforced by a
-test. Two purples closer than that read as one colour under exhibition lighting
-and the whole reserved-hue idea collapses. Do not narrow it.
+Warm white remains the dominant application surface. Deep leaf green carries
+the sidebar and hero surfaces. The booth switches to a near-black ground so the
+bird palette stays legible from two metres.
 
-**Type scale** — 7 steps, ratio 1.25. Use only these:
+Green must not colour a criterion verdict, evidence coverage number, defense
+status, progress score, or session result. In those contexts it reads as
+“passed,” which the product cannot claim.
 
-```
---step-0  12px   overline, meta, badge
---step-1  15px   body
---step-2  19px   card title
---step-3  23px   section head
---step-4  29px   page title
---step-5  37px   hero
---step-6  46px   booth display only
---step-evidence  29 → 37px   THE QUOTED SPAN (outranks the page title)
-```
+## Typography
 
-**Two typefaces, each with a job:**
+Use the shipped platform stacks only.
 
-- `--font-ui` — platform sans stack. *The application speaking.*
-- `--font-voice` — Georgia. **The user speaking.** Applied only to quoted
-  transcript spans and the judge's question.
+- `--font-ui`: application voice, used for controls and product copy.
+- `--font-voice`: Georgia, used only for a person's quoted speech and the
+  judge's question.
 
-That split is a semantic signal. When you see a serif in Talk-Active, those are
-somebody's actual words. Do not use the serif for stat numbers, headings, or
-decoration — it destroys the signal.
+Use only the token scale: 12, 15, 19, 23, 29, 37, and 46px. The quoted-evidence
+step ranges from 29 to 37px and must be able to outrank the 29px page title.
 
-Do not introduce a webfont. Our CSP is `style-src 'self'` and we ship no font
-files, so anything else silently fails to load.
+## Material
 
-**Spacing** — 4px scale: 4, 8, 12, 16, 24, 32, 48, 64, 96. Nothing between.
-**Radius** — 8, 12, 20, full. **Elevation** — three shadows, no more.
+Do not use blurred card shadows. Depth comes from crisp outlined paper edges, a
+heavier bottom border, one asymmetric speech-bubble corner, and thin sound-wave
+contours on a dark hero surface. The canvas may carry a nearly invisible paper
+grain.
 
-## The component that matters
+No glassmorphism, decorative gradients, glow, fake 3D, or drop shadows on type.
 
-```
+## Priority components
+
+1. Citation card, both evidence-found and no-cue states.
+2. Review screen, with the citation visibly dominant.
+3. Judge room, tying the follow-up and response back to one rubric criterion.
+4. Mobile application path at 390px.
+5. 16:9 booth display, readable from two metres.
+6. T-shirt: sky-blue `#1B7EA6` fabric with the dedicated one-ink warm-white
+   bird/chat-bubble lockup on the front; the product promise and five-step
+   rehearsal loop on the back. Use `src/assets/cockatoo-mark-white.svg`.
+
+### Citation card
+
+```text
 ┌──────────────────────────────────────────────┐
-│▌ PROBLEM CLARITY               evidence found │
+│▌ PROBLEM CLARITY              evidence found │
 │▌                                              │
-│▌  "Students rehearse alone and get no         │
-│▌   feedback on whether their answer           │
-│▌   actually met the rubric"                   │
+│▌ “Students rehearse alone and get no         │
+│▌  feedback on whether their answer met       │
+│▌  the rubric.”                                │
 │▌                                              │
-│▌  your words, from this attempt               │
+│▌ your words · this attempt                    │
 └──────────────────────────────────────────────┘
-  ▌ 4px --evidence rule · --evidence-wash ground
-    quote in --font-voice at --step-evidence
 ```
 
-```
-┌──────────────────────────────────────────────┐
-│▌ FEASIBILITY                  no cue matched  │
-│▌                                              │
-│▌  Nothing in this attempt matched the cues    │
-│▌  for this criterion. Looked for: timeline,   │
-│▌  cost, team capacity.                        │
-└──────────────────────────────────────────────┘
-  ▌ 4px --absence-border rule · plain --surface
-```
+One quote per row. Criterion name as a compact label. Provenance always present.
+The no-cue state lists what was sought and uses no blue, green, red, X, or tick.
 
-The criterion name is a small uppercase **label on** the quote, not a heading
-above it. One card per row, never two side by side — a quote sharing a row with
-another quote is a quote nobody reads.
+## Product behaviour
 
-## What I want from you
+- Fast and dependency-free on the client.
+- Mobile-first, with no horizontal overflow at 390px.
+- Bite-sized: one clear action per stage.
+- Personal: recognizable bird identity and direct language.
+- Serious: no streaks, confetti, grades, or toy-like score feedback.
+- Accessible: WCAG AA for every shipped text pair.
+- Honest: no “AI-powered,” “understands your argument,” “confidence,” or
+  “guarantees” language unless the build demonstrably supports it.
 
-1. **The citation card**, both states, refined. This is the priority; if you do
-   nothing else, do this.
-2. **The review screen** it lives on. Coverage is shown small and labelled "not
-   a confidence or ability score" — it supports the evidence, it must not
-   compete with it.
-3. **The judge room** — a judge-style follow-up question, an answer box, and
-   feedback tied back to the same rubric criterion.
-4. **The booth display** — a 16:9 dark screen (`#140A24` ground) that loops the
-   product's value in one line plus one live citation, readable at 2 metres in a
-   bright hall. Nothing below 19px. No motion that competes with a person
-   speaking in front of it.
-5. **A t-shirt back print** — the citation card, reduced to its essentials, in
-   one or two screen-print colours on a deep indigo garment. It should teach a
-   stranger standing behind us in a queue what the product does.
+## Acceptance test
 
-## Hard constraints — work will be rejected if it breaks these
-
-- **No green anywhere.** Green is half a traffic light, and traffic lights are
-  the grammar of grading. Its absence is what stops a verdict reading as a mark.
-- **No percentage, ring, bar, letter grade, or star rating on a criterion.**
-- **No red or amber on a verdict.** Red is allowed only on a destructive action
-  or a genuine system failure.
-- **Amethyst only on evidence.** Not on buttons, not on nav, not on decoration.
-- **The serif only on quoted speech.**
-- **Nothing smaller than 12px**, on any surface.
-- **WCAG AA** on every text pair; the citation pair must be comfortably clear of
-  the line, not marginal.
-- **No gradients on text, no glassmorphism, no drop shadows on type, no emoji,
-  no illustration.** This is an evaluation tool used by anxious people shortly
-  before something that matters to them.
-- **No claim the product cannot support.** No "AI-powered", no "understands your
-  argument", no "confidence", no "guarantees". Describe what it does.
-
-## What good looks like
-
-A judge walks up to our booth, glances at the screen for three seconds, and
-without anyone explaining anything, understands: *it found the sentence I said,
-and it told me which criterion that sentence answers.*
-
-If your design achieves that, everything else is negotiable. If it does not, no
-amount of polish saves it.
+A judge should understand within three seconds that Talk-Active found a sentence
+the student said and mapped it to a real criterion. If that relationship is not
+the first thing they see, the design is not finished.

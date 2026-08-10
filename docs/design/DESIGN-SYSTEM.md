@@ -1,345 +1,281 @@
 # Talk-Active — design system
 
-One source of truth for four surfaces: the web app, the booth display, printed
-material, and what the team wears on 14 August.
+One source of truth for the product, booth display, printed material, and team
+apparel. The implementation lives in `src/tokens.css`; this document records the
+reasoning; `test/design-system.test.mjs` prevents drift.
 
-Source of truth is `src/tokens.css`. This document explains the reasoning; the
-tokens are the implementation; `test/design-system.test.mjs` is the enforcement.
-When those three disagree, the test wins, then the tokens, then this file.
-
----
-
-## 1. What this system is about
-
-Talk-Active does one thing nothing else in the category does: **it shows you the
-sentence you actually said, and tells you which criterion it satisfies.** Not a
-score. Not a vibe. A quote, with a name attached.
-
-Every decision below exists to make that one thing visible. That is the test for
-any future addition: does it make the citation easier to find, or does it
-compete with it?
-
-Three rules follow, and they are the whole system:
-
-**Evidence is the largest thing on screen.** The quoted span outranks the page
-title in the type scale. Not by convention — `--step-evidence` is literally
-defined larger than `--step-4`, and a test asserts it. Before this system, the
-quote rendered at 9px underneath a percentage and a progress bar: the single
-most important element on the review screen was the smallest text on it.
-
-**One colour means evidence and nothing else.** Indigo carries structure.
-Amethyst appears only where the product is pointing at the user's own words.
-Spend it on a button and it stops meaning anything.
-
-**Nothing is graded.** INV-2 forbids claiming an ability score and INV-4
-requires the limits to stay visible. So the palette contains no green at all,
-and a criterion is either *evidence found* or *no cue matched*. Neither reads as
-a mark out of ten, which is what makes the disclaimer on the review screen true
-rather than defensive.
+When these disagree, the tests win, then the tokens, then this document.
 
 ---
 
-## 2. Colour
+## 1. The product thesis
 
-### Why purple, and why two of them
+Talk-Active shows a student the sentence they actually said and the rubric
+criterion it supports. It does not grade confidence, personality, or ability.
 
-Purple carries creativity, wisdom, and vision, and it is the one hue no other
-team at a student hackathon commits to properly. `#4A32C8` is already ours: it
-is `ristekpurple` from the submitted proposal, so a judge who read the document
-meets the same colour at the booth. Continuity is free credibility.
+That creates three permanent rules:
 
-But one purple cannot carry both "this is our brand" and "this is your
-evidence." So the system runs two ramps, deliberately separated in hue:
+1. **Evidence is the largest thing on the review screen.** The cited quote uses
+   `--step-evidence`, which is larger than the page-title step.
+2. **Blue means cited evidence.** It is reserved for transcript spans, matched
+   cues, and evidence-specific supporting context.
+3. **Absence is neutral.** “No cue matched” names what was missing; it is not a
+   red failure state or a green success state.
 
-| | Hue | Job |
+The visual system serves those rules. It is not a palette laid on top of a
+dashboard.
+
+---
+
+## 2. Personality: a bird that speaks
+
+The mascot is a full-body speaking bird, not a floating head, face sticker, or
+generic assistant orb. It stands in profile with a visible tail, wing, face,
+and open beak. The enclosing shape is a speech bubble, so the mark still reads
+as voice at favicon size.
+
+The bird carries the colour. The workspace remains composed and usable.
+
+- Blue wing and tail: clarity and evidence.
+- Green crown and back: growth and preparation.
+- Yellow chest: attention and energy.
+- Orange open beak: warmth and the act of speaking.
+- Black bubble: seriousness and contrast.
+- White face patch: legibility at small sizes.
+
+### Mascot behaviour
+
+The bird may welcome, explain an empty state, point to the next step, or invite
+a student to answer in their own words. It never celebrates a “pass,” scolds a
+“failure,” or presents an ability score. It is a rehearsal partner, not a judge.
+
+### Mark rules
+
+- Use `src/assets/cockatoo-mark.svg`; do not redraw it per surface.
+- Preserve the full body. Do not crop the mark down to the head.
+- Preserve the supplied colours in the application and booth mark. Apparel is
+  the deliberate exception: use the one-ink asset described below.
+- Keep the black speech-bubble ground around the bird.
+- At small sizes, remove supporting copy before shrinking the mark below 32px.
+- On apparel, use `src/assets/cockatoo-mark-white.svg`; never recolour the
+  full-colour application asset by eye.
+
+---
+
+## 3. Colour
+
+The captain supplied the speaking-bird palette. Its exact values are tested.
+
+| Primitive | Hex | Role |
 |---|---:|---|
-| **Indigo** | 250° | Structure. Navigation, headers, primary actions, the booth ground. |
-| **Amethyst** | 278° | Evidence. Quoted spans, matched cues, the citation rule. Nothing else. |
+| Sky blue | `#1B7EA6` | Evidence, matched cues, practice guidance |
+| Deep leaf | `#2F5923` | Shell, primary action, structure |
+| Bright leaf | `#3A731F` | Selected navigation and setup context |
+| Sunlight | `#F2B90C` | Attention, timing, mascot chest |
+| Warm orange | `#BF6B04` | Mascot beak and small warm details |
+| Near black | `#101312` | Text and logo ground |
+| Warm white | `#FFFEF9` | Primary surface |
 
-**28° of separation** is the design decision, and it is enforced. Two purples
-21° apart read as "the same colour, slightly off" under exhibition lighting, and
-the reserved-hue idea silently dies. Amethyst is also more saturated than indigo
-at every step, so it advances while indigo recedes.
+Components never request those primitives directly. They ask for semantic roles:
 
-### Screen values
-
-| Role | Token | Hex | CMYK (computed) |
-|---|---|---|---|
-| Brand | `--indigo-500` | `#4A32C8` | 63 / 75 / 0 / 22 |
-| Deep ground | `--indigo-900` | `#14093F` | 68 / 86 / 0 / 75 |
-| Brand wash | `--indigo-100` | `#ECE8FB` | 6 / 8 / 0 / 2 |
-| **Evidence** | `--amethyst-500` | `#9C38D6` | 27 / 74 / 0 / 16 |
-| Evidence strong | `--amethyst-700` | `#631D8C` | 29 / 79 / 0 / 45 |
-| Evidence wash | `--amethyst-100` | `#F8EBFF` | 3 / 8 / 0 / 0 |
-| Ink | `--slate-900` | `#16141F` | 29 / 35 / 0 / 88 |
-| Muted | `--slate-500` | `#6B6680` | 16 / 20 / 0 / 50 |
-
-The CMYK figures are arithmetic conversions, not measured ink. **Vivid RGB
-purples are outside CMYK gamut and will print duller and greyer than the screen
-suggests** — this is a property of the process, not a mistake to fix. Before
-anything goes to a printer, get a physical proof. If you need a spot colour,
-take the hex to the print shop's Pantone book and match by eye; do not trust a
-Pantone number derived from arithmetic, including any number produced by an
-assistant, this one included.
-
-### Accessibility
-
-Every foreground/background pair the product actually uses is verified in
-`design-system.test.mjs` against WCAG AA (4.5:1 for text, 3:1 for UI), computed
-from the shipped tokens rather than from numbers typed into a comment. The
-citation pair is checked hardest: it is the one element that must never be
-marginal.
-
-### Semantic tokens
-
-Components never name a colour. They name a role:
-
-| Token | Means |
+| Token | Meaning |
 |---|---|
-| `--brand`, `--brand-hover`, `--brand-wash` | structure and primary action |
-| `--evidence`, `--evidence-strong`, `--evidence-wash`, `--evidence-border` | **reserved: quoted user speech only** |
-| `--absence`, `--absence-wash` | no cue matched — neutral, never red |
-| `--text-primary` / `--secondary` / `--muted` | copy hierarchy |
-| `--canvas`, `--surface`, `--surface-sunken`, `--surface-inverse` | grounds |
-| `--danger`, `--caution` | **system** state only: failed analysis (INV-7), degraded gateway (INV-4) |
+| `--brand`, `--brand-hover`, `--brand-wash` | Green product structure and actions |
+| `--evidence`, `--evidence-strong`, `--evidence-wash` | Cited transcript evidence only |
+| `--absence`, `--absence-wash` | No cue matched; neutral, never red |
+| `--accent-sky` | Non-verdict practice guidance |
+| `--accent-leaf` | Setup and navigation context only |
+| `--accent-sun` | Attention, timing, small highlights |
+| `--accent-orange` | Warm micro-detail; never a large field |
+| `--surface-*`, `--text-*`, `--border-*` | Application material and hierarchy |
 
-`--danger` on a criterion result is a design-system violation and the test
-treats it as one. Red on a delete button is fine — that is an action, not a
-verdict.
+### Green is structure, never a result
+
+Green is part of the bird and the product shell. It must not colour evidence
+coverage, a criterion verdict, a defense status, or a progress score. Those
+contexts would turn green into “passed,” contradicting INV-2 and INV-4. A test
+inspects selectors using both `--brand` and `--accent-leaf` for this reason.
+
+### Contrast
+
+Every foreground/background pair used by the product and booth is computed from
+the shipped tokens and tested against WCAG AA. The evidence pair is checked
+most strictly because the citation is the differentiator.
 
 ---
 
-## 3. Typography
+## 4. Typography
 
-### Two typefaces, each with a job
+`--font-ui` is the platform sans. It is the application speaking.
 
-`--font-ui` — the platform sans. **This is the application speaking.**
+`--font-voice` is Georgia with platform fallbacks. It is a person speaking: a
+quoted transcript span or the judge’s question. The serif is never applied to a
+score, badge, avatar, or decorative heading.
 
-`--font-voice` — Georgia. **This is the user speaking.** Applied only to quoted
-transcript spans and the judge's question. When you see a serif in Talk-Active,
-those are somebody's actual words.
-
-That split is a semantic signal, not decoration, and the test enforces it. The
-previous stylesheet sprayed Georgia across stat numbers, avatar circles and icon
-badges, which destroyed the signal entirely.
-
-Both are platform fonts on purpose. The old stylesheet asked for `Inter` with no
-`@font-face`, no font file in the repo, and a CSP (`style-src 'self'`) that
-blocks Google Fonts. **It never loaded once.** The app rendered in whatever the
-OS supplied, so it looked different on a developer's Mac than it would on the
-booth laptop, and nobody knew. Naming a typeface you do not ship is INV-2
-applied to type, and there is now a test that catches it.
+Both stacks resolve locally. The application does not claim to ship a web font
+that its CSP prevents it from loading.
 
 ### Scale
 
-Seven steps, ratio 1.25, anchored at 12px. No two steps are closer than 20%, so
-a wrong choice is visible rather than merely slightly off.
-
-| Token | px | Use |
+| Token | Size | Use |
 |---|---:|---|
-| `--step-0` | 12 | overline, meta, badge |
-| `--step-1` | 15 | body |
-| `--step-2` | 19 | card title |
-| `--step-3` | 23 | section head |
-| `--step-4` | 29 | page title |
-| `--step-5` | 37 | hero |
-| `--step-6` | 46 | booth only |
-| **`--step-evidence`** | **29 → 37** | **the quoted span** |
+| `--step-0` | 12px | overline, metadata, badges |
+| `--step-1` | 15px | body |
+| `--step-2` | 19px | card title |
+| `--step-3` | 23px | section heading |
+| `--step-4` | 29px | page title |
+| `--step-5` | 37px | hero |
+| `--step-6` | 46px | booth headline |
+| `--step-evidence` | 29–37px | cited user speech |
 
-`--step-evidence` outranks `--step-4`. That is how "evidence is the hero" stays
-true after four days of sleep-deprived edits.
-
-The scale replaced 24 distinct pixel sizes ranging from 8px to 40px, several
-within one pixel of each other. Everything formerly at 8–10px is now at least
-12px, which is also the minimum that survives a booth screen at two metres.
+No component invents a font size outside this scale.
 
 ---
 
-## 4. Space, shape, depth
+## 5. Material and depth
 
-**Spacing** is a 4px scale, `--space-1` (4px) through `--space-9` (96px),
-replacing 93 distinct raw pixel values.
+Talk-Active does not use blurred floating-card shadows. They made the product
+look assembled from a generic UI kit and competed with the authenticity of the
+bird identity.
 
-**Radius**: `--radius-sm` 8, `--radius-md` 12, `--radius-lg` 20, `--radius-full`.
+Depth comes from three more specific devices:
 
-**Elevation**: three shadows. A fourth would be a decision nobody could defend.
+- **Crisp paper edges:** a one-pixel outline with a heavier bottom rule.
+- **Speech-bubble asymmetry:** three rounded corners and one tighter corner.
+- **Voice contours:** thin concentric lines on dark hero surfaces, suggesting
+  sound travelling outward rather than a decorative glow.
 
----
+The canvas carries a nearly invisible paper grain. It must disappear before it
+reduces text clarity. There are no decorative gradients, glass cards, or soft
+drop shadows.
 
-## 5. The mark
-
-A circle with one corner squared off — a speech bubble's tail, reduced until
-only the asymmetry survives. A voice, given a shape.
-
-It has to work at 16px in a browser tab, embroidered on a shirt pocket, and two
-metres wide on a booth banner. That rules out gradients, hairlines, and interior
-detail. One shape, one colour, one asymmetric corner.
-
-- On light: indigo mark, white glyph.
-- On dark: white or amethyst mark, indigo glyph.
-- Never on a busy photo. Never rotated. Never re-coloured outside these two.
-- Clear space on all sides equals the corner radius. Nothing intrudes.
+Spacing follows the 4px scale in `tokens.css`. Raw spacing literals do not enter
+component CSS.
 
 ---
 
-## 6. Components that carry the thesis
+## 6. Core components
 
-### The citation card
+### Citation card
 
-The single most important component in the product.
+The citation card is the most important component.
 
-```
-┌─────────────────────────────────────────────┐
-│▌ PROBLEM CLARITY              evidence found │  ← criterion is a LABEL,
-│▌                                             │    not a heading
-│▌  "Students rehearse alone and get no        │  ← the hero: voice serif,
-│▌   feedback on whether their answer          │    --step-evidence,
-│▌   actually met the rubric"                  │    larger than the page title
-│▌                                             │
-│▌  your words, from this attempt              │  ← provenance, always present
-└─────────────────────────────────────────────┘
-   ▌ 4px amethyst rule · amethyst wash ground
-```
-
-When no cue matched:
-
-```
-┌─────────────────────────────────────────────┐
-│▌ FEASIBILITY                 no cue matched  │
-│▌                                             │
-│▌  Nothing in this attempt matched the cues   │
-│▌  for this criterion. Looked for: timeline,  │
-│▌  cost, team capacity.                       │
-└─────────────────────────────────────────────┘
-   ▌ 4px neutral rule · plain surface
+```text
+┌──────────────────────────────────────────────┐
+│▌ PROBLEM CLARITY              evidence found │
+│▌                                              │
+│▌ “Students rehearse alone and get no         │
+│▌  feedback on whether their answer met       │
+│▌  the rubric.”                                │
+│▌                                              │
+│▌ your words · this attempt                    │
+└──────────────────────────────────────────────┘
 ```
 
 Rules:
 
-- **One column, never two.** A quote sharing a row with another quote is a quote
-  nobody reads.
-- **No percentage.** A number out of 100 is an ability score we do not have and
-  must not imply. "evidence found" is a checkable fact about the transcript.
-- **Absence is neutral and specific.** Not red, not empty. It names the cues we
-  looked for, so the user knows what to say next time. INV-3 cuts both ways: a
-  verdict with no quote must show the missing cues instead.
-- **`textContent` only, never `innerHTML`.** The transcript is user input
-  (INV-5).
+- One column. Two quotes never compete side by side.
+- The quote is larger than the criterion label.
+- Blue is used only when a cited span exists.
+- Provenance always appears beneath a cited span.
+- User text is inserted through `textContent`, never markup.
+
+### No-cue card
+
+The absence state is plain paper with a neutral rule. It explicitly lists the
+cues the analyzer looked for. It never uses red, green, an X icon, or an empty
+panel.
 
 ### Coverage
 
-Small, and labelled as what it is. INV-4 says evidence coverage is not a
-confidence or ability score — and a large ring is exactly how it starts looking
-like one. It supports the evidence below it; it does not compete.
+Evidence coverage is small and fully labelled. It is supporting context, not a
+confidence or ability score. Green is prohibited here. Trend bars use sky blue;
+headline values remain black.
+
+### Primary action
+
+Primary actions use deep leaf green with a warm-white label. Buttons are pills,
+but surfaces are not all pills. The shape distinguishes actions from content.
+
+### Empty guidance
+
+The full-body bird may appear at 64–96px beside one short instruction. The
+mascot does not fill space with chatter; it makes the next action clearer.
 
 ---
 
-## 7. Booth
+## 7. Application surface
 
-`<body data-surface="booth">` switches the whole theme. Same semantic token
-names, different values, so no component needs to know where it is rendering.
+The application is light because students write and read dense text, demo
+screens are unpredictable, and light surfaces remain legible in exhibition
+lighting.
 
-Deep indigo ground `#140A24`. Amethyst glows against it rather than merely
-sitting there, and that glow is what makes someone walk over from across a hall.
-All booth contrast pairs are verified at AA in the test suite.
+- Warm-white cards sit on a quiet off-white canvas.
+- The sidebar and focus hero use deep leaf green.
+- Yellow marks current attention and time.
+- Blue guides practice and owns evidence.
+- Orange remains a micro-accent, primarily in the mascot.
 
-**The laptop a judge touches stays light.** Dark UIs wash out on unknown
-projectors and under bright exhibition lighting, and light reads as a credible
-work tool rather than a toy. Two targets, two right answers, one token set.
-
-Legibility floor: nothing below `--step-2` (19px) on the booth display, and the
-headline at `--step-6`. Test it at two metres on the actual venue screen, not on
-a desk — this is a C3 acceptance criterion.
-
-No looping animation behind a live demo. Motion next to a person talking steals
-the attention the person needs.
+The interface should feel colourful because the roles are visible, not because
+every card has a different background.
 
 ---
 
-## 8. Apparel
+## 8. Booth and apparel
 
-The shirt is worn during pitching and the exhibition, so it is on camera and in
-every photo taken at the booth. Treat it as a surface, not swag.
+The booth surface uses near black as its ground so the supplied bird palette is
+visible from two metres. The application laptop stays light. Both surfaces use
+the same semantic token names.
 
-**Garment:** deep indigo, matched to `--indigo-900` as closely as the supplier's
-stock allows. Not black, not white. Rich jewel tones hold up on camera without
-the harshness of black or the blowout of white under venue lighting, and an
-indigo shirt puts the team inside the same palette as the product behind them.
+The team shirt reverses the normal colour relationship: the **fabric carries
+the accent colour** and every printed element is one warm-white ink. Use
+`src/assets/cockatoo-mark-white.svg`, which keeps the full-body bird readable
+inside a white speech-bubble outline through negative space.
 
-**Print method:** screen print, one or two colours. On dark fabric a white
-underbase is required or the ink goes dull — budget for it. Avoid gradients and
-anything under 2pt: both die in the wash and in a photo.
+- Primary fabric: sky blue `#1B7EA6`.
+- Approved alternate: deep leaf `#2F5923` when the blue blank is unavailable.
+- Print: warm white `#FFFEF9`, one ink, no simulated process colour.
+- Do not use the yellow or orange palette colours as the shirt ground; white
+  does not have enough contrast on them for the small chest lockup.
+- Front: compact left-chest bird and Talk-Active wordmark.
+- Back: large speaking-bird mark, “Practice the answer before the question,”
+  then the product loop: project → rubric → attempt → evidence → defend.
 
-**Front, left chest:** the mark plus the wordmark, small. Roughly 8 cm wide.
-
-**Back:** this is the part worth getting right. Do not print a logo. Print the
-product's own interaction — a quoted line in the voice serif with the amethyst
-rule beneath it, exactly as the citation card renders it:
-
-```
-     "We tested this with fourteen
-      students at Fasilkom UI"
-     ─────────────────────────────
-     evidence found
-```
-
-Someone standing behind you in a queue learns what the product does without
-being pitched. The shirt demonstrates the idea instead of advertising it, which
-is the same reason the review screen leads with a quote instead of a score.
-
-Keep the quote true. Printing a fabricated quote on a shirt is INV-1 with a
-laundry cycle.
+The source-of-truth render is `docs/design/preview/apparel.png`, generated by
+`pnpm design:preview`. Request a physical proof before ordering; screen RGB
+values are not a fabric or ink specification.
 
 ---
 
-## 9. Slides
+## 9. Young-adult product rules
 
-Purple as accent, not as flood. Deep indigo ground on section breaks and the
-title; light ground for content, because a judge reading dense text on a dark
-projector is a judge who stops reading.
+Young-adult appeal is a behaviour requirement, not an excuse for novelty.
 
-Amethyst appears on a slide only when quoting something real — a user's words, a
-rubric criterion, a judge's question. Same rule as the product. If the deck uses
-amethyst decoratively, the shirt and the booth stop meaning anything.
-
-One idea per slide. Type from the same scale.
-
----
-
-## 10. What the tests enforce
-
-`test/design-system.test.mjs` runs inside `pnpm check`. It fails the build on:
-
-| Rule | Why |
-|---|---|
-| `font-size` outside the scale | 24 near-identical sizes accumulated exactly this way |
-| Raw hex / `rgba()` in `styles.css` | ~40 one-off colours accumulated exactly this way |
-| Primitive tokens in components | a component asking for `--indigo-500` knows too much |
-| Raw px in padding / margin / gap | 93 distinct spacing values accumulated exactly this way |
-| `--evidence-*` outside an evidence context | reserving the hue is the differentiator |
-| `--font-voice` outside quoted speech | the serif is a signal; spread it and it dies |
-| `--danger` / `--caution` on a verdict | green/red is the grammar of grading (INV-2, INV-4) |
-| Any green in the palette | half of a traffic light; its absence is deliberate |
-| A typeface named but not shipped | `Inter` was named for months and never loaded once |
-| Any AA contrast failure | computed from shipped tokens, not from comments |
-| Under 18° hue separation between the purples | below that they read as one colour |
-| `tokens.css` not loaded before `styles.css` | the cascade resolves too late |
-
-**Do not weaken a test to go green.** Change the decision here first, in a
-commit, with the team (AGENTS.md, rule 3). A silently disabled test is a lost
-point on the 14th.
+- Mobile first: the full project → rubric → attempt → evidence → defense path
+  works at 390px with no horizontal overflow.
+- Fast: no client runtime dependencies, no external font or image requests.
+- Bite-sized: one clear action and short supporting copy per stage.
+- Personal: a recognizable speaking bird and direct, non-corporate language.
+- Interactive: quick transitions and visible state changes, with reduced-motion
+  support.
+- Serious: no fake 3D, neon glow, cartoon scoring, or gamified streaks.
 
 ---
 
-## 11. Deliberately excluded
+## 10. Enforcement
 
-Per INV-6, scope stays bounded. Not in this system, and not to be added during
-Innovation Week:
+`test/design-system.test.mjs` fails the gate when:
 
-- Dark mode for the app. The booth theme is not dark mode; it is a different
-  product surface with a different reader at a different distance.
-- Any numeric ability score, per-criterion percentage, or letter grade.
-- Green, and traffic-light verdict colouring.
-- Icon set, illustration style, motion system, charting library.
-- A custom or licensed typeface. Revisit after the hackathon, when there is time
-  to self-host it properly and verify it loads under CSP.
+- a component invents a raw colour, font size, or spacing value;
+- a component reaches for a primitive palette token;
+- blue evidence roles appear outside evidence contexts;
+- the voice typeface appears outside quoted speech;
+- green structure colours a verdict or score;
+- a verdict uses danger or caution colours;
+- supplied bird-palette values drift;
+- contrast drops below the required ratio;
+- the evidence type step stops outranking the page title;
+- a named typeface is neither a platform font nor a shipped asset.
+
+The system is complete only when the exact demo path and `pnpm check` remain
+green.

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Talk-Active one-colour speaking bird</title>
+  <desc id="desc">A white full-body speaking bird inside a white speech-bubble outline for use on coloured apparel.</desc>
+  <defs>
+    <mask id="bird-cutouts">
+      <rect width="64" height="64" fill="#000"/>
+      <path fill="#fff" d="M29 53c1-6 0-13 1-22 1-10 6-17 14-18 6-1 11 2 12 7 1 4-1 8-6 11-1 8-4 15-9 20l-8 11-1-12-7 10 4-7Z"/>
+      <path d="M35 29c5 3 8 8 7 14-1 5-4 9-8 13 2-9 1-18 1-27Z" fill="none" stroke="#000" stroke-width="2.25" stroke-linecap="round"/>
+      <circle cx="47" cy="19" r="1.7" fill="#000"/>
+    </mask>
+  </defs>
+  <path d="M12 5h39a8 8 0 0 1 8 8v32a8 8 0 0 1-8 8h-4l3 8-12-8H12a8 8 0 0 1-8-8V13a8 8 0 0 1 8-8Z" fill="none" stroke="#fffef9" stroke-width="3.5" stroke-linejoin="round"/>
+  <rect width="64" height="64" fill="#fffef9" mask="url(#bird-cutouts)"/>
+  <path fill="#fffef9" d="M53 18c5 0 8 3 10 6-2 2-5 4-9 5 1-4 1-8-1-11Zm1 12c3-1 6-2 8-5-1 4-3 7-7 9l-1-4Z"/>
+</svg>
