@@ -15,7 +15,8 @@
     "project": "node scripts/project.mjs",
     "status": "node scripts/status.mjs",
     "take": "node scripts/take.mjs",
-    "setup:hooks": "git config core.hooksPath .githooks && echo \"pre-push gate enabled\""
+    "setup:hooks": "git config core.hooksPath .githooks && echo \"pre-push gate enabled\"",
+    "design:preview": "node scripts/design-preview.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -468,29 +468,62 @@ function renderReview(result) {
   elements.reviewQuestion.textContent = result.judgeQuestion;
   elements.reviewPace.textContent = `${result.delivery.wordsPerMinute} WPM · ${result.delivery.pace}`;
   elements.reviewFillers.textContent = `${result.delivery.fillerCount} potential fillers`;
-  elements.reviewCriteria.replaceChildren(...result.criteria.map((criterion) => {
-    const card = document.createElement('article');
-    card.className = 'evidence-item';
-    if (criterion.id === result.weakest.id) card.classList.add('is-weak');
-    const topline = document.createElement('div');
-    topline.className = 'evidence-topline';
-    const label = document.createElement('strong');
-    label.textContent = criterion.label;
-    const score = document.createElement('span');
-    score.textContent = `${criterion.score}%`;
-    topline.append(label, score);
-    const track = document.createElement('div');
-    track.className = 'evidence-track';
-    const fill = document.createElement('i');
-    fill.style.width = `${Math.max(2, criterion.score)}%`;
-    track.append(fill);
-    const copy = document.createElement('p');
-    copy.textContent = criterion.excerpt
-      ? `Evidence: “${criterion.excerpt}”`
-      : `Missing: ${criterion.missingSignals.slice(0, 3).join(', ') || 'concrete proof'}`;
-    card.append(topline, track, copy);
-    return card;
-  }));
+  elements.reviewCriteria.replaceChildren(...result.criteria.map(evidenceCard));
+}
+
+// INV-3: no criterion verdict reaches a user without either the transcript span
+// that supports it, or the explicit list of cues that are missing.
+//
+// The quote is a <blockquote> and the largest thing on the card because it is
+// the reason the card exists. It previously rendered as a 9px <p> underneath a
+// percentage and a progress bar — the evidence was literally the smallest text
+// on the screen, which turned "rubric-grounded" into a slogan.
+//
+// The per-criterion percentage is gone on purpose. A number out of 100 implies
+// a measurement of how good the speaker is, which is not something cue matching
+// can produce and not something we may imply (INV-2). "evidence found" is a
+// checkable fact about the transcript instead. Absence is stated neutrally,
+// because a criterion with nothing behind it yet is the next thing to
+// rehearse, not a mark against the speaker.
+function evidenceCard(criterion) {
+  const found = Boolean(criterion.excerpt);
+  const card = document.createElement('article');
+  card.className = 'evidence-item';
+  card.dataset.evidence = found ? 'found' : 'absent';
+
+  const topline = document.createElement('div');
+  topline.className = 'evidence-topline';
+  const label = document.createElement('strong');
+  label.textContent = criterion.label;
+  const state = document.createElement('span');
+  state.className = 'evidence-state';
+  state.textContent = found ? 'evidence found' : 'no cue matched';
+  topline.append(label, state);
+  card.append(topline);
+
+  if (found) {
+    // textContent, never innerHTML: the transcript is user input (INV-5).
+    const quote = document.createElement('blockquote');
+    quote.className = 'evidence-quote';
+    quote.textContent = criterion.excerpt;
+    const source = document.createElement('p');
+    source.className = 'evidence-source';
+    source.textContent = 'your words, from this attempt';
+    card.append(quote, source);
+  } else {
+    const absent = document.createElement('p');
+    absent.className = 'evidence-absent';
+    const cues = criterion.missingSignals.slice(0, 4).join(', ');
+    absent.textContent = 'Nothing in this attempt matched the cues for this criterion.';
+    if (cues) {
+      const looked = document.createElement('span');
+      looked.textContent = ` Looked for: ${cues}.`;
+      absent.append(looked);
+    }
+    card.append(absent);
+  }
+
+  return card;
 }
 
 function analyzeAttempt() {

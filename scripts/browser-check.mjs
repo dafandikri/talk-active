@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
 import { homedir, tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 import { createServer as createAppServer } from './serve.mjs';
 
@@ -377,10 +378,18 @@ async function run() {
   }
 }
 
-run().catch((error) => {
-  process.stdout.write([
-    `error: ${quoted(error.message)}`,
-    `help: ${quoted('Run `pnpm test:browser -- --screenshot /tmp/talkactive.png` to inspect the rendered state')}`,
-  ].join('\n') + '\n');
-  process.exitCode = 1;
-});
+// Only run when invoked directly. design-preview.mjs imports findBrowser from
+// here, and without this guard that import silently executed the entire browser
+// suite as a side effect — doubling the runtime of every preview.
+const INVOKED_DIRECTLY = process.argv[1]
+  && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (INVOKED_DIRECTLY) {
+  run().catch((error) => {
+    process.stdout.write([
+      `error: ${quoted(error.message)}`,
+      `help: ${quoted('Run `pnpm test:browser -- --screenshot /tmp/talkactive.png` to inspect the rendered state')}`,
+    ].join('\n') + '\n');
+    process.exitCode = 1;
+  });
+}

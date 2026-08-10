@@ -1,0 +1,318 @@
+/* ============================================================================
+   TALK-ACTIVE — DESIGN TOKENS
+   The single source of truth for every surface: web app, booth display,
+   printed one-pager, apparel.
+
+   THE ONE RULE
+   ------------
+   Component CSS may only reference SEMANTIC tokens (layer 2).
+   It may never reference a primitive (layer 1), and never a raw value.
+   `test/design-system.test.mjs` fails the build if it does.
+
+   This is what makes the system real. Declaring tokens does nothing — the
+   previous stylesheet declared 123 of them and bypassed every one. A system
+   only exists when the raw value is unavailable.
+
+   WHY TWO PURPLES
+   ---------------
+   Indigo carries structure. Amethyst means one thing and one thing only:
+   this is evidence quoted from the user's own words. Reserving a hue for the
+   product's single differentiator means a visitor learns the rule in about
+   five seconds without being told. Spend amethyst anywhere else and it stops
+   meaning anything.
+
+   WHY NO GREEN AND NO RED IN VERDICTS
+   -----------------------------------
+   Green/red is the universal grammar of grading. Talk-Active does not grade —
+   INV-2 forbids claiming an ability score, and INV-4 requires that limit to be
+   visible rather than buried. So a criterion is either "evidence found"
+   (amethyst) or "no cue matched" (neutral slate). Neither reads as a mark out
+   of ten, which makes the disclaimer on the review screen true rather than
+   defensive. Danger and caution exist below, but only for SYSTEM state — a
+   failed analysis (INV-7), a degraded gateway — never for a verdict.
+   ========================================================================= */
+
+/* ---------------------------------------------------------------------------
+   LAYER 1 — PRIMITIVES
+   Raw ramps. No meaning attached. Never referenced by component CSS.
+   ------------------------------------------------------------------------ */
+:root {
+  /* Indigo — structure, navigation, primary action.
+     500 is #4A32C8, the exact `ristekpurple` from the submitted proposal.
+     Judges who read the proposal meet the same colour at the booth. */
+  --indigo-900: #14093f;
+  --indigo-800: #1e1266;
+  --indigo-700: #2a1c8a;
+  --indigo-600: #3a26a8;
+  --indigo-500: #4a32c8;
+  --indigo-400: #6b5ae0;
+  --indigo-300: #9186ec;
+  --indigo-200: #c3bdf5;
+  --indigo-100: #ece8fb; /* proposal `softpurple` */
+  --indigo-50:  #f6f4fd;
+
+  /* Amethyst — RESERVED FOR EVIDENCE.
+     Built on hue 278°, the hue of the gemstone, which sits 28° from indigo's
+     250°. That gap is the whole point: two purples 21° apart read as "the same
+     colour, slightly off" under exhibition lighting, and the reserved-hue idea
+     collapses. 28° reads as a deliberate second colour. It is also more
+     saturated than indigo at every step, so it advances while indigo recedes.
+     design-system.test.mjs asserts the separation so it cannot silently drift. */
+  --amethyst-900: #330d4a;
+  --amethyst-800: #4e156f;
+  --amethyst-700: #631d8c;
+  --amethyst-600: #802ab2;
+  --amethyst-500: #9c38d6;
+  --amethyst-400: #b561e5;
+  --amethyst-300: #ce8af5;
+  --amethyst-200: #e4bcfb;
+  --amethyst-100: #f8ebff;
+  --amethyst-50:  #fdf8ff;
+
+  /* Slate — neutrals carry a slight violet cast so greys sit inside the
+     purple family instead of fighting it. */
+  --slate-900: #16141f;
+  --slate-800: #262233;
+  --slate-700: #3e3a50;
+  --slate-600: #55506b;
+  --slate-500: #6b6680;
+  --slate-400: #8f8aa3;
+  --slate-300: #b8b4c7;
+  --slate-200: #dcdae6;
+  --slate-100: #efeef4;
+  --slate-50:  #f8f8fb;
+  --white:     #ffffff;
+
+  /* System state only. Never a verdict. */
+  --danger-600:  #b3261e;
+  --danger-100:  #fceeec;
+  --caution-700: #8a5a00;
+  --caution-100: #fff4e0;
+
+  /* -------------------------------------------------------------------------
+     TYPE SCALE — 7 steps, ratio 1.25, anchored at 12px.
+     The previous stylesheet had 24 distinct pixel sizes between 8 and 40, many
+     within 1px of each other. No two steps here are closer than 25%, so a
+     wrong choice is visible rather than merely slightly off.
+     Body is 15px, matching the old default, so the rewrite does not reflow
+     every screen at once.
+     ---------------------------------------------------------------------- */
+  --step-0: 0.75rem;    /* 12px — overline, meta, badge */
+  --step-1: 0.9375rem;  /* 15px — body (default) */
+  --step-2: 1.1875rem;  /* 19px — card title, h3 */
+  --step-3: 1.4375rem;  /* 23px — section head, h2 */
+  --step-4: 1.8125rem;  /* 29px — page title, h1 */
+  --step-5: 2.3125rem;  /* 37px — hero */
+  --step-6: 2.875rem;   /* 46px — booth display only */
+
+  /* The evidence quote gets its own named step, and it deliberately outranks
+     the page title. "Evidence is the hero" is enforced by the scale itself,
+     not by remembering to make quotes big. */
+  --step-evidence: clamp(1.8125rem, 1.1rem + 2.2vw, 2.3125rem);
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 700;
+  --weight-heavy: 800;
+
+  --leading-tight: 1.08;
+  --leading-snug: 1.25;
+  --leading-normal: 1.55;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.12em;
+
+  /* Two typefaces, each with a job.
+     `--font-ui` is the application speaking.
+     `--font-voice` is the USER speaking — it is applied only to transcript
+     quotes and evidence. The serif/sans split is a semantic signal, not
+     decoration: when you see a serif, those are your own words.
+
+     Both are platform fonts on purpose. The previous stylesheet asked for
+     `Inter` with no @font-face and no font file, and CSP `style-src 'self'`
+     blocks Google Fonts — so Inter never loaded once, and the app rendered in
+     a different face on every machine. Naming a font we do not ship is the
+     typographic version of overclaiming (INV-2). These stacks always resolve. */
+  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+             "Helvetica Neue", Arial, sans-serif;
+  --font-voice: Georgia, "Iowan Old Style", "Times New Roman", Times, serif;
+
+  /* -------------------------------------------------------------------------
+     SPACING — 4px base. 9 steps. The previous stylesheet used 93 distinct
+     raw pixel values for padding, margin and gap.
+     ---------------------------------------------------------------------- */
+  --space-1: 0.25rem;  /*  4px */
+  --space-2: 0.5rem;   /*  8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.5rem;   /* 24px */
+  --space-6: 2rem;     /* 32px */
+  --space-7: 3rem;     /* 48px */
+  --space-8: 4rem;     /* 64px */
+  --space-9: 6rem;     /* 96px */
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 999px;
+
+  /* Three elevations. A fourth would be a decision nobody can defend. */
+  --shadow-1: 0 1px 2px rgba(22, 20, 31, 0.06);
+  --shadow-2: 0 12px 32px rgba(22, 20, 31, 0.10);
+  --shadow-3: 0 30px 80px rgba(22, 20, 31, 0.26);
+
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  --measure: 68ch; /* max line length for body copy */
+
+  /* Shell geometry. The workspace offset must equal the sidebar width; when
+     these were two separate literals (248px in both places, 210px in both
+     places at the breakpoint) the pair could drift apart silently. */
+  --sidebar-width: 248px;
+}
+
+/* ---------------------------------------------------------------------------
+   LAYER 2 — SEMANTIC TOKENS
+   What component CSS is allowed to use. Each one names a ROLE, so a component
+   never has to know which purple it is asking for.
+   ------------------------------------------------------------------------ */
+:root {
+  /* Surfaces */
+  --canvas: var(--slate-50);
+  --surface: var(--white);
+  --surface-sunken: var(--slate-100);
+  --surface-inverse: var(--indigo-900);
+  --border: var(--slate-200);
+  --border-strong: var(--slate-300);
+
+  /* Text — contrast against --surface verified in design-system.test.mjs */
+  --text-primary: var(--slate-900);   /* 18.2:1 on white */
+  --text-secondary: var(--slate-700); /* 10.9:1 on white */
+  --text-muted: var(--slate-500);     /*  5.5:1 on white — AA body */
+  --text-on-inverse: var(--indigo-50);
+  --text-on-inverse-muted: var(--indigo-200);
+
+  /* Surfaces that sit ON the dark ground — sidebar chips, the active nav item,
+     a gauge track. Without these the only "quiet background" available is
+     --brand-wash, which is a LIGHT-theme token: using it on the dark sidebar
+     puts near-white text on pale lavender and the label disappears. That bug
+     shipped once and was caught by looking at a screenshot, not by a test,
+     which is why the pairs below are now asserted. */
+  --inverse-raised: var(--indigo-700);
+  --inverse-accent: var(--indigo-300);
+
+  /* Brand / structure */
+  --brand: var(--indigo-500);          /* 8.1:1 on white — safe as text */
+  --brand-hover: var(--indigo-600);
+  --brand-wash: var(--indigo-100);
+  --brand-contrast: var(--white);
+
+  /* EVIDENCE — the reserved channel. Using these outside an evidence context
+     is a design-system violation and the test suite treats it as one. */
+  --evidence: var(--amethyst-500);       /* 5.6:1 on white — AA */
+  --evidence-strong: var(--amethyst-700);
+  --evidence-wash: var(--amethyst-100);
+  --evidence-border: var(--amethyst-300);
+  --evidence-on-inverse: var(--amethyst-300);
+
+  /* ABSENCE — "no cue matched". Deliberately neutral, deliberately not red.
+     Absence of evidence is not a failing mark; it is the next thing to
+     rehearse. */
+  --absence: var(--slate-400);
+  --absence-wash: var(--slate-100);
+  --absence-border: var(--slate-300);
+
+  --focus-ring: var(--amethyst-500);
+  --backdrop: rgb(20 10 36 / 0.58); /* dialog scrim — the booth ground, dimmed */
+
+  /* System state — NOT verdicts. Analysis failure (INV-7), degraded gateway. */
+  --danger: var(--danger-600);
+  --danger-wash: var(--danger-100);
+  --caution: var(--caution-700);
+  --caution-wash: var(--caution-100);
+}
+
+/* ---------------------------------------------------------------------------
+   BOOTH THEME
+   The exhibition display behind the team, read from ~2 metres across a lit
+   hall. Same semantic names, different values, so no component needs to know
+   which surface it is rendering on: `<body data-surface="booth">` is the whole
+   switch.
+
+   Deep indigo ground makes amethyst glow rather than merely sit there — that
+   is the thing that makes someone walk over. The laptop a judge actually
+   touches stays light: dark UIs wash out on unknown projectors and in bright
+   halls, and light reads as a credible work tool rather than a toy.
+   ------------------------------------------------------------------------ */
+[data-surface="booth"] {
+  --canvas: #140a24;
+  --surface: #20143a;
+  --surface-sunken: #190e2c;
+  --surface-inverse: #0d0619;
+  --border: #35245c;
+  --border-strong: #4a3479;
+
+  --text-primary: #f6f2fc;
+  --text-secondary: #cfc4e6;
+  --text-muted: #a79cc4;
+  --text-on-inverse: #f6f2fc;
+  --text-on-inverse-muted: #a79cc4;
+
+  --brand: var(--indigo-300);
+  --brand-hover: var(--indigo-200);
+  --brand-wash: #241852;
+  --brand-contrast: var(--indigo-900);
+  --inverse-raised: #2c1d63;
+  --inverse-accent: var(--indigo-300);
+
+  /* Amethyst lightens on dark ground: --amethyst-500 would only reach 2.6:1
+     against #140a24. --amethyst-300 reaches 7.4:1. */
+  --evidence: var(--amethyst-300);
+  --evidence-strong: var(--amethyst-200);
+  --evidence-wash: #2a1547;
+  --evidence-border: var(--amethyst-600);
+  --evidence-on-inverse: var(--amethyst-300);
+
+  --absence: #6f6490;
+  --absence-wash: #221a38;
+  --absence-border: #3d2f61;
+
+  /* System state has to be redefined for the dark ground too. Left inherited,
+     --danger-wash (#fceeec) rendered as a near-white panel on the booth screen
+     — the single brightest thing in the room, for an error nobody is meant to
+     be looking at. */
+  --danger: #ff9a90;
+  --danger-wash: #3d1512;
+  --caution: #f0c070;
+  --caution-wash: #3a2708;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+
+/* ---------------------------------------------------------------------------
+   PRINT
+   The booth one-pager and the QR card. Vivid RGB purples turn muddy in CMYK,
+   so print falls back to ink on white and keeps colour for the two things
+   that must survive the conversion: the mark and the evidence underline.
+   Exact CMYK / Pantone values live in docs/design/DESIGN-SYSTEM.md.
+   ------------------------------------------------------------------------ */
+@media print {
+  :root {
+    --canvas: var(--white);
+    --surface: var(--white);
+    --surface-sunken: var(--white);
+    --text-primary: #000000;
+    --text-secondary: #000000;
+    --text-muted: #333333;
+    --border: #999999;
+    --border-strong: #666666;
+    --shadow-1: none;
+    --shadow-2: none;
+    --shadow-3: none;
+  }
+}
