@@ -12,6 +12,7 @@ const MIME_TYPES = {
   '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8',
   '.svg': 'image/svg+xml; charset=utf-8',
+  '.webp': 'image/webp',
 };
 
 function responseHeaders(contentType) {

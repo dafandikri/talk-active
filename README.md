@@ -91,6 +91,12 @@ The repository was scaffolded from
 `AGENTS.md` is the model-agnostic source of truth, while durable product decisions live in
 `.agent-harness/memory/`.
 
+The executable agent contract is documented in
+[`docs/AGENT-WORKFLOW.md`](docs/AGENT-WORKFLOW.md). The repository ships the
+`captains-workflow` skill, model adapters that point back to `AGENTS.md`, a local pre-push
+gate, and the same `pnpm check` gate in CI. `test/harness-integration.test.mjs` prevents those
+links from drifting into documentation-only promises.
+
 Before using AI-generated implementation during the official hacking period, ask the
 organizer for written confirmation: the guidebook allows responsible tools and APIs but
 also prohibits outside professional assistance and outsourced code.

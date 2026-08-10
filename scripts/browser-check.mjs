@@ -199,6 +199,16 @@ async function run() {
       projects: document.querySelectorAll('.sidebar-project').length,
       sessions: document.querySelectorAll('#recentSessions .session-row').length,
       stored: Boolean(localStorage.getItem('talkactive.workspace.v1')),
+      mascotLoaded: Boolean(document.querySelector('.focus-mascot')?.complete && document.querySelector('.focus-mascot')?.naturalWidth),
+      mascotFit: getComputedStyle(document.querySelector('.focus-mascot')).objectFit,
+      coachPrompt: document.querySelector('#coachPrompt')?.textContent.trim(),
+      brandText: document.querySelector('.brand-wordmark')?.textContent.trim(),
+      brandLockups: document.querySelectorAll('.brand-wordmark').length,
+      homeHeaderBorder: getComputedStyle(document.querySelector('.home-header')).borderTopWidth,
+      homeHeaderShadow: getComputedStyle(document.querySelector('.home-header')).boxShadow,
+      focusShadow: getComputedStyle(document.querySelector('.focus-card')).boxShadow,
+      nextSessionShadow: getComputedStyle(document.querySelector('.next-session')).boxShadow,
+      rubricHealthShadow: getComputedStyle(document.querySelector('.rubric-health')).boxShadow,
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       inaccessibleFields: [...document.querySelectorAll('textarea, input, select')].filter((field) => {
         const hasLabel = field.id && document.querySelector('label[for="' + field.id + '"]');
@@ -212,6 +222,16 @@ async function run() {
     assert.equal(workspace.projects, 1);
     assert.equal(workspace.sessions, 2);
     assert.equal(workspace.stored, true);
+    assert.equal(workspace.mascotLoaded, true);
+    assert.equal(workspace.mascotFit, 'contain');
+    assert.ok(workspace.coachPrompt.length > 20);
+    assert.equal(workspace.brandText, 'Talk-Active');
+    assert.equal(workspace.brandLockups, 2);
+    assert.equal(workspace.homeHeaderBorder, '2px');
+    assert.notEqual(workspace.homeHeaderShadow, 'none');
+    assert.notEqual(workspace.focusShadow, 'none');
+    assert.notEqual(workspace.nextSessionShadow, 'none');
+    assert.notEqual(workspace.rubricHealthShadow, 'none');
     assert.equal(workspace.overflow, 0);
     assert.equal(workspace.inaccessibleFields, 0);
 
@@ -225,18 +245,38 @@ async function run() {
       title: document.title,
       heading: document.querySelector('#briefTitle')?.textContent,
       main: Boolean(document.querySelector('main.brief-shell')),
+      landingStylesheet: Boolean(document.querySelector('link[href="/src/landing.css"]')),
+      mascot: document.querySelector('.landing-mascot')?.getAttribute('alt'),
+      mascotSource: document.querySelector('.landing-mascot')?.getAttribute('src'),
+      brandText: document.querySelector('.brief-brand .brand-wordmark')?.textContent.trim(),
+      gapAsset: Boolean(document.querySelector('.landing-gap-asset')),
+      loopArrowLoaded: Boolean(document.querySelector('.landing-loop-arrow')?.complete && document.querySelector('.landing-loop-arrow')?.naturalWidth),
+      evidenceStamp: Boolean(document.querySelector('.landing-evidence-stamp')),
+      closingLogo: document.querySelector('.landing-closing-logo')?.textContent.trim(),
       problem: document.querySelector('#problemTitle')?.textContent,
       loopSteps: document.querySelectorAll('.brief-loop-grid > li').length,
+      evidenceTrace: document.querySelector('.brief-evidence-card')?.getAttribute('aria-label'),
       boundary: document.querySelector('.brief-boundaries')?.textContent,
+      practiceTarget: document.querySelector('.landing-primary-cta')?.getAttribute('href'),
       workspaceTarget: document.querySelector('.brief-closing a')?.getAttribute('href'),
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
     }))()`);
-    assert.match(brief.title, /Product brief/u);
+    assert.match(brief.title, /Talk-Active/u);
     assert.match(brief.heading, /claims judges will score/u);
     assert.equal(brief.main, true);
+    assert.equal(brief.landingStylesheet, true);
+    assert.match(brief.mascot, /full-body 3D speaking bird/u);
+    assert.equal(brief.mascotSource, '/src/assets/cockatoo-mascot-3d.webp');
+    assert.equal(brief.brandText, 'Talk-Active');
+    assert.equal(brief.gapAsset, true);
+    assert.equal(brief.loopArrowLoaded, true);
+    assert.equal(brief.evidenceStamp, true);
+    assert.equal(brief.closingLogo, 'Talk-Active');
     assert.match(brief.problem, /evidence implicit/u);
     assert.equal(brief.loopSteps, 6);
+    assert.equal(brief.evidenceTrace, 'Illustrative evidence trace');
     assert.match(brief.boundary, /not confidence or speaking ability/u);
+    assert.equal(brief.practiceTarget, '/#practice');
     assert.equal(brief.workspaceTarget, '/#home');
     assert.equal(brief.overflow, 0);
     if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'brief-desktop'));
@@ -249,13 +289,21 @@ async function run() {
     const briefMobile = await evaluate(cdp, `(() => ({
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       clippedElements: [...document.querySelectorAll('body *')].filter((element) => element.getBoundingClientRect().right > document.documentElement.clientWidth + 1).length,
+      clippedLabels: [...document.querySelectorAll('body *')]
+        .filter((element) => element.getBoundingClientRect().right > document.documentElement.clientWidth + 1)
+        .slice(0, 6)
+        .map((element) => element.tagName.toLowerCase() + (element.className ? '.' + String(element.className).trim().replace(/\\s+/g, '.') : '')),
       loopColumns: getComputedStyle(document.querySelector('.brief-loop-grid')).gridTemplateColumns,
-      ctaHeight: document.querySelector('.brief-topbar-cta').getBoundingClientRect().height
+      ctaHeight: document.querySelector('.brief-topbar-cta').getBoundingClientRect().height,
+      mascotWidth: document.querySelector('.landing-mascot').getBoundingClientRect().width,
+      mascotVisible: getComputedStyle(document.querySelector('.landing-mascot')).display !== 'none'
     }))()`);
     assert.equal(briefMobile.overflow, 0);
-    assert.equal(briefMobile.clippedElements, 0);
+    assert.equal(briefMobile.clippedElements, 0, `mobile landing clips: ${briefMobile.clippedLabels.join(', ')}`);
     assert.ok(!briefMobile.loopColumns.includes(' '));
     assert.ok(briefMobile.ctaHeight >= 44);
+    assert.ok(briefMobile.mascotWidth >= 180);
+    assert.equal(briefMobile.mascotVisible, true);
     if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'brief-mobile'));
 
     await evaluate(cdp, `document.querySelector('.brief-closing a').click()`);
@@ -271,11 +319,22 @@ async function run() {
     const setup = await evaluate(cdp, `(() => ({
       project: document.querySelector('#setupProjectName')?.textContent,
       criteria: document.querySelectorAll('#setupCriteria .setup-criterion').length,
-      steps: document.querySelectorAll('.practice-steps li').length
+      steps: document.querySelectorAll('.practice-steps li').length,
+      workflowMarkLoaded: Boolean(document.querySelector('#practiceView .workflow-mark')?.complete && document.querySelector('#practiceView .workflow-mark')?.naturalWidth),
+      headerShadow: getComputedStyle(document.querySelector('#practiceView .workflow-header')).boxShadow,
+      markShadow: getComputedStyle(document.querySelector('#practiceView .workflow-mark')).boxShadow,
+      setupFormEdge: getComputedStyle(document.querySelector('.setup-form')).borderTopWidth,
+      setupRubricEdge: getComputedStyle(document.querySelector('.setup-rubric')).borderTopWidth
     }))()`);
     assert.match(setup.project, /RISTEK Hackathon/u);
     assert.equal(setup.criteria, 4);
     assert.equal(setup.steps, 4);
+    assert.equal(setup.workflowMarkLoaded, true);
+    assert.equal(setup.headerShadow, 'none');
+    assert.equal(setup.markShadow, 'none');
+    assert.equal(setup.setupFormEdge, '2px');
+    assert.equal(setup.setupRubricEdge, '2px');
+    if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'practice'));
 
     await evaluate(cdp, `document.querySelector('#beginAttempt').click()`);
     await waitFor(cdp, `document.querySelector('#practiceAttempt')?.classList.contains('is-visible')`);
@@ -295,13 +354,17 @@ async function run() {
       weakest: document.querySelector('#reviewWeakest')?.textContent,
       question: document.querySelector('#reviewQuestion')?.textContent,
       criteria: document.querySelectorAll('#reviewCriteria .evidence-item').length,
-      completedSteps: document.querySelectorAll('.practice-steps .is-complete').length
+      completedSteps: document.querySelectorAll('.practice-steps .is-complete').length,
+      heroShadow: getComputedStyle(document.querySelector('.review-hero')).boxShadow,
+      judgePreviewShadow: getComputedStyle(document.querySelector('.judge-preview')).boxShadow
     }))()`);
     assert.ok(review.score > 0 && review.score < 100);
     assert.equal(review.weakest, 'Differentiation');
     assert.match(review.question, /unique product logic/u);
     assert.equal(review.criteria, 4);
     assert.equal(review.completedSteps, 2);
+    assert.equal(review.heroShadow, 'none');
+    assert.equal(review.judgePreviewShadow, 'none');
 
     if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'review'));
 
@@ -318,12 +381,14 @@ async function run() {
       status: document.querySelector('#defenseStatus')?.textContent,
       score: document.querySelector('#defenseScore')?.textContent,
       matched: document.querySelectorAll('#matchedSignals .signal-chip.matched').length,
-      followUp: document.querySelector('#defenseFollowUp')?.textContent
+      followUp: document.querySelector('#defenseFollowUp')?.textContent,
+      workspaceShadow: getComputedStyle(document.querySelector('.defense-workspace')).boxShadow
     }))()`);
     assert.equal(defense.status, 'defensible');
     assert.equal(defense.score, '100%');
     assert.equal(defense.matched, 4);
     assert.match(defense.followUp, /user evidence/u);
+    assert.equal(defense.workspaceShadow, 'none');
     if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'defense'));
 
     await evaluate(cdp, `document.querySelector('#saveSession').click()`);
@@ -332,12 +397,17 @@ async function run() {
       sessions: document.querySelectorAll('#allSessions .session-row').length,
       bars: document.querySelectorAll('#progressChart .chart-bar').length,
       storedSessions: JSON.parse(localStorage.getItem('talkactive.workspace.v1')).sessions.length,
-      toast: document.querySelector('#toast')?.hidden === false
+      toast: document.querySelector('#toast')?.hidden === false,
+      workflowMarkLoaded: Boolean(document.querySelector('#progressView .workflow-mark')?.complete && document.querySelector('#progressView .workflow-mark')?.naturalWidth),
+      chartEdge: getComputedStyle(document.querySelector('.progress-chart-card')).borderTopWidth
     }))()`);
     assert.equal(progress.sessions, 3);
     assert.equal(progress.bars, 3);
     assert.equal(progress.storedSessions, 3);
     assert.equal(progress.toast, true);
+    assert.equal(progress.workflowMarkLoaded, true);
+    assert.equal(progress.chartEdge, '2px');
+    if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'progress'));
 
     await evaluate(cdp, `document.querySelector('#sidebarAddProject').click()`);
     await waitFor(cdp, `document.querySelector('#projectDialog')?.open === true`);
@@ -351,11 +421,16 @@ async function run() {
     const created = await evaluate(cdp, `(() => ({
       projectName: document.querySelector('#rubricProjectName')?.textContent,
       rubricRows: document.querySelectorAll('#rubricEditor .rubric-row').length,
-      storedProjects: JSON.parse(localStorage.getItem('talkactive.workspace.v1')).projects.length
+      storedProjects: JSON.parse(localStorage.getItem('talkactive.workspace.v1')).projects.length,
+      workflowMarkLoaded: Boolean(document.querySelector('#rubricView .workflow-mark')?.complete && document.querySelector('#rubricView .workflow-mark')?.naturalWidth),
+      editorEdge: getComputedStyle(document.querySelector('.rubric-editor-card')).borderTopWidth
     }))()`);
     assert.equal(created.projectName, 'Scholarship Interview');
     assert.equal(created.rubricRows, 4);
     assert.equal(created.storedProjects, 2);
+    assert.equal(created.workflowMarkLoaded, true);
+    assert.equal(created.editorEdge, '2px');
+    if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'rubric'));
 
     await evaluate(cdp, `(() => {
       const firstLabel = document.querySelector('.criterion-label-input');
@@ -383,13 +458,29 @@ async function run() {
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       mobileNav: getComputedStyle(document.querySelector('.mobile-nav')).display,
       sidebar: getComputedStyle(document.querySelector('.sidebar')).display,
-      focusColumns: getComputedStyle(document.querySelector('.focus-card')).gridTemplateColumns
+      focusColumns: getComputedStyle(document.querySelector('.focus-card')).gridTemplateColumns,
+      homeHeaderShadow: getComputedStyle(document.querySelector('.home-header')).boxShadow
     }))()`);
     assert.equal(mobile.overflow, 0);
     assert.notEqual(mobile.mobileNav, 'none');
     assert.equal(mobile.sidebar, 'none');
     assert.ok(!mobile.focusColumns.includes(' '));
+    assert.notEqual(mobile.homeHeaderShadow, 'none');
     if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'mobile'));
+
+    for (const route of ['practice', 'rubric', 'progress']) {
+      await evaluate(cdp, `document.querySelector('.mobile-nav [data-route="${route}"]').click()`);
+      await waitFor(cdp, `document.querySelector('#${route}View')?.classList.contains('is-visible')`);
+      const mobileWorkflow = await evaluate(cdp, `(() => ({
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        markWidth: document.querySelector('#${route}View .workflow-mark')?.getBoundingClientRect().width,
+        headerBorder: getComputedStyle(document.querySelector('#${route}View .workflow-header')).borderBottomWidth
+      }))()`);
+      assert.equal(mobileWorkflow.overflow, 0);
+      assert.ok(mobileWorkflow.markWidth >= 44);
+      assert.equal(mobileWorkflow.headerBorder, '2px');
+      if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, `mobile-${route}`));
+    }
 
     if (screenshotPath) {
       await cdp.call('Emulation.setDeviceMetricsOverride', {

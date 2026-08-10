@@ -105,6 +105,7 @@ const elements = {
   currentProjectName: $('#currentProjectName'),
   focusTitle: $('#focusTitle'),
   focusCopy: $('#focusCopy'),
+  coachPrompt: $('#coachPrompt'),
   lastCoverage: $('#lastCoverage'),
   coverageTrend: $('#coverageTrend'),
   lastWeakest: $('#lastWeakest'),
@@ -376,9 +377,11 @@ function renderDashboard() {
   if (latest) {
     elements.focusTitle.textContent = `${latest.weakest} is still the claim most likely to be challenged.`;
     elements.focusCopy.textContent = 'Continue from your saved draft and practice the question grounded in that exact rubric gap.';
+    elements.coachPrompt.textContent = `Let's rehearse ${latest.weakest} next.`;
   } else {
     elements.focusTitle.textContent = 'Build your first evidence baseline.';
     elements.focusCopy.textContent = 'Complete one attempt to find the claim most worth rehearsing next.';
+    elements.coachPrompt.textContent = 'Start with one complete attempt. I’ll point to the claim worth rehearsing.';
   }
 
   if (dayCount === null) {

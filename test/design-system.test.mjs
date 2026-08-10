@@ -17,7 +17,7 @@
 // ============================================================================
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -27,6 +27,9 @@ const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 const TOKENS = read('src/tokens.css');
 const STYLES = read('src/styles.css');
 const APPAREL_MARK = read('src/assets/cockatoo-mark-white.svg');
+const PRODUCT_MARK = read('src/assets/cockatoo-mark.svg');
+const INDEX = read('index.html');
+const BRIEF = read('brief.html');
 
 // Comments carry the reasoning, and the reasoning mentions the very literals
 // these tests ban. Strip them before linting so documentation is not a defect.
@@ -258,6 +261,23 @@ test('the captain-supplied speaking-bird palette remains exact', () => {
   }
 });
 
+test('the product mark is a full-body speaking bird with the complete palette', () => {
+  assert.match(PRODUCT_MARK, /full-body blue, green, yellow, and orange speaking bird/iu);
+  for (const colour of ['#101312', '#1b7ea6', '#145f7e', '#2f5923', '#3a731f', '#f2b90c', '#bf6b04', '#fffef9']) {
+    assert.match(PRODUCT_MARK, new RegExp(colour, 'iu'), `product mark is missing ${colour}`);
+  }
+  assert.match(PRODUCT_MARK, /visibly open orange beak/iu);
+});
+
+test('the full-body dimensional mascot is local, visible, and motion-safe', () => {
+  const relative = 'src/assets/cockatoo-mascot-3d.webp';
+  assert.ok(existsSync(join(ROOT, relative)), 'the dashboard mascot asset is missing');
+  assert.ok(statSync(join(ROOT, relative)).size < 200_000, 'the dashboard mascot should stay below 200 KB');
+  assert.match(INDEX, /src\/assets\/cockatoo-mascot-3d\.webp/u);
+  assert.match(STYLES, /@keyframes mascot-greet/u);
+  assert.match(STYLES, /@media \(prefers-reduced-motion: reduce\)/u);
+});
+
 test('the apparel mark remains a one-ink warm-white speaking bird', () => {
   assert.match(APPAREL_MARK, /full-body speaking bird inside a white speech-bubble outline/u);
   assert.match(APPAREL_MARK, /#fffef9/iu, 'the visible apparel artwork must use warm white ink');
@@ -446,6 +466,39 @@ test('tokens.css is loaded before styles.css', () => {
   assert.ok(tokensAt !== -1, 'index.html must load src/tokens.css');
   assert.ok(stylesAt !== -1, 'index.html must load src/styles.css');
   assert.ok(tokensAt < stylesAt, 'tokens.css must be linked before styles.css or the cascade resolves tokens too late');
+});
+
+test('dashboard home carries the approved character-led outlined material', () => {
+  assert.match(
+    STYLES_CODE,
+    /\.home-header\s*\{[^}]*border:\s*2px solid var\(--text-primary\);[^}]*box-shadow:\s*var\(--space-1\) var\(--space-1\) 0 var\(--accent-orange\);/su,
+  );
+  assert.match(
+    STYLES_CODE,
+    /\.focus-card\s*\{[^}]*border:\s*2px solid var\(--text-primary\);[^}]*box-shadow:\s*var\(--space-1\) var\(--space-1\) 0 var\(--accent-sky\);/su,
+  );
+  for (const selector of ['next-session', 'rubric-health', 'recent-section']) {
+    assert.match(STYLES_CODE, new RegExp(`\\.${selector}\\s*\\{[^}]*border:\\s*2px solid var\\(--text-primary\\);[^}]*box-shadow:`, 'su'));
+  }
+  assert.match(INDEX, /class="focus-mascot"[\s\S]+cockatoo-mascot-3d\.webp/u);
+});
+
+test('the Talk-Active lockup is consistent across product and landing surfaces', () => {
+  assert.equal((INDEX.match(/class="brand-wordmark"/gu) ?? []).length, 2);
+  assert.ok((BRIEF.match(/class="brand-wordmark"/gu) ?? []).length >= 4);
+  for (const html of [INDEX, BRIEF]) {
+    assert.match(html, /Talk-<(?:strong|span) class="brand-wordmark-accent">Active<\/(?:strong|span)>/u);
+  }
+});
+
+test('workflow views keep the character system restrained and evidence-safe', () => {
+  assert.equal((INDEX.match(/class="workflow-mark"/gu) ?? []).length, 3);
+  assert.match(STYLES_CODE, /\.workflow-header\s*\{[^}]*background:\s*var\(--accent-sun-wash\);[^}]*border:\s*2px solid var\(--text-primary\);[^}]*box-shadow:\s*none;/su);
+  assert.match(STYLES_CODE, /\.workflow-mark\s*\{[^}]*border:\s*2px solid var\(--text-primary\);[^}]*box-shadow:\s*none;/su);
+  for (const selector of ['setup-form', 'setup-rubric', 'capture-panel', 'rubric-editor-card', 'rubric-guide', 'progress-chart-card', 'history-card']) {
+    assert.match(STYLES_CODE, new RegExp(`(?:\\.${selector}[^{}]*)\\{[^}]*border:\\s*2px solid var\\(--text-primary\\);`, 'su'));
+  }
+  assert.doesNotMatch(STYLES_CODE, /#(?:practice|rubric|progress)View \.workflow-(?:header|mark)[^{]*\{[^}]*box-shadow:[^}]*var\(--accent-/su);
 });
 
 test('every semantic token is documented with its intent', () => {

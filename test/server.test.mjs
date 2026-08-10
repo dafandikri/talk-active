@@ -39,6 +39,10 @@ test('static server exposes the product workspace but not research documents', a
   assert.equal(apparelMascot.status, 200);
   assert.match(apparelMascot.headers.get('content-type'), /image\/svg\+xml/u);
 
+  const characterMascot = await fetch(`${origin}/src/assets/cockatoo-mascot-3d.webp`);
+  assert.equal(characterMascot.status, 200);
+  assert.match(characterMascot.headers.get('content-type'), /image\/webp/u);
+
   const privateDocument = await fetch(`${origin}/docs/Guidebook%20Registration%20RISTEK%20Hackathon.pdf`);
   assert.equal(privateDocument.status, 404);
 

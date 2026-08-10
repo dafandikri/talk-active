@@ -173,6 +173,10 @@ surface trade-offs, and keep the captain focused on strategy.
    something as working that you have not seen pass.
 3. **Isolate parallel work** in git worktrees; coordinate multi-agent work through `firstmate`.
 
+The detailed agent architecture is [`docs/AGENT-WORKFLOW.md`](docs/AGENT-WORKFLOW.md): start
+with the simplest composable workflow, expose checkpoints, read ground truth from tools and
+tests, and give every autonomous loop an explicit stop condition.
+
 ## Skills
 
 - `captains-workflow` — route non-trivial changes through plan → build → validate → deliver.
