@@ -495,7 +495,12 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   box-shadow: none;
 }
 .review-hero h2 { max-width: 24ch; margin-bottom: var(--space-3); font-size: var(--step-4); font-weight: var(--weight-bold); }
-.review-hero p:last-child { max-width: var(--measure); margin-bottom: 0; color: var(--text-on-inverse-muted); font-size: var(--step-0); }
+.review-hero p:not(.overline) { max-width: var(--measure); margin-bottom: 0; color: var(--text-on-inverse-muted); font-size: var(--step-0); }
+
+/* Which engine answered is a boundary, and INV-4 says boundaries are stated.
+   It is a provenance note, not a badge of quality, so it stays quiet and is
+   never coloured green — that would read as "passed". */
+.analysis-mode { margin-top: var(--space-2); }
 
 /* Coverage is deliberately SMALL and deliberately labelled. INV-4: it is not a
    confidence or ability score, and a large ring is how it starts looking like

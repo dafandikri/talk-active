@@ -135,6 +135,7 @@ const elements = {
   analyzeAttempt: $('#analyzeAttempt'),
   exitPractice: $('#exitPractice'),
   reviewScore: $('#reviewScore'),
+  reviewMode: $('#reviewMode'),
   reviewWeakest: $('#reviewWeakest'),
   reviewDrill: $('#reviewDrill'),
   reviewMissingSignals: $('#reviewMissingSignals'),
@@ -529,26 +530,90 @@ function evidenceCard(criterion) {
   return card;
 }
 
-function analyzeAttempt() {
+// Two sentences the user is entitled to, and the only two we can prove.
+const MODE_LABEL = {
+  semantic: 'Evidence mapped by a language model, then checked against your transcript.',
+  deterministic: 'Evidence mapped by cue matching on this device.',
+};
+
+// `scripts/serve.mjs` serves static files only — there are no functions behind
+// it — so asking it for /api/analyze would log a 404 and fail the demo gate.
+// The deployed origin is the only one that can answer.
+function apiIsReachable() {
+  const { hostname, protocol } = window.location;
+  if (protocol === 'file:') return false;
+  return hostname !== '127.0.0.1' && hostname !== 'localhost';
+}
+
+// A response we cannot trust is a response we do not use. Anything short of the
+// full analyzer shape falls back rather than rendering a half-built review.
+function looksLikeAnalysis(value) {
+  return Boolean(value)
+    && Array.isArray(value.criteria)
+    && value.criteria.length > 0
+    && value.criteria.every((criterion) => criterion && typeof criterion.label === 'string')
+    && Boolean(value.weakest)
+    && typeof value.judgeQuestion === 'string';
+}
+
+async function upgradeWithSemantics(payload) {
+  if (!apiIsReachable()) return null;
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), 15_000);
+  try {
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: abort.signal,
+    });
+    if (!response.ok) return null;
+    const result = await response.json();
+    if (result.mode !== 'semantic' || !looksLikeAnalysis(result)) return null;
+    return result;
+  } catch {
+    // Offline, blocked, slow, or malformed: the deterministic result already
+    // computed below is a complete answer, so degrade quietly rather than fail.
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function analyzeAttempt() {
   elements.attemptError.hidden = true;
   const project = practiceProject();
+  const payload = {
+    transcript: elements.attemptTranscript.value,
+    rubricText: project.rubric,
+    durationSeconds: elements.attemptDuration.value,
+  };
+
+  // Deterministic first. It validates the input loudly (INV-7) and always
+  // produces a complete review, so a failed or slow gateway costs richness
+  // rather than the demo.
+  let analysis;
   try {
-    state.analysis = analyzeSpeech({
-      transcript: elements.attemptTranscript.value,
-      rubricText: project.rubric,
-      durationSeconds: elements.attemptDuration.value,
-    });
-    project.draft = elements.attemptTranscript.value.trim();
-    project.draftDuration = Number(elements.attemptDuration.value);
-    persist();
-    renderReview(state.analysis);
-    showPracticeStage('review');
+    analysis = analyzeSpeech(payload);
   } catch (error) {
     elements.attemptError.textContent = error instanceof AnalysisError
       ? error.message
       : 'This attempt could not be reviewed. Check the transcript and try again.';
     elements.attemptError.hidden = false;
+    return;
   }
+
+  elements.analyzeAttempt.disabled = true;
+  const semantic = await upgradeWithSemantics(payload);
+  elements.analyzeAttempt.disabled = false;
+
+  state.analysis = semantic ?? analysis;
+  elements.reviewMode.textContent = MODE_LABEL[semantic ? 'semantic' : 'deterministic'];
+  project.draft = elements.attemptTranscript.value.trim();
+  project.draftDuration = Number(elements.attemptDuration.value);
+  persist();
+  renderReview(state.analysis);
+  showPracticeStage('review');
 }
 
 function openDefense() {
