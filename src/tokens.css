@@ -1,0 +1,320 @@
+/* ============================================================================
+   TALK-ACTIVE — DESIGN TOKENS
+   The single source of truth for every surface: web app, booth display,
+   printed one-pager, apparel.
+
+   THE ONE RULE
+   ------------
+   Component CSS may only reference SEMANTIC tokens (layer 2).
+   It may never reference a primitive (layer 1), and never a raw value.
+   `test/design-system.test.mjs` fails the build if it does.
+
+   This is what makes the system real. Declaring tokens does nothing — the
+   previous stylesheet declared 123 of them and bypassed every one. A system
+   only exists when the raw value is unavailable.
+
+   BLACK, WHITE, THEN BIRD COLOUR
+   ------------------------------
+   Warm white gives the workspace air; the speaking-bird palette gives it its
+   identity. Leaf green carries the shell and primary action, sky blue means
+   evidence, sunlight yellow guides attention, and orange warms small details.
+   Green never colours a verdict, so the product still cannot imply pass/fail.
+
+   WHY NO GREEN AND NO RED IN VERDICTS
+   -----------------------------------
+   Green/red is the universal grammar of grading. Talk-Active does not grade —
+   INV-2 forbids claiming an ability score, and INV-4 requires that limit to be
+   visible rather than buried. So a criterion is either "evidence found"
+   (blue) or "no cue matched" (neutral ink). Neither reads as a mark out
+   of ten, which makes the disclaimer on the review screen true rather than
+   defensive. Danger and caution exist below, but only for SYSTEM state — a
+   failed analysis (INV-7), a degraded gateway — never for a verdict.
+   ========================================================================= */
+
+/* ---------------------------------------------------------------------------
+   LAYER 1 — PRIMITIVES
+   Raw ramps. No meaning attached. Never referenced by component CSS.
+   ------------------------------------------------------------------------ */
+:root {
+  /* Monochrome structure. Warm white keeps the interface from feeling like a
+     hospital dashboard, while black gives the mascot palette room to sing. */
+  --mono-950: #101312;
+  --mono-900: #181b19;
+  --mono-800: #252925;
+  --mono-700: #3a3f3b;
+  --mono-600: #505651;
+  --mono-500: #676d68;
+  --mono-400: #898f8a;
+  --mono-300: #b4b8b4;
+  --mono-200: #d8dad7;
+  --mono-100: #eeefec;
+  --mono-50:  #f8f8f4;
+  --paper:    #fffef9;
+
+  /* Bird palette supplied by the captain. */
+  --blue-700: #145f7e;
+  --blue-600: #1b7ea6;
+  --blue-500: #2a91b9;
+  --blue-300: #86c9df;
+  --blue-100: #e0f2f8;
+
+  --leaf-700: #24461c;
+  --leaf-600: #2f5923;
+  --leaf-500: #3a731f;
+  --leaf-100: #e5efdf;
+
+  --sun-700: #6b4d00;
+  --sun-500: #f2b90c;
+  --sun-100: #fff2bf;
+
+  --orange-700: #7e4300;
+  --orange-500: #bf6b04;
+  --orange-100: #fae7cf;
+
+  /* System state only. Never a verdict. */
+  --danger-600:  #b3261e;
+  --danger-100:  #fceeec;
+  --caution-700: #8a5a00;
+  --caution-100: #fff4e0;
+
+  /* -------------------------------------------------------------------------
+     TYPE SCALE — 7 steps, ratio 1.25, anchored at 12px.
+     The previous stylesheet had 24 distinct pixel sizes between 8 and 40, many
+     within 1px of each other. No two steps here are closer than 25%, so a
+     wrong choice is visible rather than merely slightly off.
+     Body is 15px, matching the old default, so the rewrite does not reflow
+     every screen at once.
+     ---------------------------------------------------------------------- */
+  --step-0: 0.75rem;    /* 12px — overline, meta, badge */
+  --step-1: 0.9375rem;  /* 15px — body (default) */
+  --step-2: 1.1875rem;  /* 19px — card title, h3 */
+  --step-3: 1.4375rem;  /* 23px — section head, h2 */
+  --step-4: 1.8125rem;  /* 29px — page title, h1 */
+  --step-5: 2.3125rem;  /* 37px — hero */
+  --step-6: 2.875rem;   /* 46px — booth display only */
+
+  /* The evidence quote gets its own named step, and it deliberately outranks
+     the page title. "Evidence is the hero" is enforced by the scale itself,
+     not by remembering to make quotes big. */
+  --step-evidence: clamp(1.8125rem, 1.1rem + 2.2vw, 2.3125rem);
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 700;
+  --weight-heavy: 800;
+
+  --leading-tight: 1.08;
+  --leading-snug: 1.25;
+  --leading-normal: 1.55;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.12em;
+
+  /* Two typefaces, each with a job.
+     `--font-ui` is the application speaking.
+     `--font-voice` is the USER speaking — it is applied only to transcript
+     quotes and evidence. The serif/sans split is a semantic signal, not
+     decoration: when you see a serif, those are your own words.
+
+     Both are platform fonts on purpose. The previous stylesheet asked for
+     `Inter` with no @font-face and no font file, and CSP `style-src 'self'`
+     blocks Google Fonts — so Inter never loaded once, and the app rendered in
+     a different face on every machine. Naming a font we do not ship is the
+     typographic version of overclaiming (INV-2). These stacks always resolve. */
+  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+             "Helvetica Neue", Arial, sans-serif;
+  --font-voice: Georgia, "Iowan Old Style", "Times New Roman", Times, serif;
+
+  /* -------------------------------------------------------------------------
+     SPACING — 4px base. 9 steps. The previous stylesheet used 93 distinct
+     raw pixel values for padding, margin and gap.
+     ---------------------------------------------------------------------- */
+  --space-1: 0.25rem;  /*  4px */
+  --space-2: 0.5rem;   /*  8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.5rem;   /* 24px */
+  --space-6: 2rem;     /* 32px */
+  --space-7: 3rem;     /* 48px */
+  --space-8: 4rem;     /* 64px */
+  --space-9: 6rem;     /* 96px */
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 999px;
+
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  --measure: 68ch; /* max line length for body copy */
+
+  /* Shell geometry. The workspace offset must equal the sidebar width; when
+     these were two separate literals (248px in both places, 210px in both
+     places at the breakpoint) the pair could drift apart silently. */
+  --sidebar-width: 248px;
+}
+
+/* ---------------------------------------------------------------------------
+   LAYER 2 — SEMANTIC TOKENS
+   What component CSS is allowed to use. Each one names a ROLE, so a component
+   never has to know which material colour it is asking for.
+   ------------------------------------------------------------------------ */
+:root {
+  /* Surfaces */
+  --canvas: var(--mono-50);
+  --surface: var(--paper);
+  --surface-sunken: var(--mono-100);
+  --surface-inverse: var(--leaf-700);
+  --border: var(--mono-200);
+  --border-strong: var(--mono-300);
+  --canvas-grain: radial-gradient(rgb(16 19 18 / 0.05) 0.6px, transparent 0.7px);
+
+  /* Text — contrast against --surface verified in design-system.test.mjs */
+  --text-primary: var(--mono-950);
+  --text-secondary: var(--mono-700);
+  --text-muted: var(--mono-500);
+  --text-on-inverse: var(--paper);
+  --text-on-inverse-muted: var(--mono-100);
+
+  /* Surfaces that sit ON the dark ground — sidebar chips, the active nav item,
+     a gauge track. Without these the only "quiet background" available is
+     --brand-wash, which is a LIGHT-theme token: using it on the dark sidebar
+     puts near-white text on pale lavender and the label disappears. That bug
+     shipped once and was caught by looking at a screenshot, not by a test,
+     which is why the pairs below are now asserted. */
+  --inverse-raised: var(--leaf-500);
+  --inverse-accent: var(--sun-500);
+
+  /* Brand / structure */
+  --brand: var(--leaf-600);
+  --brand-hover: var(--leaf-700);
+  --brand-wash: var(--leaf-100);
+  --brand-contrast: var(--paper);
+
+  /* EVIDENCE — the reserved channel. Using these outside an evidence context
+     is a design-system violation and the test suite treats it as one. */
+  --evidence: var(--blue-600);
+  --evidence-strong: var(--blue-700);
+  --evidence-wash: var(--blue-100);
+  --evidence-border: var(--blue-300);
+  --evidence-on-inverse: var(--blue-300);
+
+  /* ABSENCE — "no cue matched". Deliberately neutral, deliberately not red.
+     Absence of evidence is not a failing mark; it is the next thing to
+     rehearse. */
+  --absence: var(--mono-400);
+  --absence-wash: var(--mono-100);
+  --absence-border: var(--mono-300);
+
+  /* Expressive accents. Component selectors using these are checked so green
+     never leaks into evidence, verdict, coverage, or score contexts. */
+  --accent-sky: var(--blue-600);
+  --accent-sky-wash: var(--blue-100);
+  --accent-leaf: var(--leaf-600);
+  --accent-leaf-bright: var(--leaf-500);
+  --accent-leaf-wash: var(--leaf-100);
+  --accent-sun: var(--sun-500);
+  --accent-sun-strong: var(--sun-700);
+  --accent-sun-wash: var(--sun-100);
+  --accent-orange: var(--orange-500);
+  --accent-orange-strong: var(--orange-700);
+  --accent-orange-wash: var(--orange-100);
+
+  --focus-ring: var(--sun-500);
+  --backdrop: rgb(16 19 18 / 0.68);
+
+  /* System state — NOT verdicts. Analysis failure (INV-7), degraded gateway. */
+  --danger: var(--danger-600);
+  --danger-wash: var(--danger-100);
+  --caution: var(--caution-700);
+  --caution-wash: var(--caution-100);
+}
+
+/* ---------------------------------------------------------------------------
+   BOOTH THEME
+   The exhibition display behind the team, read from ~2 metres across a lit
+   hall. Same semantic names, different values, so no component needs to know
+   which surface it is rendering on: `<body data-surface="booth">` is the whole
+   switch.
+
+   A near-black ground makes the bird palette glow without turning the product
+   into a rainbow. The laptop a judge actually
+   touches stays light: dark UIs wash out on unknown projectors and in bright
+   halls, and light reads as a credible work tool rather than a toy.
+   ------------------------------------------------------------------------ */
+[data-surface="booth"] {
+  --canvas: #101312;
+  --surface: #1c201d;
+  --surface-sunken: #151816;
+  --surface-inverse: #090b0a;
+  --border: #353b36;
+  --border-strong: #4e5650;
+
+  --text-primary: #fffef9;
+  --text-secondary: #d8dad7;
+  --text-muted: #aab0ab;
+  --text-on-inverse: #fffef9;
+  --text-on-inverse-muted: #b4b8b4;
+
+  --brand: #fffef9;
+  --brand-hover: #f2b90c;
+  --brand-wash: #252925;
+  --brand-contrast: #101312;
+  --inverse-raised: #252925;
+  --inverse-accent: #f2b90c;
+
+  --evidence: #86c9df;
+  --evidence-strong: #b8deeb;
+  --evidence-wash: #123544;
+  --evidence-border: #1b7ea6;
+  --evidence-on-inverse: #86c9df;
+
+  --absence: #929a94;
+  --absence-wash: #242925;
+  --absence-border: #485048;
+
+  --accent-sky: #86c9df;
+  --accent-sky-wash: #123544;
+  --accent-leaf: #63a445;
+  --accent-leaf-bright: #79ba58;
+  --accent-leaf-wash: #1d3417;
+  --accent-sun: #f2b90c;
+  --accent-sun-strong: #ffd75a;
+  --accent-sun-wash: #3e3107;
+  --accent-orange: #db861d;
+  --accent-orange-strong: #f2aa51;
+  --accent-orange-wash: #3d2408;
+
+  /* System state has to be redefined for the dark ground too. Left inherited,
+     --danger-wash (#fceeec) rendered as a near-white panel on the booth screen
+     — the single brightest thing in the room, for an error nobody is meant to
+     be looking at. */
+  --danger: #ff9a90;
+  --danger-wash: #3d1512;
+  --caution: #f0c070;
+  --caution-wash: #3a2708;
+
+}
+
+/* ---------------------------------------------------------------------------
+   PRINT
+   The booth one-pager and the QR card. Print falls back to ink on white and
+   keeps colour for the two things
+   that must survive the conversion: the mark and the evidence underline.
+   Exact CMYK / Pantone values live in docs/design/DESIGN-SYSTEM.md.
+   ------------------------------------------------------------------------ */
+@media print {
+  :root {
+    --canvas: var(--paper);
+    --surface: var(--paper);
+    --surface-sunken: var(--paper);
+    --text-primary: #000000;
+    --text-secondary: #000000;
+    --text-muted: #333333;
+    --border: #999999;
+    --border-strong: #666666;
+  }
+}

@@ -163,7 +163,7 @@ Owner names are placeholders for the five of us; the lead assigns at the Day 1 s
 | **E1** | Branch protection habit: `pnpm check` green before every merge | — | Standing rule, not a task |
 | **E2** | Nightly: run full gate, tag a known-good commit | 0.5h/day | A tagged commit exists each night that we could demo from |
 | **E3** | Prepare the **offline demo laptop**: local server, seeded data, browser bookmarks | 1h | Full demo runs with wifi physically disabled |
-| **E4** | Final submission package by 13 Aug 23.55 | 1h | Submitted, with a screenshot of the confirmation |
+| **E4** | Final submission package by 13 Aug 18.00 WIB | 1h | `pnpm finals` green; submitted before the official deadline, with a screenshot of the confirmation |
 
 ---
 
@@ -195,13 +195,15 @@ minimum 4 of 5 members present** (⌊N/2⌋+1).
 ### Day 4 — Thu 13 Aug · freeze, submit, rehearse
 - `11.00` Standup. Triage: bugs only.
 - `13.00–16.00` Bug fixes, **E3** offline laptop, **D2** choreography, **D4** self-drill.
-- `18.00` **HARD FREEZE.** No merges after this except a demo-breaking bug fix with the lead's approval and a green gate.
+- `17.00` **SUBMISSION TARGET.** Upload early enough to verify the file, links, and confirmation.
+- `18.00` **OFFICIAL SUBMISSION DEADLINE + HARD FREEZE.** No presentation-content changes after this point; the technical-meeting penalty is −5 points. No merges after this except a demo-breaking bug fix with the lead's approval and a green gate.
 - `19.00` **Mentoring 4** — final review.
-- `23.55` **SUBMISSION DEADLINE (E4).** Aim to submit by 21.00.
 
 ### Day 5 — Fri 14 Aug · execute
-- `09.00–12.00` Exhibition. Two people always at the booth; rotate.
-- `13.30` Pitching briefing. `13.30–15.30` Pitch: **7 min + 3 min Q&A**, hard cut at 7.
+- `06.30–07.30` Participant arrival. `07.30–09.00` exhibition preparation.
+- `09.00–11.00` Innovation Forum and `09.00–12.00` exhibition visits run simultaneously. At least 3 of 5 members represent the team at the forum; the remaining 2 staff the booth.
+- `13.00–13.25` Pitching briefing. `13.25–13.30` team preparation. Randomized team slots run `13.30–15.10`; each slot is **2 min preparation + 7 min presentation + 3 min Q&A**, with a hard stop.
+- `15.10–15.30` Judges' deliberation. `15.30–16.00` awarding and closing ceremony.
 - Bring: demo laptop, charger, HDMI + USB-C adapters, phone hotspot, printed one-pager, QR.
 
 ---
@@ -218,6 +220,7 @@ days. Use what is already under the code:
 | **This file** | The only source of truth for *plan*. Changes to scope are edited here, in a commit. |
 | **WhatsApp** | Realtime only. Never the source of truth — decisions get restated in an issue. |
 | **`pnpm check`** | The only definition of *done*, and the merge permission. |
+| **`pnpm finals`** | Strict evidence gate for the official product, presentation, and exhibition rubric before submission. |
 
 **Labels:** `demo-critical` · `blocker` · `p1` · `p2` · `nice-to-have` · `track:A`…`track:E`
 
@@ -265,6 +268,7 @@ Then **3:00 Q&A** — every answer ≤30s, then stop talking.
 ## 10. Definition of done for the whole sprint
 
 - [ ] `pnpm check` green on the tagged submission commit
+- [ ] `pnpm finals` green with evidence for all 10 scoring criteria and all technical-meeting requirements
 - [ ] Semantic mode works; fallback proven by stubbing the API to fail
 - [ ] Full judge path passes on desktop **and** at 390px, zero console errors
 - [ ] A stranger can open the public URL on their phone and complete one session
@@ -272,4 +276,4 @@ Then **3:00 Q&A** — every answer ≤30s, then stop talking.
 - [ ] Pitch runs 6:15–6:45 three times consecutively
 - [ ] Q&A bank ≥20 questions, all mentor questions included
 - [ ] Offline laptop runs the full demo with wifi disabled
-- [ ] Submitted before 13 Aug 23.55, confirmation screenshotted
+- [ ] Submitted before 13 Aug 18.00 WIB, confirmation screenshotted

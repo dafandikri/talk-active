@@ -362,16 +362,16 @@ const TASKS = [
   },
   {
     id: 'E4', track: 'track:E', priority: 'blocker',
-    title: 'Final submission package by 13 Aug 23.55',
-    points: 'ALL — late submission is treated as withdrawal',
-    why: 'Guidebook: teams that fail to submit by the deadline "will be deemed to have withdrawn from the competition." This is the one task where being late scores zero on everything.',
+    title: 'Final submission package by 13 Aug 18.00 WIB',
+    points: 'Final Product — escalating late penalties, including 0 after two hours',
+    why: 'Technical meeting: submissions under two hours late lose 2 points per 5 minutes; at two hours or more, the Final Product receives 0. The safe operational target is one hour early.',
     steps: [
       'Confirm exactly what must be submitted at the Final Round Technical Briefing.',
       'Assemble: final product link, pitch deck, any required documentation.',
-      'Submit by 21.00, not 23.50. Leave three hours of margin.',
+      'Submit by 17.00. Leave one hour to verify the file, links, and confirmation before the 18.00 WIB deadline.',
       'Screenshot the confirmation.',
     ],
-    done: ['Submitted before 13 Aug 23.55', 'Confirmation screenshotted and posted in the team group', 'Submitted by 21.00 to leave margin'],
+    done: ['Submitted before 13 Aug 18.00 WIB', 'Confirmation screenshotted and posted in the team group', 'Submitted by 17.00 to leave margin'],
     files: ['submission portal'],
   },
 ];

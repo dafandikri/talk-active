@@ -10,12 +10,15 @@
     "test": "node --test",
     "test:browser": "node scripts/browser-check.mjs",
     "demo": "node scripts/demo-gate.mjs",
-    "check": "node --test && node scripts/browser-check.mjs && node scripts/demo-gate.mjs && node scripts/project.mjs check",
+    "check": "node --test && node scripts/browser-check.mjs && node scripts/demo-gate.mjs && node scripts/project.mjs check && node scripts/finals-rubric.mjs check",
     "check:proposal": "docs/proposal/build.sh",
     "project": "node scripts/project.mjs",
+    "rubric": "node scripts/finals-rubric.mjs",
+    "finals": "node scripts/finals-rubric.mjs gate",
     "status": "node scripts/status.mjs",
     "take": "node scripts/take.mjs",
-    "setup:hooks": "git config core.hooksPath .githooks && echo \"pre-push gate enabled\""
+    "setup:hooks": "git config core.hooksPath .githooks && echo \"pre-push gate enabled\"",
+    "design:preview": "node scripts/design-preview.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -8,13 +8,15 @@
       content="Talk-Active is a private rehearsal workspace for rubric-grounded pitches and judge Q&A."
     >
     <title>Talk-Active — Rehearsal workspace</title>
+    <meta name="theme-color" content="#4a32c8">
+    <link rel="stylesheet" href="/src/tokens.css">
     <link rel="stylesheet" href="/src/styles.css">
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Main navigation">
         <a class="brand" href="#home" data-route="home" aria-label="Talk-Active home">
-          <span class="brand-mark" aria-hidden="true">T</span>
+          <img class="brand-mark" src="/src/assets/cockatoo-mark.svg" alt="">
           <span>Talk-Active</span>
         </a>
 
@@ -53,7 +55,7 @@
 
       <header class="mobile-header">
         <a class="brand" href="#home" data-route="home">
-          <span class="brand-mark" aria-hidden="true">T</span><span>Talk-Active</span>
+          <img class="brand-mark" src="/src/assets/cockatoo-mark.svg" alt=""><span>Talk-Active</span>
         </a>
         <button class="icon-button" id="mobileAddProject" type="button" aria-label="Create project">+</button>
       </header>
@@ -288,7 +290,7 @@
                 </section>
                 <section class="surface defense-feedback" id="defenseFeedback" aria-live="polite">
                   <div class="feedback-empty" id="defenseEmpty">
-                    <span aria-hidden="true">A</span><h3>Your answer review will appear here.</h3><p>Talk-Active checks only the evidence expected by the active rubric criterion.</p>
+                    <img class="mascot-guide" src="/src/assets/cockatoo-mark.svg" alt=""><h3>Say it in your own words.</h3><p>Your speaking cockatoo will trace the answer only to evidence expected by the active rubric criterion.</p>
                   </div>
                   <div id="defenseResult" hidden>
                     <div class="verdict-row"><div><p class="overline">Answer coverage</p><h3 id="defenseStatus">—</h3></div><strong id="defenseScore">0%</strong></div>

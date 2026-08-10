@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "id": "ristek-hackathon-2026-finals",
+  "title": "RISTEK Hackathon 2026 Finals Rubric",
+  "source": {
+    "record": "docs/TECHNICAL-MEETING-2026.md",
+    "officialScoringSlides": [15, 16],
+    "note": "Criterion titles and weights are official. Acceptance evidence is an internal proof standard and is not presented as additional organizer scoring guidance."
+  },
+  "totalPoints": 200,
+  "scorecards": [
+    {
+      "id": "final-presentation",
+      "title": "Final Presentation",
+      "points": 100,
+      "surfaces": [
+        {
+          "id": "final-product",
+          "title": "Final Product",
+          "points": 80,
+          "criteria": [
+            {
+              "id": "FP-PROBLEM",
+              "title": "Problem Identification",
+              "weight": 15,
+              "sourceSlide": 15,
+              "ownerTasks": ["D5"],
+              "acceptanceEvidence": [
+                "The presentation identifies the target user, validated pain point, urgency, and bounded problem scope.",
+                "Every external problem or urgency claim is traceable to a source."
+              ]
+            },
+            {
+              "id": "FP-SOLUTION",
+              "title": "Solution Alignment",
+              "weight": 15,
+              "sourceSlide": 15,
+              "ownerTasks": ["D5"],
+              "acceptanceEvidence": [
+                "The presentation connects each core feature to the stated problem and Tech for Good sub-theme.",
+                "The live product path demonstrates the claimed differentiating loop without unsupported capability claims."
+              ]
+            },
+            {
+              "id": "FP-INNOVATION",
+              "title": "Innovation & Uniqueness",
+              "weight": 10,
+              "sourceSlide": 15,
+              "ownerTasks": ["A2", "A6", "D5"],
+              "acceptanceEvidence": [
+                "The presentation explains why rubric-first, cited-evidence rehearsal differs from generic speaking feedback.",
+                "The demonstration shows unique product logic rather than only naming it."
+              ]
+            },
+            {
+              "id": "FP-TECHNICAL",
+              "title": "Technical Execution",
+              "weight": 30,
+              "sourceSlide": 15,
+              "ownerTasks": ["A1", "A2", "A3", "A4", "A5", "B6", "E3"],
+              "acceptanceEvidence": [
+                "pnpm check passes on the submission state.",
+                "The deck explains the real tech stack, data flow, evidence validation, and deterministic fallback.",
+                "The full judge path works online and with network access disabled."
+              ]
+            },
+            {
+              "id": "FP-DESIGN",
+              "title": "Design & User Experience",
+              "weight": 10,
+              "sourceSlide": 15,
+              "ownerTasks": ["B5", "C1", "C2"],
+              "acceptanceEvidence": [
+                "The full judge path passes desktop and 390px browser checks without overflow or console errors.",
+                "Evidence citations are visually prominent and all critical states remain readable on the real demo display."
+              ]
+            }
+          ]
+        },
+        {
+          "id": "product-presentation",
+          "title": "Product Presentation",
+          "points": 20,
+          "criteria": [
+            {
+              "id": "PP-PITCH-QA",
+              "title": "Pitching and Q&A Response",
+              "weight": 20,
+              "sourceSlide": 15,
+              "ownerTasks": ["D1", "D2", "D3", "D4", "D5"],
+              "acceptanceEvidence": [
+                "Three consecutive rehearsals finish between 6:15 and 6:45 before the 7-minute hard stop.",
+                "The deck covers the required and recommended content, contains the live product and public repository links, and has a rehearsed operator handoff.",
+                "The Q&A bank contains at least 20 concise, evidence-supported answers and every mentor question."
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "exhibition",
+      "title": "Exhibition",
+      "points": 100,
+      "surfaces": [
+        {
+          "id": "booth-exhibition",
+          "title": "Booth Exhibition",
+          "points": 100,
+          "criteria": [
+            {
+              "id": "EX-BOOTH",
+              "title": "Booth & Visual Display",
+              "weight": 20,
+              "sourceSlide": 16,
+              "ownerTasks": ["B2", "C3", "C4"],
+              "acceptanceEvidence": [
+                "The booth communicates the product's main idea and value without a verbal explanation.",
+                "The display, one-pager, official identity, and public-product QR are legible and tested on-site."
+              ]
+            },
+            {
+              "id": "EX-DEMO",
+              "title": "Interactive Demo & Prototype",
+              "weight": 30,
+              "sourceSlide": 16,
+              "ownerTasks": ["B1", "B2", "B3", "B4", "B5", "B6", "E3"],
+              "acceptanceEvidence": [
+                "A visitor can open the public product and complete the differentiating loop on their own phone.",
+                "Kiosk reset, semantic failure fallback, mobile layout, reload persistence, and offline operation are demonstrated."
+              ]
+            },
+            {
+              "id": "EX-COMMUNICATION",
+              "title": "Communication & Engagement",
+              "weight": 30,
+              "sourceSlide": 16,
+              "ownerTasks": ["C4", "D2", "D3", "D4"],
+              "acceptanceEvidence": [
+                "Booth staff can explain the problem, product loop, evidence citation, limitation, and next step concisely.",
+                "The staffing plan keeps visitors supported while at least 50% of the team attends the Innovation Forum."
+              ]
+            },
+            {
+              "id": "EX-IMPACT",
+              "title": "Product Impact & Innovation",
+              "weight": 20,
+              "sourceSlide": 16,
+              "ownerTasks": ["C4", "D5"],
+              "acceptanceEvidence": [
+                "Booth materials connect the validated problem to product impact and a bounded future roadmap.",
+                "The live interaction makes the rubric-grounded innovation observable rather than relying on a claim."
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "requirements": [
+    {"id": "TM-SUB-001", "surface": "product-presentation", "requirement": "Submit through Google Classroom by Thursday, 13 August 2026 at 18.00 WIB."},
+    {"id": "TM-SUB-002", "surface": "product-presentation", "requirement": "Submit the presentation deck as PDF or PPTX."},
+    {"id": "TM-SUB-003", "surface": "product-presentation", "requirement": "The cover states the team name, member names, product name, and logo."},
+    {"id": "TM-SUB-004", "surface": "product-presentation", "requirement": "The official RISTEK Hackathon 2026 logo is on the cover."},
+    {"id": "TM-SUB-005", "surface": "product-presentation", "requirement": "The deck includes a direct link to the final product."},
+    {"id": "TM-SUB-006", "surface": "product-presentation", "requirement": "The deck includes a public, accessible GitHub repository link."},
+    {"id": "TM-BOOTH-001", "surface": "booth-exhibition", "requirement": "The team arrives on schedule and brings its own display and demo devices."},
+    {"id": "TM-BOOTH-002", "surface": "booth-exhibition", "requirement": "At least 50% of the team attends the Innovation Forum while remaining members staff the booth."},
+    {"id": "TM-PITCH-001", "surface": "product-presentation", "requirement": "On-site participants attend the entire event and notify the committee before leaving."},
+    {"id": "TM-PITCH-002", "surface": "product-presentation", "requirement": "Every participant complies with the formal dress code."},
+    {"id": "TM-PITCH-003", "surface": "product-presentation", "requirement": "The team rehearses the 2-minute preparation, 7-minute presentation, and 3-minute Q&A allocation."},
+    {"id": "TM-PITCH-004", "surface": "product-presentation", "requirement": "The presentation has a rehearsed hard stop when the committee timer expires."},
+    {"id": "TM-PITCH-005", "surface": "product-presentation", "requirement": "The submitted deck and operator handoff are tested without relying on presenter screen sharing."},
+    {"id": "TM-INTEGRITY-001", "surface": "final-product", "requirement": "The submission contains no plagiarism, fabricated data or sources, prohibited third-party involvement, or academic misconduct."},
+    {"id": "TM-DAY5-001", "surface": "booth-exhibition", "requirement": "The team arrival plan targets 06.30 on 14 August 2026 and booth preparation from 07.30."},
+    {"id": "TM-DAY5-002", "surface": "booth-exhibition", "requirement": "The staffing plan covers the 09.00–11.00 Innovation Forum and 09.00–12.00 exhibition visit."},
+    {"id": "TM-OPEN-001", "surface": "product-presentation", "requirement": "The exact required submission file naming format is confirmed with Google Classroom or the team manager."},
+    {"id": "TM-OPEN-002", "surface": "final-product", "requirement": "The organizer's AI-assistance interpretation is confirmed and the team's disclosure is accurate."}
+  ]
+}

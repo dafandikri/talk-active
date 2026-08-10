@@ -2,6 +2,10 @@
 node_modules/
 coverage/
 
+# Local source captures are preserved outside Git; the searchable transcription
+# and its enforced requirements live in docs/TECHNICAL-MEETING-2026.md.
+/docs/Technical Meeting Slides/
+
 # Vercel project linkage is per-developer.
 .vercel/
 

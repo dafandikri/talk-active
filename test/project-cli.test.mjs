@@ -19,15 +19,20 @@ test('project CLI home view returns compact live content instead of a manual', (
   assert.equal(result.stderr, '');
   assert.match(result.stdout, /^bin: /u);
   assert.match(result.stdout, /milestone: persistent-product-prototype/u);
-  assert.match(result.stdout, /checks\[13\]\{id,status\}:/u);
-  assert.match(result.stdout, /help\[2\]:/u);
+  assert.match(result.stdout, /requirements\[4\]\{id,path\}:/u);
+  assert.match(result.stdout, /active-plan,"docs\/specs\/2026-08-10-innovation-week\.md"/u);
+  assert.match(result.stdout, /technical-meeting,"docs\/TECHNICAL-MEETING-2026\.md"/u);
+  assert.match(result.stdout, /finals-rubric,"docs\/rubrics\/2026-finals\.json"/u);
+  assert.match(result.stdout, /finals-readiness,"docs\/finals-readiness\.json"/u);
+  assert.match(result.stdout, /checks\[18\]\{id,status\}:/u);
+  assert.match(result.stdout, /help\[3\]:/u);
 });
 
 test('project CLI check is definitive and self-contained', () => {
   const result = run('scripts/project.mjs', ['check']);
   assert.equal(result.status, 0);
   assert.equal(result.stderr, '');
-  assert.match(result.stdout, /summary: "13\/13 required artifacts ready"/u);
+  assert.match(result.stdout, /summary: "18\/18 required artifacts ready"/u);
   assert.doesNotMatch(result.stdout, /help/u);
 });
 
