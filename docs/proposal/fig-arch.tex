@@ -1,0 +1,93 @@
+% ---------------------------------------------------------------- Figure 2 --
+% Target system architecture and data flow.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  font=\fontsize{8.2}{9.6}\selectfont,
+  svc/.style={
+    draw=ristekpurple!55, fill=white, line width=0.55pt, rounded corners=2pt,
+    minimum height=0.82cm, text width=2.62cm, align=center, inner sep=2.5pt
+  },
+  ai/.style={svc, draw=uired!55, fill=uired!6},
+  store/.style={svc, draw=uinavy!55, fill=uinavy!6},
+  band/.style={
+    draw=rulegrey, fill=panelgrey, line width=0.5pt, rounded corners=3pt
+  },
+  lbl/.style={font=\fontsize{8}{9}\selectfont\bfseries, text=inkgrey},
+  flow/.style={-{Stealth[length=3.6pt]}, draw=inkgrey!70, line width=0.6pt}
+]
+
+% ---------------- Layer 1: client
+\node[svc, fill=softpurple, draw=ristekpurple!70] (web)
+  {\textbf{Next.js Web App}\\ React, TypeScript};
+\node[svc, fill=softpurple, draw=ristekpurple!70, right=0.5cm of web] (rec)
+  {\textbf{Recorder}\\ browser audio capture};
+\node[svc, fill=softpurple, draw=ristekpurple!70, right=0.5cm of rec] (auth)
+  {\textbf{Clerk Auth}\\ session \& consent};
+
+\begin{scope}[on background layer]
+  \node[band, fit=(web)(rec)(auth), inner sep=6pt] (clientband) {};
+\end{scope}
+\node[lbl, anchor=west] at ([xshift=2pt, yshift=0pt] clientband.north west)
+  {}; % spacer
+\node[lbl, above=1pt of clientband.north west, anchor=south west]
+  {CLIENT};
+
+% ---------------- Layer 2: application
+\node[svc, below=1.15cm of web] (api) {\textbf{API Routes}\\ Vercel Functions};
+\node[svc, right=0.5cm of api] (rubricsvc) {\textbf{Rubric Service}\\ parse \& confirm};
+\node[svc, right=0.5cm of rubricsvc] (evidsvc) {\textbf{Evidence Mapper}\\ claim → criterion};
+
+\node[svc, below=0.42cm of api] (qgen) {\textbf{Question Gen}\\ weakest claim};
+\node[svc, right=0.5cm of qgen] (defsvc) {\textbf{Defense Eval}\\ evidence check};
+\node[svc, right=0.5cm of defsvc] (prog) {\textbf{Progress}\\ recurring gaps};
+
+\begin{scope}[on background layer]
+  \node[band, fit=(api)(evidsvc)(qgen)(prog), inner sep=6pt] (appband) {};
+\end{scope}
+\node[lbl, above=1pt of appband.north west, anchor=south west]
+  {APPLICATION};
+
+% ---------------- Layer 3: AI
+\node[ai, below=1.15cm of qgen] (gw) {\textbf{AI Gateway}\\ routing \& failover};
+\node[ai, right=0.5cm of gw] (llm) {\textbf{LLM}\\ span-cited verdicts};
+\node[ai, right=0.5cm of llm] (asr) {\textbf{Speech-to-Text}\\ Indonesian / English};
+
+\begin{scope}[on background layer]
+  \node[band, fit=(gw)(llm)(asr), inner sep=6pt] (aiband) {};
+\end{scope}
+\node[lbl, above=1pt of aiband.north west, anchor=south west]
+  {AI LAYER};
+
+% ---------------- Layer 4: data
+\node[store, below=1.15cm of gw] (pg) {\textbf{Postgres}\\ projects, rubrics,\\ sessions};
+\node[store, right=0.5cm of pg] (blob) {\textbf{Blob (private)}\\ documents};
+\node[store, right=0.5cm of blob] (redis) {\textbf{Redis}\\ cache \& rate limit};
+
+\begin{scope}[on background layer]
+  \node[band, fit=(pg)(blob)(redis), inner sep=6pt] (databand) {};
+\end{scope}
+\node[lbl, above=1pt of databand.north west, anchor=south west]
+  {DATA};
+
+% ---------------- flows between layers
+\draw[flow] (clientband.south) -- node[right, font=\fontsize{7.6}{9}\selectfont, text=inkgrey]
+  {HTTPS} (appband.north);
+\draw[flow] (appband.south) -- node[right, font=\fontsize{7.6}{9}\selectfont, text=inkgrey]
+  {structured, schema-validated calls} (aiband.north);
+\draw[flow] (aiband.south) -- (databand.north);
+
+% side note: no audio retained
+\node[draw=goodgreen!60, fill=goodgreen!7, line width=0.5pt, rounded corners=2pt,
+      inner sep=4pt, text width=3.1cm, align=left,
+      font=\fontsize{7.6}{9}\selectfont, right=0.34cm of aiband.east, anchor=west]
+  (privacy)
+  {\textbf{Audio is transcribed\\ then discarded.}\\ Only the transcript is
+   stored, and the student can delete it.};
+\draw[draw=goodgreen!60, line width=0.5pt, dashed] (aiband.east) -- (privacy.west);
+
+\end{tikzpicture}
+\caption{Target system architecture. The application layer, not the model,
+enforces the rule that every criterion verdict must cite a transcript span.}
+\label{fig:arch}
+\end{figure}

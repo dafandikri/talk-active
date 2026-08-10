@@ -34,6 +34,25 @@ function publicPath(urlValue) {
 
 export function createServer(root = DEFAULT_ROOT) {
   return createHttpServer((request, response) => {
+    // The analysis endpoint is served locally by the same handler Vercel runs,
+    // so local development and production behave identically. Everything else
+    // below stays a read-only static server.
+    let pathname = '/';
+    try {
+      pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
+    } catch {
+      pathname = '/';
+    }
+    if (pathname === '/api/analyze') {
+      import('../api/analyze.mjs')
+        .then((module) => module.default(request, response))
+        .catch(() => {
+          response.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+          response.end(JSON.stringify({ error: 'analysis_unavailable', message: 'Analysis endpoint failed to load.' }));
+        });
+      return;
+    }
+
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       response.writeHead(405, { ...responseHeaders('text/plain; charset=utf-8'), Allow: 'GET, HEAD' });
       response.end('Method not allowed');
@@ -72,7 +91,7 @@ export function createServer(root = DEFAULT_ROOT) {
 
 function parsePort(args) {
   const index = args.indexOf('--port');
-  const candidate = index >= 0 ? args[index + 1] : process.env.LANCAR_PORT ?? '4173';
+  const candidate = index >= 0 ? args[index + 1] : process.env.TALK_ACTIVE_PORT ?? '4173';
   const port = Number(candidate);
   if (!Number.isInteger(port) || port < 0 || port > 65535) return null;
   return port;

@@ -1,0 +1,181 @@
+% ============================================================================
+%  RISTEK HACKATHON 2026 — PRELIMINARY PROPOSAL
+%  Format preamble. Every setting below maps to a rule in the official
+%  Registration Guidebook, "Format Guideline" table (p.15-16).
+%
+%    Font          -> Times New Roman        (real Monotype TTF via fontspec)
+%    Font Size     -> Title 14pt Bold, Body 12pt
+%    Line Spacing  -> 1.5
+%    Alignment     -> Justified
+%    Page Number   -> Bottom - Right
+%    Margins       -> 3 cm (Right, Left, Top, Bottom)
+%    Logo          -> Must appear on EVERY page
+%    Language      -> English
+% ============================================================================
+
+% ---------------------------------------------------------------- geometry --
+% `top`/`bottom` measure to the BODY text block, so the running logo header and
+% the page-number footer live inside the 3 cm margin band. This keeps the
+% printed text block at exactly 3 cm on all four sides.
+\usepackage[
+  a4paper,
+  top=3cm, bottom=3cm, left=3cm, right=3cm,
+  headheight=44pt, headsep=14pt, footskip=26pt,
+  includehead=false, includefoot=false
+]{geometry}
+
+% ------------------------------------------------------------------- fonts --
+% Genuine Times New Roman shipped with the document so the build is portable
+% and the rendered glyphs are literally Times New Roman, not a clone.
+\usepackage{fontspec}
+\setmainfont{TimesNewRoman}[
+  Path            = ./assets/fonts/,
+  Extension       = .ttf,
+  UprightFont     = *-Regular,
+  BoldFont        = *-Bold,
+  ItalicFont      = *-Italic,
+  BoldItalicFont  = *-BoldItalic,
+  Ligatures       = TeX
+]
+% Character protrusion is disabled deliberately: it lets punctuation hang past
+% the text block, which would put ink outside the mandated 3 cm margin.
+\usepackage[protrusion=false]{microtype}
+
+% ----------------------------------------------------------- body text size --
+% Body text is 12 pt on a 1.5 line grid.
+\usepackage{setspace}
+\onehalfspacing
+
+% ------------------------------------------------------------------ colours --
+\usepackage{xcolor}
+\definecolor{ristekpurple}{HTML}{4A32C8}
+\definecolor{uinavy}{HTML}{1F3A6E}
+\definecolor{uired}{HTML}{C8202E}
+\definecolor{inkgrey}{HTML}{3A3A3A}
+\definecolor{rulegrey}{HTML}{BFBFBF}
+\definecolor{panelgrey}{HTML}{F2F2F4}
+\definecolor{softpurple}{HTML}{ECE8FB}
+\definecolor{goodgreen}{HTML}{1E7A46}
+\definecolor{warnamber}{HTML}{B26A00}
+
+% ------------------------------------------------------------- graphics/tikz --
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,shapes.geometric,calc,fit,backgrounds,decorations.pathreplacing}
+\usepackage{float}
+
+% -------------------------------------------------------------------- tables --
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{longtable}
+\renewcommand{\arraystretch}{1.15}
+
+% -------------------------------------------------------------------- lists --
+\usepackage{enumitem}
+% Line-breakable underline, needed for the Originality Statement's title blank.
+\usepackage[normalem]{ulem}
+\setlist{nosep, topsep=2pt, partopsep=0pt, itemsep=2pt, parsep=0pt, leftmargin=*}
+
+% ------------------------------------------------------- headings: 14pt bold --
+% Guidebook: "Title: 14 pt (Bold)". All headings are Times New Roman bold 14pt.
+\usepackage{titlesec}
+\titleformat{\section}{\bfseries\fontsize{14}{17}\selectfont}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\bfseries\fontsize{12}{15}\selectfont}{\thesubsection}{0.5em}{}
+\titleformat{\subsubsection}{\itshape\bfseries\fontsize{12}{15}\selectfont}{\thesubsubsection}{0.5em}{}
+\titlespacing*{\section}{0pt}{7pt}{3pt}
+\titlespacing*{\subsection}{0pt}{5pt}{2pt}
+\titlespacing*{\subsubsection}{0pt}{4pt}{2pt}
+
+% ------------------------------------------------- captions (kept at 11-12pt) --
+\usepackage[font=small,labelfont=bf,justification=centering,skip=3pt]{caption}
+\captionsetup{belowskip=2pt}
+% Float spacing kept tight so figures do not push the body over the page limit.
+\setlength{\intextsep}{6pt plus 2pt minus 2pt}
+\setlength{\textfloatsep}{6pt plus 2pt minus 2pt}
+\setlength{\abovecaptionskip}{3pt}
+\setlength{\belowcaptionskip}{2pt}
+% Let large floats share a page with body text instead of claiming their own,
+% which is what pushes a document over a hard page limit.
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.90}
+\renewcommand{\textfraction}{0.06}
+\renewcommand{\floatpagefraction}{0.88}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{5}
+
+% ---------------------------------------------- LOGO ON EVERY PAGE + FOOTER --
+% Guidebook: "Logo — Must appear on every page" and "Page Numbering — Bottom-Right".
+% The header strip carries all three logos supplied in the official logo folder
+% (ristek.link/RISTEKHackathon2026Logo): RISTEK Fasilkom UI, Fakultas Ilmu
+% Komputer UI, and Dies Natalis ke-40 Fasilkom UI.
+\usepackage{fancyhdr}
+
+\newcommand{\logostrip}{%
+  \begin{minipage}[c]{\textwidth}%
+    \centering
+    \raisebox{-0.5\height}{\includegraphics[height=0.80cm]{assets/logos/ristek-trim.png}}%
+    \hfill
+    \raisebox{-0.5\height}{\includegraphics[height=0.90cm]{assets/logos/fasilkom-trim.png}}%
+    \hfill
+    \raisebox{-0.5\height}{\includegraphics[height=0.95cm]{assets/logos/dies-natalis-40-trim.png}}%
+  \end{minipage}%
+}
+
+\fancypagestyle{ristek}{%
+  \fancyhf{}%
+  \renewcommand{\headrulewidth}{0.4pt}%
+  \renewcommand{\headrule}{\color{rulegrey}\hrule height 0.4pt}%
+  \renewcommand{\footrulewidth}{0pt}%
+  \fancyhead[C]{\logostrip}%
+  \fancyfoot[R]{\normalfont\fontsize{11}{13}\selectfont\thepage}%
+}
+
+% Cover page: same logo strip (rule applies to every page) but no page number,
+% because the cover is explicitly excluded from the counted page limit.
+\fancypagestyle{ristekcover}{%
+  \fancyhf{}%
+  \renewcommand{\headrulewidth}{0.4pt}%
+  \renewcommand{\headrule}{\color{rulegrey}\hrule height 0.4pt}%
+  \renewcommand{\footrulewidth}{0pt}%
+  \fancyhead[C]{\logostrip}%
+  \fancyfoot[R]{}%
+}
+
+\pagestyle{ristek}
+
+% --------------------------------------------------------------- paragraphs --
+% Justified is the LaTeX default; stated explicitly for auditability.
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{3.5pt plus 1pt minus 1pt}
+\usepackage{ragged2e}
+\justifying
+
+% ------------------------------------------------------------------- links ---
+\usepackage[hidelinks]{hyperref}
+% Render URLs in Times as well, so the PDF embeds no font other than
+% Times New Roman (hyperref would otherwise typeset \url in monospace).
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Talk-Active — RISTEK Hackathon 2026 Preliminary Proposal},
+  pdfsubject={RISTEK Hackathon 2026 Preliminary Round Product Proposal},
+  pdfcreator={LaTeX (XeTeX/Tectonic)},
+  bookmarksnumbered=true
+}
+
+% ------------------------------------------------------------ small helpers --
+% A light callout panel used for key claims and boundary statements.
+\newcommand{\callout}[1]{%
+  \par\vspace{4pt}%
+  \noindent\begin{tikzpicture}
+    \node[draw=ristekpurple!35, fill=softpurple, line width=0.5pt,
+          rounded corners=2pt, inner sep=8pt, text width=\dimexpr\textwidth-20pt\relax,
+          align=justify] {#1};
+  \end{tikzpicture}\par\vspace{4pt}%
+}
+
+% Compact table cell helpers
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}

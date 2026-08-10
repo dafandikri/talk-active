@@ -1,6 +1,6 @@
-# Lancar
+# Talk-Active
 
-Lancar is a private rehearsal workspace for Indonesian students preparing a rubric-driven
+Talk-Active is a private rehearsal workspace for Indonesian students preparing a rubric-driven
 pitch, scholarship interview, thesis defense, or competition Q&A.
 
 It is designed as software a student returns to throughout preparation—not as a landing
@@ -30,7 +30,7 @@ From the workspace you can:
 7. reload the browser without losing projects, drafts, rubrics, or session history.
 
 All workspace data is stored in browser `localStorage`. Dictation uses the browser's speech
-recognition capability when available; Lancar does not record or persist raw audio.
+recognition capability when available; Talk-Active does not record or persist raw audio.
 
 ## Product loop
 
@@ -78,11 +78,11 @@ students using their own materials.
 
 Production deployment is protected by `middleware.js` using HTTP Basic Authentication.
 Set `SITE_PASSWORD` in Vercel for every deployed environment; the middleware fails closed
-with a `503` if the secret is absent. The username is `lancar`. Never commit the password
+with a `503` if the secret is absent. The username is `talkactive`. Never commit the password
 to this repository or place it in client-side JavaScript.
 
 The decision brief is in [docs/FEASIBILITY.md](docs/FEASIBILITY.md), and the product contract
-is in [docs/specs/2026-08-06-lancar-mvp.md](docs/specs/2026-08-06-lancar-mvp.md).
+is in [docs/specs/2026-08-06-talk-active-mvp.md](docs/specs/2026-08-06-talk-active-mvp.md).
 
 ## Agent harness
 

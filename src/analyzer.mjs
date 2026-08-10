@@ -21,7 +21,7 @@ Solution fit | rubric, feedback, retry, improvement
 Differentiation | competitors, unique logic, traceable
 Feasibility and trust | prototype, architecture, privacy, limitations`;
 
-export const STARTER_DRAFT = `Many Indonesian students prepare important presentations alone and only receive feedback after the result is final. Lancar lets a student use the actual evaluation rubric while practicing a pitch. It maps each claim in the transcript to a criterion, points out what is still unsupported, and asks a judge-style follow-up question about the weakest claim. The student then retries one focused section and sees whether the evidence improved. The current implementation uses local transcript analysis, so no recording is stored.`;
+export const STARTER_DRAFT = `Many Indonesian students prepare important presentations alone and only receive feedback after the result is final. Talk-Active lets a student use the actual evaluation rubric while practicing a pitch. It maps each claim in the transcript to a criterion, points out what is still unsupported, and asks a judge-style follow-up question about the weakest claim. The student then retries one focused section and sees whether the evidence improved. The current implementation uses local transcript analysis, so no recording is stored.`;
 
 export class AnalysisError extends Error {
   constructor(code, message) {
@@ -124,7 +124,7 @@ function makeJudgeQuestion(criterion) {
     return `Walk me through one user attempt from input to measurable improvement. Where does the product create value that a generic chatbot cannot?${missingPrompt}`;
   }
   if (label.includes('different') || label.includes('unique') || label.includes('innovation')) {
-    return `Existing speaking coaches already support Indonesian practice and feedback. What unique product logic would make a student choose Lancar?${missingPrompt}`;
+    return `Existing speaking coaches already support Indonesian practice and feedback. What unique product logic would make a student choose Talk-Active?${missingPrompt}`;
   }
   if (label.includes('feasib') || label.includes('technical') || label.includes('trust')) {
     return `Which part works in the prototype today, which part is simulated, and how will you keep recordings and scoring trustworthy?${missingPrompt}`;

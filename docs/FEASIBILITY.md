@@ -1,4 +1,4 @@
-# Lancar — Product and Feasibility Brief
+# Talk-Active — Product and Feasibility Brief
 
 **Updated:** 2026-08-07  
 **Decision:** Build a recurring rehearsal workspace, not a speaking-score landing page.
@@ -17,7 +17,7 @@ The useful product behavior is therefore:
 
 ## Product choice
 
-Lancar now opens as a persistent workspace. The user can create projects, maintain each
+Talk-Active now opens as a persistent workspace. The user can create projects, maintain each
 rubric, practice a saved draft, inspect traceable evidence, answer one grounded question,
 save the session, and track progress. The interface contains no marketing hero or scripted
 “show the MVP” path.
@@ -47,7 +47,7 @@ student fixes before Q&A? Infrastructure can expand only after that behavior is 
 
 ## Validation plan
 
-Give five students their actual event rubric and ask them to use Lancar across at least two
+Give five students their actual event rubric and ask them to use Talk-Active across at least two
 practice sessions. Observe whether they can create the project, represent the rubric,
 understand the weakest claim, answer the judge question, and return later without help.
 

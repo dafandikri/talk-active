@@ -1,11 +1,11 @@
-# Lancar Rehearsal Workspace — Product Contract
+# Talk-Active Rehearsal Workspace — Product Contract
 
 **Updated:** 2026-08-07  
 **Status:** Device-local product prototype implemented
 
 ## Product definition
 
-Lancar is a persistent preparation workspace for a student who expects to practice more
+Talk-Active is a persistent preparation workspace for a student who expects to practice more
 than once. Each project owns its event context, deadline, evaluator rubric, current draft,
 and session history. A practice session turns one transcript into a traceable evidence map,
 one hard judge question, one evaluated answer, and a saved progress point.
@@ -75,7 +75,7 @@ scripts/project.mjs           agent-facing context and artifact doctor
 test/*.test.mjs               analyzer, CLI, and HTTP boundary tests
 ```
 
-The workspace snapshot is stored under `lancar.workspace.v1` in browser `localStorage`.
+The workspace snapshot is stored under `talkactive.workspace.v1` in browser `localStorage`.
 Raw audio is never created or stored by the application.
 
 ## Acceptance evidence

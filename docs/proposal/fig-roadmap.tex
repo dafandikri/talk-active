@@ -1,0 +1,49 @@
+% ---------------------------------------------------------------- Figure ----
+% Scaling roadmap as a compact single-row strip of five cards.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\fontsize{7.4}{8.8}\selectfont]
+
+% Explicit dimensions: five 2.72 cm cards with 0.28 cm gutters spans 14.72 cm,
+% which fits inside the 15 cm text block.
+\newcommand{\CardW}{2.72}   % card width in cm (unitless for coordinates)
+\newcommand{\Pitch}{3.00}   % card width + gutter
+
+% #1 index (0-based)  #2 accent colour  #3 title  #4 when  #5 body
+\newcommand{\phase}[5]{%
+  \pgfmathsetmacro{\X}{#1*\Pitch}%
+  \node[anchor=north west,
+        draw=#2!45, fill=#2!7, line width=0.55pt, rounded corners=2.5pt,
+        inner sep=4pt,
+        text width=2.34cm,          % 2.72cm card - 2*4pt inner sep
+        align=flush left,
+        minimum width=2.72cm, minimum height=2.30cm]
+    at (\X,0)
+    {{\fontsize{8}{9.4}\selectfont\bfseries\color{inkgrey}#3}\\[1.5pt]
+     {\fontsize{6.9}{8.2}\selectfont\itshape\color{#2}#4}\\[3pt]
+     {\fontsize{6.9}{8.3}\selectfont\color{inkgrey!88}#5}};
+}
+
+\phase{0}{goodgreen}{Prototype}{shipped}%
+  {Full loop, persistence, and a passing automated gate.}
+\phase{1}{ristekpurple}{Innovation Week}{10--14 Aug 2026}%
+  {Semantic evidence mapping with cited spans; rubric import.}
+\phase{2}{uinavy}{Validation}{Year 1}%
+  {Accounts, consent, deletion. Ten-student study.}
+\phase{3}{uinavy}{Adjacent contexts}{Year 2}%
+  {Thesis defense, LPDP panels, job interviews.}
+\phase{4}{uired}{Institutional}{Year 3}%
+  {Campus licences and cohort analytics for lecturers.}
+
+% progression arrows sitting in the gutters
+\foreach \i in {0,1,2,3}{
+  \pgfmathsetmacro{\AX}{\i*\Pitch+\CardW}
+  \draw[-{Stealth[length=3.2pt]}, draw=inkgrey!50, line width=0.6pt]
+    (\AX,-1.15) -- ({\AX+0.26},-1.15);
+}
+
+\end{tikzpicture}
+\caption{Scaling roadmap. What compounds is the library of parsed Indonesian
+rubric archetypes, not the infrastructure.}
+\label{fig:roadmap}
+\end{figure}

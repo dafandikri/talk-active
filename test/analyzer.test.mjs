@@ -73,7 +73,7 @@ test('judge-room defense is grounded in the weakest criterion signals', () => {
   assert.equal(pitch.weakest.label, 'Differentiation');
 
   const defense = evaluateDefense({
-    answer: 'Unlike generic competitors, Lancar uses unique logic that keeps every critique traceable to the active rubric and transcript.',
+    answer: 'Unlike generic competitors, Talk-Active uses unique logic that keeps every critique traceable to the active rubric and transcript.',
     criterion: pitch.weakest,
   });
   assert.equal(defense.status, 'defensible');

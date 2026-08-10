@@ -1,6 +1,6 @@
 {
-  "name": "lancar-workspace",
-  "version": "0.3.0",
+  "name": "talk-active-workspace",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "A persistent rubric-grounded rehearsal workspace for Indonesian students.",
@@ -9,8 +9,13 @@
     "start": "node scripts/serve.mjs",
     "test": "node --test",
     "test:browser": "node scripts/browser-check.mjs",
+    "demo": "node scripts/demo-gate.mjs",
+    "check": "node --test && node scripts/browser-check.mjs && node scripts/demo-gate.mjs && node scripts/project.mjs check",
+    "check:proposal": "docs/proposal/build.sh",
     "project": "node scripts/project.mjs",
-    "check": "node --test && node scripts/browser-check.mjs && node scripts/project.mjs check"
+    "status": "node scripts/status.mjs",
+    "take": "node scripts/take.mjs",
+    "setup:hooks": "git config core.hooksPath .githooks && echo \"pre-push gate enabled\""
   },
   "engines": {
     "node": ">=20"
