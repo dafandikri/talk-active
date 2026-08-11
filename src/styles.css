@@ -475,6 +475,10 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .save-state span { color: var(--brand); }
 /* INV-7: analysis fails loudly. This is the loud part. */
 .form-error { margin: var(--space-4) 0 0; padding: var(--space-3); color: var(--danger); background: var(--danger-wash); border-radius: var(--radius-sm); font-size: var(--step-0); }
+/* Progress, not a problem. It sits below the button it describes and reads as
+   a quiet note, so a wait never looks like the error state directly above it. */
+.attempt-status { margin: var(--space-3) 0 0; color: var(--text-muted); font-size: var(--step-0); text-align: center; }
+.attempt-status:empty { display: none; }
 .session-sidebar { display: grid; align-content: start; gap: var(--space-4); }
 .session-goal, .privacy-card { padding: var(--space-5); }
 .session-goal, .privacy-card { border: 2px solid var(--text-primary); }
