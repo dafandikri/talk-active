@@ -28,7 +28,10 @@ import { createServer as createAppServer } from './serve.mjs';
 
 // Deliberately not imported from browser-check.mjs: that module self-executes
 // its own suite on import, which would run the feature gate twice.
-const BROWSER_NAMES = new Set(['chrome-headless-shell', 'headless_shell', 'Google Chrome', 'Chromium']);
+const BROWSER_NAMES = new Set([
+  'chrome-headless-shell', 'headless_shell', 'Google Chrome', 'Chromium',
+  'chrome-headless-shell.exe', 'headless_shell.exe', 'chrome.exe',
+]);
 
 function walkForBrowser(directory, depth = 0) {
   if (!directory || !existsSync(directory) || depth > 4) return [];
@@ -41,17 +44,27 @@ function walkForBrowser(directory, depth = 0) {
   return found;
 }
 
+// Kept in step with findBrowser() in browser-check.mjs. A browser this cannot
+// see makes the gate report "skipped" and exit 0, so the demo path silently
+// goes unverified while pnpm check stays green — and this is the gate that
+// exists precisely so the demo cannot break (INV-8).
+const localAppData = process.env.LOCALAPPDATA ?? join(homedir(), 'AppData/Local');
+
 function findBrowser() {
   const explicit = process.env.CHROME_BIN;
   if (explicit && existsSync(explicit)) return explicit;
   const installed = [
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    join(process.env.ProgramFiles ?? 'C:/Program Files', 'Google/Chrome/Application/chrome.exe'),
+    join(process.env['ProgramFiles(x86)'] ?? 'C:/Program Files (x86)', 'Google/Chrome/Application/chrome.exe'),
+    join(localAppData, 'Google/Chrome/Application/chrome.exe'),
   ].find((candidate) => existsSync(candidate));
   if (installed) return installed;
   const cacheRoots = [
     join(homedir(), 'Library/Caches/ms-playwright'),
     join(homedir(), '.cache/ms-playwright'),
+    join(localAppData, 'ms-playwright'),
   ];
   return cacheRoots.flatMap((root) => walkForBrowser(root)).sort().reverse()[0] ?? null;
 }

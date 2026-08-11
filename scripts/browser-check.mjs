@@ -9,7 +9,10 @@ import { fileURLToPath } from 'node:url';
 
 import { createServer as createAppServer } from './serve.mjs';
 
-const BROWSER_NAMES = new Set(['chrome-headless-shell', 'headless_shell', 'Google Chrome', 'Chromium']);
+const BROWSER_NAMES = new Set([
+  'chrome-headless-shell', 'headless_shell', 'Google Chrome', 'Chromium',
+  'chrome-headless-shell.exe', 'headless_shell.exe', 'chrome.exe',
+]);
 
 function quoted(value) {
   return JSON.stringify(String(value));
@@ -26,17 +29,29 @@ function walkForBrowser(directory, depth = 0) {
   return found;
 }
 
+// A missing browser makes this gate report "skipped" and exit 0, so a machine
+// this function cannot see a browser on runs `pnpm check` green while never
+// exercising the demo path — the merge permission is granted by a gate that did
+// not run. CI installs Chromium and fails on "status: skipped" for exactly that
+// reason; a developer laptop has no such guard, so the search has to cover the
+// platforms the team actually works on.
+const localAppData = process.env.LOCALAPPDATA ?? join(homedir(), 'AppData/Local');
+
 export function findBrowser() {
   const explicit = process.env.CHROME_BIN;
   if (explicit && existsSync(explicit)) return explicit;
   const installed = [
     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    join(process.env.ProgramFiles ?? 'C:/Program Files', 'Google/Chrome/Application/chrome.exe'),
+    join(process.env['ProgramFiles(x86)'] ?? 'C:/Program Files (x86)', 'Google/Chrome/Application/chrome.exe'),
+    join(localAppData, 'Google/Chrome/Application/chrome.exe'),
   ].find((candidate) => existsSync(candidate));
   if (installed) return installed;
   const cacheRoots = [
     join(homedir(), 'Library/Caches/ms-playwright'),
     join(homedir(), '.cache/ms-playwright'),
+    join(localAppData, 'ms-playwright'),
   ];
   return cacheRoots.flatMap((root) => walkForBrowser(root)).sort().reverse()[0] ?? null;
 }
