@@ -5,7 +5,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { parseRubric } from '../src/analyzer.mjs';
-import { buildImportMessages, parseImportedRubric } from '../src/rubric-import.mjs';
+import {
+  buildImportMessages,
+  importRubric,
+  parseImportedRubric,
+} from '../src/rubric-import.mjs';
+
+const OK_RESPONSE = {
+  ok: true,
+  json: async () => ({ choices: [{ message: { content: '{"criteria":[{"label":"Technical Execution","cues":["prototype","works live"]}]}' } }] }),
+};
 
 test('a well-formed model response becomes rubric lines the parser accepts', () => {
   const payload = {
@@ -40,4 +49,27 @@ test('the prompt forbids inventing criteria and names the source text', () => {
 
 test('an oversized paste fails loudly instead of being truncated', () => {
   assert.throws(() => buildImportMessages('x'.repeat(9000)), /too long/u);
+});
+
+test('import returns rubric lines when the model answers', async () => {
+  const result = await importRubric({
+    rubricText: 'Technical Execution 30%',
+    apiKey: 'test-key-placeholder',
+    models: ['test/mock-model'],
+    fetchImpl: async () => OK_RESPONSE,
+  });
+
+  assert.equal(result.rubricText, 'Technical Execution | prototype, works live');
+});
+
+test('import fails loudly rather than returning an empty rubric', async () => {
+  await assert.rejects(
+    () => importRubric({
+      rubricText: 'Technical Execution 30%',
+      apiKey: 'test-key-placeholder',
+      models: ['test/mock-model'],
+      fetchImpl: async () => ({ ok: false, status: 500 }),
+    }),
+    /could not be imported/u,
+  );
 });

@@ -138,7 +138,7 @@ export function buildMessages(transcript, rubric) {
 // Response validation — INV-3 lives here.
 // ---------------------------------------------------------------------------
 
-function extractJson(text) {
+export function extractJsonPayload(text) {
   const trimmed = String(text ?? '').trim();
   // Models occasionally wrap JSON in a fence despite instructions.
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/u);
@@ -236,7 +236,7 @@ export function applySemanticVerdicts(base, payload, transcript) {
 // Gateway call
 // ---------------------------------------------------------------------------
 
-async function callGateway({ messages, apiKey, model, timeoutMs, fetchImpl }) {
+export async function callGateway({ messages, apiKey, model, timeoutMs, fetchImpl }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -249,7 +249,7 @@ async function callGateway({ messages, apiKey, model, timeoutMs, fetchImpl }) {
       // No response_format: the gateway rejects it outright ("Invalid input").
       // No token cap either: vendors disagree on max_tokens vs
       // max_completion_tokens and the minimums differ. The prompt asks for JSON
-      // and extractJson() copes with fences or stray prose, which is the
+      // and extractJsonPayload() copes with fences or stray prose, which is the
       // portable way to get structured output across three vendors.
       body: JSON.stringify({ model, messages, temperature: 0 }),
       signal: controller.signal,
@@ -268,7 +268,7 @@ async function callGateway({ messages, apiKey, model, timeoutMs, fetchImpl }) {
     const body = await response.json();
     const text = body?.choices?.[0]?.message?.content;
     if (!text) throw new SemanticUnavailable('gateway returned an empty completion');
-    return extractJson(text);
+    return text;
   } catch (error) {
     if (error instanceof SemanticUnavailable) throw error;
     if (error?.name === 'AbortError') throw new SemanticUnavailable('gateway timed out');
@@ -331,13 +331,14 @@ export async function analyzeWithSemantics({
     }
 
     try {
-      const payload = await callGateway({
+      const text = await callGateway({
         messages,
         apiKey,
         model,
         timeoutMs: Math.min(timeoutMs, remaining),
         fetchImpl,
       });
+      const payload = extractJsonPayload(text);
       const enriched = applySemanticVerdicts(base, payload, cleanTranscript);
       attempts.push({ model, ok: true });
       onAttempt(attempts);

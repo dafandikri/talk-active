@@ -9,6 +9,13 @@
 //  saved, because the system must never silently guess what an evaluator meant.
 // ============================================================================
 import { AnalysisError } from './analyzer.mjs';
+import {
+  DEFAULT_TIMEOUT_MS,
+  MODEL_CHAIN,
+  callGateway,
+  extractJsonPayload,
+  selectApiCredential,
+} from './semantic.mjs';
 
 export const MAX_IMPORT_CHARS = 8000;
 export const MAX_CRITERIA = 20;
@@ -65,4 +72,30 @@ export function parseImportedRubric(payload) {
   }
 
   return lines.join('\n');
+}
+
+// One structuring pass per vendor, cheapest first. Import runs once per
+// project, so a failure costs a retry — never a broken session. On total
+// failure the caller falls back to the manual editor with the raw paste
+// intact, which is why this throws instead of returning a partial rubric.
+export async function importRubric({
+  rubricText,
+  apiKey = selectApiCredential(),
+  models = MODEL_CHAIN,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+  fetchImpl = globalThis.fetch,
+} = {}) {
+  const messages = buildImportMessages(rubricText);
+  if (!apiKey) throw new ImportUnavailable('no credentials');
+
+  for (const model of models) {
+    try {
+      const text = await callGateway({ messages, apiKey, model, timeoutMs, fetchImpl });
+      return { rubricText: parseImportedRubric(extractJsonPayload(text)), mode: 'semantic' };
+    } catch {
+      // Try the next vendor. Availability comes from provider diversity.
+    }
+  }
+
+  throw new ImportUnavailable('that rubric could not be imported automatically');
 }
