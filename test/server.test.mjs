@@ -31,6 +31,17 @@ test('static server exposes the product workspace but not research documents', a
   assert.equal(analyzer.status, 200);
   assert.match(analyzer.headers.get('content-type'), /text\/javascript/u);
 
+  const rubricImport = await fetch(`${origin}/api/import-rubric`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  assert.equal(rubricImport.status, 400);
+  assert.deepEqual(await rubricImport.json(), {
+    error: 'empty_rubric',
+    message: 'Paste the scoring matrix first.',
+  });
+
   const mascot = await fetch(`${origin}/src/assets/cockatoo-mark.svg`);
   assert.equal(mascot.status, 200);
   assert.match(mascot.headers.get('content-type'), /image\/svg\+xml/u);

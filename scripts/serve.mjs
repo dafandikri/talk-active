@@ -36,8 +36,8 @@ function publicPath(urlValue) {
 
 export function createServer(root = DEFAULT_ROOT) {
   return createHttpServer((request, response) => {
-    // The analysis endpoint is served locally by the same handler Vercel runs,
-    // so local development and production behave identically. Everything else
+    // API endpoints are served locally by the same handlers Vercel runs, so
+    // local development and production behave identically. Everything else
     // below stays a read-only static server.
     let pathname = '/';
     try {
@@ -45,12 +45,15 @@ export function createServer(root = DEFAULT_ROOT) {
     } catch {
       pathname = '/';
     }
-    if (pathname === '/api/analyze') {
-      import('../api/analyze.mjs')
+    const apiModule = pathname === '/api/analyze'
+      ? '../api/analyze.mjs'
+      : pathname === '/api/import-rubric' ? '../api/import-rubric.mjs' : null;
+    if (apiModule) {
+      import(apiModule)
         .then((module) => module.default(request, response))
         .catch(() => {
           response.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-          response.end(JSON.stringify({ error: 'analysis_unavailable', message: 'Analysis endpoint failed to load.' }));
+          response.end(JSON.stringify({ error: 'api_unavailable', message: 'API endpoint failed to load.' }));
         });
       return;
     }

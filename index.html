@@ -360,6 +360,13 @@
           <div class="rubric-layout">
             <section class="surface rubric-editor-card">
                 <div class="section-title-row"><div><p class="overline">Active project</p><h2 id="rubricProjectName">—</h2></div><select id="rubricProject" aria-label="Project to edit"></select></div>
+              <details class="rubric-import" id="rubricImport">
+                <summary>Import from a scoring matrix</summary>
+                <p class="rubric-import-lede">Paste an evaluator's published criteria. You confirm every criterion before it is saved.</p>
+                <textarea id="rubricImportInput" rows="6" aria-label="Paste the scoring matrix"></textarea>
+                <button type="button" id="rubricImportButton">Structure these criteria</button>
+                <p class="rubric-import-status" id="rubricImportStatus" role="status"></p>
+              </details>
               <div class="rubric-list" id="rubricEditor"></div>
               <button class="add-criterion" id="addCriterion" type="button"><span>+</span> Add criterion</button>
             </section>

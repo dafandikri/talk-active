@@ -443,6 +443,36 @@ async function run() {
     assert.equal(created.editorEdge, '2px');
     if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'rubric'));
 
+    const storedRubricBeforeImport = await evaluate(cdp, `JSON.parse(localStorage.getItem('talkactive.workspace.v1')).projects.find((project) => project.name === 'Scholarship Interview')?.rubric`);
+    await evaluate(cdp, `(() => {
+      const nativeFetch = window.fetch.bind(window);
+      window.fetch = async (resource, options) => {
+        if (resource === '/api/import-rubric') {
+          return {
+            ok: true,
+            json: async () => ({ rubricText: 'Technical Execution | prototype, works live\\nPitching and Q&A | clarity, handles questions' })
+          };
+        }
+        return nativeFetch(resource, options);
+      };
+      document.querySelector('#rubricImportInput').value = 'Technical Execution 30%\\nPitching and Q&A 20%';
+      document.querySelector('#rubricImportButton').click();
+    })()`);
+    await waitFor(cdp, `document.querySelector('#rubricImportStatus')?.textContent.includes('2 criteria ready')`);
+    const imported = await evaluate(cdp, `(() => ({
+      rows: document.querySelectorAll('#rubricEditor .rubric-row').length,
+      labels: [...document.querySelectorAll('.criterion-label-input')].map((input) => input.value),
+      source: document.querySelector('#rubricImportInput').value,
+      storedRubric: JSON.parse(localStorage.getItem('talkactive.workspace.v1')).projects.find((project) => project.name === 'Scholarship Interview')?.rubric
+    }))()`);
+    assert.equal(imported.rows, 2);
+    assert.deepEqual(imported.labels, ['Technical Execution', 'Pitching and Q&A']);
+    assert.match(imported.source, /Technical Execution 30%/u);
+    assert.equal(imported.storedRubric, storedRubricBeforeImport, 'imported criteria stay unsaved until confirmation');
+
+    await evaluate(cdp, `document.querySelector('#saveRubric').click()`);
+    await waitFor(cdp, `JSON.parse(localStorage.getItem('talkactive.workspace.v1')).projects.find((project) => project.name === 'Scholarship Interview')?.rubric.startsWith('Technical Execution')`);
+
     await evaluate(cdp, `(() => {
       const firstLabel = document.querySelector('.criterion-label-input');
       firstLabel.value = 'User need';
@@ -514,6 +544,7 @@ async function run() {
       ['judge-defense', 'passed'],
       ['session-history', 'passed'],
       ['project-creation', 'passed'],
+      ['rubric-import', 'passed'],
       ['rubric-editing', 'passed'],
       ['reload-persistence', 'passed'],
       ['mobile-layout', 'passed'],

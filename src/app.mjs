@@ -173,6 +173,9 @@ const elements = {
   backToReview: $('#backToReview'),
   rubricProject: $('#rubricProject'),
   rubricProjectName: $('#rubricProjectName'),
+  rubricImportInput: $('#rubricImportInput'),
+  rubricImportButton: $('#rubricImportButton'),
+  rubricImportStatus: $('#rubricImportStatus'),
   rubricEditor: $('#rubricEditor'),
   addCriterion: $('#addCriterion'),
   saveRubric: $('#saveRubric'),
@@ -783,6 +786,37 @@ function renderRubricEditor() {
   elements.rubricEditor.replaceChildren(...rubricFor(project).map(rubricRow));
 }
 
+async function importRubricFromMatrix() {
+  const source = elements.rubricImportInput.value.trim();
+  if (!source) return;
+
+  elements.rubricImportStatus.textContent = 'Structuring…';
+  elements.rubricImportButton.disabled = true;
+  try {
+    const response = await fetch('/api/import-rubric', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ rubricText: source }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message ?? 'Import failed.');
+
+    // Render into the editor UNSAVED. The student confirms before it persists:
+    // the system never silently guesses what an evaluator meant.
+    const criteria = parseRubric(result.rubricText);
+    elements.rubricEditor.replaceChildren(...criteria.map((criterion, index) => rubricRow(
+      { label: criterion.label, signals: criterion.signals },
+      index,
+    )));
+    elements.rubricImportStatus.textContent = `${criteria.length} criteria ready — review them, then save.`;
+  } catch (error) {
+    // INV-8: import failing must never block the manual path.
+    elements.rubricImportStatus.textContent = `${error.message} Edit the criteria manually below.`;
+  } finally {
+    elements.rubricImportButton.disabled = false;
+  }
+}
+
 function saveRubric() {
   const project = state.workspace.projects.find((item) => item.id === elements.rubricProject.value);
   if (!project) return;
@@ -1032,6 +1066,7 @@ elements.saveSession.addEventListener('click', () => savePracticeSession());
 elements.backToReview.addEventListener('click', () => showPracticeStage('review'));
 elements.exitPractice.addEventListener('click', () => setRoute('home'));
 elements.rubricProject.addEventListener('change', renderRubricEditor);
+elements.rubricImportButton.addEventListener('click', importRubricFromMatrix);
 elements.addCriterion.addEventListener('click', () => {
   elements.rubricEditor.append(rubricRow(undefined, $$('.rubric-row', elements.rubricEditor).length));
 });

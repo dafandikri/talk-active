@@ -753,6 +753,20 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .rubric-editor-card { padding: var(--space-6); border: 2px solid var(--text-primary); }
 .rubric-editor-card .section-title-row { align-items: center; }
 .rubric-editor-card select { width: 260px; }
+.rubric-import {
+  margin-top: var(--space-5); padding: var(--space-4);
+  background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-md);
+}
+.rubric-import summary { color: var(--brand); font-size: var(--step-0); font-weight: var(--weight-heavy); cursor: pointer; }
+.rubric-import-lede { margin: var(--space-3) 0; color: var(--text-muted); font-size: var(--step-0); }
+.rubric-import textarea { min-height: 132px; background: var(--surface); }
+.rubric-import button {
+  min-height: 42px; margin-top: var(--space-3); padding: 0 var(--space-4);
+  color: var(--brand-contrast); background: var(--brand); border: 0; border-radius: var(--radius-full);
+  font-size: var(--step-0); font-weight: var(--weight-heavy); cursor: pointer;
+}
+.rubric-import button:disabled { opacity: .45; cursor: not-allowed; }
+.rubric-import-status { min-height: var(--space-4); margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); }
 .rubric-list { display: grid; gap: var(--space-3); margin: var(--space-6) 0 var(--space-4); }
 .rubric-row {
   display: grid; grid-template-columns: 32px minmax(140px, .7fr) minmax(220px, 1.3fr) 30px;
