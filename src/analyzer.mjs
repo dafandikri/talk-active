@@ -23,6 +23,14 @@ Feasibility and trust | prototype, architecture, privacy, limitations`;
 
 export const STARTER_DRAFT = `Many Indonesian students prepare important presentations alone and only receive feedback after the result is final. Talk-Active lets a student use the actual evaluation rubric while practicing a pitch. It maps each claim in the transcript to a criterion, points out what is still unsupported, and asks a judge-style follow-up question about the weakest claim. The student then retries one focused section and sees whether the evidence improved. The current implementation uses local transcript analysis, so no recording is stored.`;
 
+// These ceilings are product boundaries and cost controls. A 7-minute pitch is
+// normally well below 12,000 characters, while 8,000 rubric characters and 20
+// criteria comfortably cover the published finals matrix. Refuse oversized
+// input before any paid semantic call rather than silently truncating evidence.
+export const MAX_TRANSCRIPT_CHARS = 12_000;
+export const MAX_RUBRIC_CHARS = 8_000;
+export const MAX_CRITERIA = 20;
+
 export class AnalysisError extends Error {
   constructor(code, message) {
     super(message);
@@ -48,13 +56,27 @@ function slugify(value, fallback) {
 }
 
 export function parseRubric(rubricText) {
-  const lines = String(rubricText ?? '')
+  const source = String(rubricText ?? '');
+  if (source.length > MAX_RUBRIC_CHARS) {
+    throw new AnalysisError(
+      'rubric_too_long',
+      `That rubric is too long. Keep it under ${MAX_RUBRIC_CHARS} characters.`,
+    );
+  }
+
+  const lines = source
     .split(/\r?\n/u)
     .map((line) => line.trim())
     .filter(Boolean);
 
   if (lines.length === 0) {
     throw new AnalysisError('empty_rubric', 'Add at least one rubric criterion.');
+  }
+  if (lines.length > MAX_CRITERIA) {
+    throw new AnalysisError(
+      'too_many_criteria',
+      `Use at most ${MAX_CRITERIA} rubric criteria in one rehearsal.`,
+    );
   }
 
   return lines.map((line, index) => {
@@ -155,6 +177,12 @@ export function analyzeSpeech({ transcript, rubricText, durationSeconds }) {
   const normalizedTranscript = String(transcript ?? '').trim();
   if (!normalizedTranscript) {
     throw new AnalysisError('empty_transcript', 'Paste a transcript or use the microphone first.');
+  }
+  if (normalizedTranscript.length > MAX_TRANSCRIPT_CHARS) {
+    throw new AnalysisError(
+      'transcript_too_long',
+      `That transcript is too long. Keep it under ${MAX_TRANSCRIPT_CHARS} characters.`,
+    );
   }
 
   const seconds = Number(durationSeconds);

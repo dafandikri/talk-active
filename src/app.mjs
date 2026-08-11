@@ -1,6 +1,7 @@
 import {
   AnalysisError,
   DEFAULT_RUBRIC,
+  MAX_CRITERIA,
   STARTER_DRAFT,
   analyzeSpeech,
   evaluateDefense,
@@ -778,6 +779,7 @@ function rubricRow(criterion = { label: '', signals: [] }, index = 0) {
   labelInput.className = 'criterion-label-input';
   labelInput.value = criterion.label;
   labelInput.placeholder = 'e.g. Problem urgency';
+  labelInput.maxLength = 120;
   labelInput.setAttribute('aria-label', `Criterion ${index + 1} name`);
   labelField.append(labelLabel, labelInput);
 
@@ -789,6 +791,7 @@ function rubricRow(criterion = { label: '', signals: [] }, index = 0) {
   cuesInput.className = 'criterion-signals-input';
   cuesInput.value = criterion.signals.join(', ');
   cuesInput.placeholder = 'users, frequency, evidence';
+  cuesInput.maxLength = 240;
   cuesInput.setAttribute('aria-label', `Criterion ${index + 1} evidence cues`);
   cuesField.append(cuesLabel, cuesInput);
 
@@ -861,7 +864,14 @@ function saveRubric() {
     showToast('Add at least one named criterion');
     return;
   }
-  project.rubric = criteria.map((criterion) => `${criterion.label} | ${criterion.cues}`).join('\n');
+  const rubricText = criteria.map((criterion) => `${criterion.label} | ${criterion.cues}`).join('\n');
+  try {
+    parseRubric(rubricText);
+  } catch (error) {
+    showToast(error instanceof AnalysisError ? error.message : 'This rubric could not be saved.');
+    return;
+  }
+  project.rubric = rubricText;
   persist();
   renderAll();
   elements.rubricProject.value = project.id;
@@ -1136,7 +1146,12 @@ elements.exitPractice.addEventListener('click', () => setRoute('home'));
 elements.rubricProject.addEventListener('change', renderRubricEditor);
 elements.rubricImportButton.addEventListener('click', importRubricFromMatrix);
 elements.addCriterion.addEventListener('click', () => {
-  elements.rubricEditor.append(rubricRow(undefined, $$('.rubric-row', elements.rubricEditor).length));
+  const rows = $$('.rubric-row', elements.rubricEditor).length;
+  if (rows >= MAX_CRITERIA) {
+    showToast(`Use at most ${MAX_CRITERIA} criteria in one rehearsal`);
+    return;
+  }
+  elements.rubricEditor.append(rubricRow(undefined, rows));
 });
 elements.saveRubric.addEventListener('click', saveRubric);
 elements.progressProject.addEventListener('change', renderProgress);

@@ -4,6 +4,9 @@ import assert from 'node:assert/strict';
 import {
   AnalysisError,
   DEFAULT_RUBRIC,
+  MAX_CRITERIA,
+  MAX_RUBRIC_CHARS,
+  MAX_TRANSCRIPT_CHARS,
   STARTER_DRAFT,
   analyzeSpeech,
   compareResults,
@@ -139,5 +142,27 @@ test('invalid analysis inputs fail with actionable typed errors', () => {
   assert.throws(
     () => evaluateDefense({ answer: 'An answer', criterion: null }),
     (error) => error instanceof AnalysisError && error.code === 'invalid_criterion',
+  );
+});
+
+test('paid analysis inputs have explicit prompt-cost ceilings', () => {
+  assert.throws(
+    () => analyzeSpeech({
+      transcript: 'x'.repeat(MAX_TRANSCRIPT_CHARS + 1),
+      rubricText: DEFAULT_RUBRIC,
+      durationSeconds: 90,
+    }),
+    (error) => error instanceof AnalysisError && error.code === 'transcript_too_long',
+  );
+  assert.throws(
+    () => parseRubric('x'.repeat(MAX_RUBRIC_CHARS + 1)),
+    (error) => error instanceof AnalysisError && error.code === 'rubric_too_long',
+  );
+  assert.throws(
+    () => parseRubric(Array.from(
+      { length: MAX_CRITERIA + 1 },
+      (_, index) => `Criterion ${index + 1} | evidence`,
+    ).join('\n')),
+    (error) => error instanceof AnalysisError && error.code === 'too_many_criteria',
   );
 });

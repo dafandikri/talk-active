@@ -10,6 +10,7 @@ import {
   importRubric,
   parseImportedRubric,
 } from '../src/rubric-import.mjs';
+import { structureRubric } from '../api/import-rubric.mjs';
 
 const OK_RESPONSE = {
   ok: true,
@@ -72,4 +73,20 @@ test('import fails loudly rather than returning an empty rubric', async () => {
     }),
     /could not be imported/u,
   );
+});
+
+test('an identical semantic rubric import is cached instead of billed twice', async () => {
+  const input = { rubricText: `Technical Execution 30% ${crypto.randomUUID()}` };
+  let calls = 0;
+  const semantic = async () => {
+    calls += 1;
+    return { rubricText: 'Technical Execution | prototype, works live', mode: 'semantic' };
+  };
+
+  const first = await structureRubric(input, semantic);
+  const replay = await structureRubric(input, semantic);
+
+  assert.equal(first.cached, false);
+  assert.equal(replay.cached, true);
+  assert.equal(calls, 1);
 });

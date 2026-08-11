@@ -62,8 +62,8 @@ export function selectApiCredential({
 //   openai/gpt-5-nano            $0.05/$0.40 — different vendor, very cheap.
 //   google/gemini-2.5-flash-lite $0.10/$0.40 — third vendor.
 //
-// About $0.004 per analysis on the primary, so $5 of credits covers well over
-// a thousand runs.
+// Per-key Gateway quota, WAF rate limiting, prompt ceilings, and response
+// caching are the four independent cost controls; see the operations runbook.
 export const MODEL_CHAIN = (process.env.TALKACTIVE_MODELS ?? '')
   .split(',').map((name) => name.trim()).filter(Boolean).length > 0
   ? process.env.TALKACTIVE_MODELS.split(',').map((name) => name.trim()).filter(Boolean)

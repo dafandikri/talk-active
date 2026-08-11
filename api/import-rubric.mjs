@@ -5,10 +5,34 @@
 //  formatting live in testable src modules. A failed import leaves the manual
 //  rubric editor available, with no partial result persisted.
 // ============================================================================
+import { createHash } from 'node:crypto';
+
 import { AnalysisError } from '../src/analyzer.mjs';
 import { ImportUnavailable, importRubric } from '../src/rubric-import.mjs';
 
 const MAX_BODY_BYTES = 64 * 1024;
+const CACHE_LIMIT = 100;
+const cache = new Map();
+
+function cacheKey({ rubricText }) {
+  return createHash('sha256').update(String(rubricText ?? '').trim()).digest('hex');
+}
+
+function remember(key, value) {
+  cache.set(key, value);
+  if (cache.size > CACHE_LIMIT) cache.delete(cache.keys().next().value);
+  return value;
+}
+
+export async function structureRubric(input, importImpl = importRubric) {
+  const key = cacheKey(input);
+  const hit = cache.get(key);
+  if (hit) return { ...hit, cached: true };
+
+  const result = await importImpl(input);
+  if (result.mode === 'semantic') remember(key, result);
+  return { ...result, cached: false };
+}
 
 function readJsonBody(request) {
   // Vercel may have parsed the body already; a bare Node server has not.
@@ -57,7 +81,7 @@ export default async function handler(request, response) {
 
   try {
     const body = await readJsonBody(request);
-    const result = await importRubric({ rubricText: body.rubricText });
+    const result = await structureRubric({ rubricText: body.rubricText });
     send(response, 200, result);
   } catch (error) {
     // INV-7: invalid input is explicit rather than guessed around.

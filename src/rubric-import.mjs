@@ -8,7 +8,11 @@
 //  Nothing is persisted here. The student confirms the parse before it is
 //  saved, because the system must never silently guess what an evaluator meant.
 // ============================================================================
-import { AnalysisError } from './analyzer.mjs';
+import {
+  AnalysisError,
+  MAX_CRITERIA as ANALYSIS_MAX_CRITERIA,
+  MAX_RUBRIC_CHARS,
+} from './analyzer.mjs';
 import {
   DEFAULT_TIMEOUT_MS,
   MODEL_CHAIN,
@@ -17,8 +21,8 @@ import {
   selectApiCredential,
 } from './semantic.mjs';
 
-export const MAX_IMPORT_CHARS = 8000;
-export const MAX_CRITERIA = 20;
+export const MAX_IMPORT_CHARS = MAX_RUBRIC_CHARS;
+export const MAX_CRITERIA = ANALYSIS_MAX_CRITERIA;
 
 export class ImportUnavailable extends Error {
   constructor(reason) {
