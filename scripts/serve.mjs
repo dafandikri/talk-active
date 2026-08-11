@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer as createHttpServer } from 'node:http';
-import { dirname, extname, join, normalize } from 'node:path';
+import { dirname, extname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
@@ -29,7 +29,19 @@ function responseHeaders(contentType) {
 function publicPath(urlValue) {
   const pathname = decodeURIComponent(new URL(urlValue, 'http://localhost').pathname);
   if (pathname === '/') return 'index.html';
-  const normalized = normalize(pathname).replace(/^[/\\]+/u, '');
+
+  // A URL path always uses forward slashes, so it must be normalised with POSIX
+  // rules. Platform-aware normalize() rewrites "/src/app.mjs" to "src\app.mjs"
+  // on Windows, which then fails the startsWith('src/') allow-list below and
+  // 404s every stylesheet, module, and asset the page needs — the product loads
+  // as bare HTML with no styling and no JavaScript at all.
+  //
+  // Backslashes are folded to slashes BEFORE normalising, never after. A
+  // percent-encoded "%5C" arrives here as a literal backslash, and normalising
+  // first would leave "src\..\..\secret" intact for the allow-list to reject,
+  // while folding afterwards would hand it over as a clean "src/../../secret"
+  // that escapes the root. Order is the security property here.
+  const normalized = posix.normalize(pathname.replace(/\\/gu, '/')).replace(/^\/+/u, '');
   if (normalized === 'index.html' || normalized === 'brief.html' || normalized.startsWith('src/')) return normalized;
   return null;
 }
