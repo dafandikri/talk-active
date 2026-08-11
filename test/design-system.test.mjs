@@ -270,10 +270,10 @@ test('the product mark is a speaking macaw with the complete palette', () => {
 });
 
 test('the full-body dimensional mascot is local, visible, and motion-safe', () => {
-  const relative = 'src/assets/cockatoo-mascot-3d.webp';
+  const relative = 'src/assets/macaw-mascot-3d.webp';
   assert.ok(existsSync(join(ROOT, relative)), 'the dashboard mascot asset is missing');
   assert.ok(statSync(join(ROOT, relative)).size < 200_000, 'the dashboard mascot should stay below 200 KB');
-  assert.match(INDEX, /src\/assets\/cockatoo-mascot-3d\.webp/u);
+  assert.match(INDEX, /src\/assets\/macaw-mascot-3d\.webp/u);
   assert.match(STYLES, /@keyframes mascot-greet/u);
   assert.match(STYLES, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(
@@ -485,7 +485,7 @@ test('dashboard home carries the approved character-led outlined material', () =
   for (const selector of ['next-session', 'rubric-health', 'recent-section']) {
     assert.match(STYLES_CODE, new RegExp(`\\.${selector}\\s*\\{[^}]*border:\\s*2px solid var\\(--text-primary\\);[^}]*box-shadow:`, 'su'));
   }
-  assert.match(INDEX, /class="focus-mascot"[\s\S]+cockatoo-mascot-3d\.webp/u);
+  assert.match(INDEX, /class="focus-mascot"[\s\S]+macaw-mascot-3d\.webp/u);
 });
 
 test('the Talk-Active lockup is consistent across product and landing surfaces', () => {

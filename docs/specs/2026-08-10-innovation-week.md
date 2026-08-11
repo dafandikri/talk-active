@@ -267,13 +267,13 @@ Then **3:00 Q&A** — every answer ≤30s, then stop talking.
 
 ## 10. Definition of done for the whole sprint
 
-- [ ] `pnpm check` green on the tagged submission commit
+- [x] `pnpm check` green on the tagged submission commit
 - [ ] `pnpm finals` green with evidence for all 10 scoring criteria and all technical-meeting requirements
-- [ ] Semantic mode works; fallback proven by stubbing the API to fail
-- [ ] Full judge path passes on desktop **and** at 390px, zero console errors
+- [x] Semantic mode works; fallback proven by stubbing the API to fail
+- [x] Full judge path passes on desktop **and** at 390px, zero console errors
 - [ ] A stranger can open the public URL on their phone and complete one session
-- [ ] Rubric import handles the guidebook's own finals matrix
+- [x] Rubric import handles the guidebook's own finals matrix
 - [ ] Pitch runs 6:15–6:45 three times consecutively
-- [ ] Q&A bank ≥20 questions, all mentor questions included
+- [x] Q&A bank ≥20 questions, all mentor questions included
 - [ ] Offline laptop runs the full demo with wifi disabled
 - [ ] Submitted before 13 Aug 18.00 WIB, confirmation screenshotted

@@ -34,7 +34,7 @@ The mascot is a simplified full-body speaking bird in profile—face, wing,
 chest, and long tail visible—inside a black speech bubble. It is not a floating head,
 assistant orb, emoji, or cartoon scorekeeper.
 
-Use `src/assets/cockatoo-mark.svg` as the source. The bird itself carries the
+Use `src/assets/macaw-mark.svg` as the source. The bird itself carries the
 supplied palette:
 
 - sky blue `#1B7EA6` — wing and tail;
@@ -48,7 +48,7 @@ The bird may welcome, explain an empty state, or invite the next answer. It
 never congratulates a pass, scolds a failure, or claims to understand a person.
 
 For large welcome and explanation surfaces, use
-`src/assets/cockatoo-mascot-3d.webp`: the full-body bird on a deep-leaf field,
+`src/assets/macaw-mascot-3d.webp`: the full-body bird on a deep-leaf field,
 speaking from a black bubble with one wing gesturing forward. Animate only a
 slow greeting/breathing motion and stop it for `prefers-reduced-motion`. Keep the
 SVG mark for navigation, identity, print, and small states.
@@ -133,7 +133,7 @@ never decorate over cited evidence.
 5. 16:9 booth display, readable from two metres.
 6. T-shirt: sky-blue `#1B7EA6` fabric with the dedicated one-ink warm-white
    bird/chat-bubble lockup on the front; the product promise and five-step
-   rehearsal loop on the back. Use `src/assets/cockatoo-mark-white.svg`.
+   rehearsal loop on the back. Use `src/assets/macaw-mark-white.svg`.
 
 ### Citation card
 

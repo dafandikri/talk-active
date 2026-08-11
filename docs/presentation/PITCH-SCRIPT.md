@@ -96,7 +96,7 @@ Competition pitching is our beachhead. Indonesian thesis-defense and scholarship
 
 ## Slide 9 — Production reality · 5:50–6:15
 
-The submission passes 147 automated tests, 17 real-browser checks, and a 16-stage demo gate with zero console errors.
+The submission passes more than 150 automated tests, 18 real-browser checks, and a 16-stage demo gate with zero console errors.
 
 AI spend is capped at five dollars with no auto-refresh and alerts at 50, 75, and 100 percent. Based on the actual primary model and prompt size, one semantic analysis is estimated at 0.27 to 0.6 cents; repeated demo inputs come from cache at zero additional model cost.
 

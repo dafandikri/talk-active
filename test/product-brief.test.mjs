@@ -35,7 +35,7 @@ test('product brief states current capabilities and honest boundaries', () => {
 
 test('public landing page makes the full-body speaking bird a real character', () => {
   assert.match(brief, /href="\/src\/landing\.css"/u);
-  assert.match(brief, /class="landing-mascot"[^>]+cockatoo-mascot-3d\.webp[^>]+alt="Kato, a colorful full-body 3D speaking bird"/u);
+  assert.match(brief, /class="landing-mascot"[^>]+macaw-mascot-3d\.webp[^>]+alt="Kato, a colorful full-body 3D speaking bird"/u);
   assert.match(brief, /Meet Kato, your rehearsal guide/u);
   assert.match(brief, /Show me the sentence behind that claim/u);
   assert.match(landing, /@keyframes landing-mascot-bob/u);

@@ -315,7 +315,7 @@ def build_qr_card(destination):
 def main():
     OUTPUT.mkdir(parents=True, exist_ok=True)
     TMP.mkdir(parents=True, exist_ok=True)
-    with Image.open(ROOT / "src" / "assets" / "cockatoo-mascot-3d.webp") as image:
+    with Image.open(ROOT / "src" / "assets" / "macaw-mascot-3d.webp") as image:
         image.thumbnail((360, 360), Image.Resampling.LANCZOS)
         image.save(TMP / "mascot-print.png", optimize=True)
     build_one_pager(OUTPUT / "Talk-Active_Booth_One-Pager_A4.pdf")

@@ -51,13 +51,13 @@ a student to answer in their own words. It never celebrates a “pass,” scolds
 
 ### Mark rules
 
-- Use `src/assets/cockatoo-mark.svg`; do not redraw it per surface.
+- Use `src/assets/macaw-mark.svg`; do not redraw it per surface.
 - Preserve the full body. Do not crop the mark down to the head.
 - Preserve the supplied colours in the application and booth mark. Apparel is
   the deliberate exception: use the one-ink asset described below.
 - Keep the black speech-bubble ground around the bird.
 - At small sizes, remove supporting copy before shrinking the mark below 32px.
-- On apparel, use `src/assets/cockatoo-mark-white.svg`; never recolour the
+- On apparel, use `src/assets/macaw-mark-white.svg`; never recolour the
   full-colour application asset by eye.
 
 ### Talk-Active lockup
@@ -70,7 +70,7 @@ white. Do not show a generic text-only product name where the lockup fits.
 
 ### Character render
 
-`src/assets/cockatoo-mascot-3d.webp` is the larger character expression for
+`src/assets/macaw-mascot-3d.webp` is the larger character expression for
 welcome and explanation surfaces. It keeps the same full-body bird, supplied
 palette, and black speech-bubble ground as the small mark, but adds dimensional
 feather forms and a forward wing gesture. The SVG remains the source for logos,
@@ -273,7 +273,7 @@ the same semantic token names.
 
 The team shirt reverses the normal colour relationship: the **fabric carries
 the accent colour** and every printed element is one warm-white ink. Use
-`src/assets/cockatoo-mark-white.svg`, which keeps the full-body bird readable
+`src/assets/macaw-mark-white.svg`, which keeps the full-body bird readable
 inside a white speech-bubble outline through negative space.
 
 - Primary fabric: sky blue `#1B7EA6`.

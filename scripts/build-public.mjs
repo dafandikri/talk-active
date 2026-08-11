@@ -27,7 +27,7 @@ export const PUBLIC_RUNTIME_FILES = Object.freeze([
   'src/assets/macaw-mark.svg',
   'src/assets/macaw-mark-white.svg',
   'src/assets/macaw-favicon.svg',
-  'src/assets/cockatoo-mascot-3d.webp',
+  'src/assets/macaw-mascot-3d.webp',
   'src/assets/rehearsal-loop-arrow.svg',
   'src/assets/talk-active-production-qr.svg',
   'src/assets/ristek-hackathon-2026-logo.png',

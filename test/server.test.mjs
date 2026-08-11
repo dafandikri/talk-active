@@ -67,7 +67,7 @@ test('static server exposes the product workspace but not research documents', a
   assert.equal(favicon.status, 200);
   assert.match(favicon.headers.get('content-type'), /image\/svg\+xml/u);
 
-  const characterMascot = await fetch(`${origin}/src/assets/cockatoo-mascot-3d.webp`);
+  const characterMascot = await fetch(`${origin}/src/assets/macaw-mascot-3d.webp`);
   assert.equal(characterMascot.status, 200);
   assert.match(characterMascot.headers.get('content-type'), /image\/webp/u);
 

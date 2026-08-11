@@ -252,7 +252,7 @@ async function run() {
     assert.equal(brief.main, true);
     assert.equal(brief.landingStylesheet, true);
     assert.match(brief.mascot, /full-body 3D speaking bird/u);
-    assert.equal(brief.mascotSource, '/src/assets/cockatoo-mascot-3d.webp');
+    assert.equal(brief.mascotSource, '/src/assets/macaw-mascot-3d.webp');
     assert.equal(brief.brandText, 'Talk-Active');
     assert.equal(brief.gapAsset, true);
     assert.equal(brief.loopArrowLoaded, true);

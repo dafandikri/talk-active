@@ -190,7 +190,7 @@ The public repository and commit history are included in the submitted slides fo
 
 ### 30. “Why should we trust the demo?”
 
-Because the exact judge path is executable as a gate: cold start, rubric import, practice, semantic or deterministic analysis, evidence inspection, defense, save, reload, kiosk reset, and 390-pixel mobile use. The latest submission state passes 147 tests, 17 real-browser checks, and 16 demo stages with zero console errors.
+Because the exact judge path is executable as a gate: cold start, rubric import, practice, semantic or deterministic analysis, evidence inspection, defense, save, reload, kiosk reset, and 390-pixel mobile use. The latest submission state passes more than 150 tests, 18 real-browser checks, and 16 demo stages with zero console errors.
 
 **Evidence:** `pnpm check` and `scripts/demo-gate.mjs` on the submission state.
 
