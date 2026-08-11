@@ -19,6 +19,12 @@ quota, and USD 0.03105 spent at the time of inspection. The absolute worst-case
 Gateway exposure for this key is therefore the remaining quota, not the credit
 balance or an unlimited auto top-up.
 
+Production deployment `dpl_F6bERTGpG4ma8X6BiAv7z6S47kZB`, built from runtime
+commit `a0e51aa17adac351a05ba5af3a5c8c19dbfdd398`, was smoke-tested on 12 August:
+semantic analysis returned through Haiku and replayed with `cached:true`; rubric
+import also replayed with `cached:true`; a 12,001-character transcript returned
+typed HTTP 400 before reaching a provider.
+
 ## Captain checks
 
 Run these without copying or printing the key value:
