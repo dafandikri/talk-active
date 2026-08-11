@@ -600,7 +600,11 @@ function looksLikeAnalysis(value) {
 async function upgradeWithSemantics(payload) {
   if (!apiIsReachable()) return null;
   const abort = new AbortController();
-  const timer = setTimeout(() => abort.abort(), 15_000);
+  // Must exceed DEFAULT_TOTAL_BUDGET_MS in src/semantic.mjs (22s). The server
+  // may try three vendors in sequence; aborting sooner throws away a
+  // successful failover and silently downgrades the demo to deterministic.
+  // test/semantic.test.mjs enforces this relationship.
+  const timer = setTimeout(() => abort.abort(), 25_000);
   try {
     const response = await fetch('/api/analyze', {
       method: 'POST',

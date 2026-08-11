@@ -3,9 +3,11 @@
 // without touching the network.
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { DEFAULT_RUBRIC, STARTER_DRAFT } from '../src/analyzer.mjs';
 import {
+  DEFAULT_TOTAL_BUDGET_MS,
   MODEL_CHAIN,
   SemanticUnavailable,
   analyzeWithSemantics,
@@ -278,4 +280,21 @@ test('the total budget stops the chain rather than stalling the demo', async () 
 
   assert.equal(result.mode, 'deterministic');
   assert.ok(elapsed < 1000, `chain should abandon quickly, took ${elapsed}ms`);
+});
+
+// The client aborts on its own clock. If it gives up before the server's chain
+// budget expires, a successful failover to a second vendor is thrown away and
+// the demo silently shows deterministic mode. These two numbers live in
+// different files and nothing else keeps them honest.
+test('the client waits longer than the server chain can take', () => {
+  const clientSource = readFileSync(new URL('../src/app.mjs', import.meta.url), 'utf8');
+  const match = clientSource.match(/abort\.abort\(\), (\d[\d_]*)\)/u);
+
+  assert.ok(match, 'could not find the client abort timeout in src/app.mjs');
+  const clientTimeoutMs = Number(match[1].replace(/_/gu, ''));
+
+  assert.ok(
+    clientTimeoutMs > DEFAULT_TOTAL_BUDGET_MS,
+    `client aborts at ${clientTimeoutMs}ms but the server chain may run to ${DEFAULT_TOTAL_BUDGET_MS}ms`,
+  );
 });
