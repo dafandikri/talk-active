@@ -893,10 +893,11 @@ function renderProgress() {
   elements.recurringGap.textContent = recurring ?? 'No data yet';
 
   const chartSessions = [...sessions].reverse().slice(-8);
-  if (chartSessions.length === 0) {
+  // One bar is not a trend. Wait for a second attempt before implying change.
+  if (chartSessions.length < 2) {
     const empty = document.createElement('p');
     empty.className = 'chart-empty';
-    empty.textContent = 'Save a practice session to start your evidence trend.';
+    empty.textContent = 'Practise twice to see what changed between attempts.';
     elements.progressChart.replaceChildren(empty);
   } else {
     elements.progressChart.replaceChildren(...chartSessions.map((session, index) => {

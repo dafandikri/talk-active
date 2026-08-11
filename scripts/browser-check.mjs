@@ -556,7 +556,7 @@ async function run() {
           archive: document.querySelector('#allSessions .empty-list')?.textContent
         }))()`);
         assert.equal(emptyProgress.total, '0');
-        assert.match(emptyProgress.chart, /Save a practice session/iu);
+        assert.match(emptyProgress.chart, /Practise twice/iu);
         assert.match(emptyProgress.archive, /No sessions saved/iu);
       }
       if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, `mobile-${route}`));

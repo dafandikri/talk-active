@@ -445,15 +445,28 @@ async function run() {
               return rect.left < -0.5 || rect.right > window.innerWidth + 0.5;
             })
             .map((control) => control.id || control.textContent.trim().slice(0, 30));
+          const undersized = [...stage.querySelectorAll('button, select, a')]
+            .filter((control) => control.getClientRects().length > 0)
+            .map((control) => {
+              const rect = control.getBoundingClientRect();
+              return {
+                label: control.id || control.textContent.trim().slice(0, 30),
+                width: Math.round(rect.width),
+                height: Math.round(rect.height),
+              };
+            })
+            .filter((control) => control.width < 44 || control.height < 44);
           return {
             visible: stage.classList.contains('is-visible'),
             overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-            controls
+            controls,
+            undersized
           };
         })()`);
         assert.equal(layout.visible, true, `${label} was not visible at 390px`);
         assert.equal(layout.overflow, 0, `${label} overflowed the 390px viewport`);
         assert.deepEqual(layout.controls, [], `${label} clipped controls horizontally`);
+        assert.deepEqual(layout.undersized, [], `${label} has controls below the 44px mobile target`);
       };
 
       await evaluate(cdp, `document.querySelector('[data-start-practice]').click()`);

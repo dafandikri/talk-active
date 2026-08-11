@@ -1090,6 +1090,10 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   .brief-evidence-header { align-items: start; flex-direction: column; }
   .brief-demo { gap: var(--space-5); }
   .brief-footer { padding: var(--space-5) var(--space-4) var(--space-7); }
+  .text-button {
+    min-width: 44px; min-height: 44px;
+    display: inline-flex; align-items: center;
+  }
 }
 
 @media print {
