@@ -254,7 +254,7 @@ days. Use what is already under the code:
 
 | Time | Beat | Owner |
 |---|---|---|
-| 0:00–0:45 | **The problem, with the number.** 81% report speaking anxiety; the LPDP interview passes 6.7%. Rehearsal quality is decided by who has a mentor. | |
+| 0:00–0:45 | **The bounded problem.** University graduate unemployment is context, not causality. In a pitch, defense, or interview, students can know the material while leaving the evaluator's expected evidence implicit; the published rubric exists, but practice is blind to it. | |
 | 0:45–1:30 | **The insight.** Every evaluation publishes its rubric. Nobody practises against it. Existing coaches are rubric-blind. | |
 | 1:30–3:00 | **The product.** Walk the loop: project → rubric → attempt → cited evidence → hardest question → progress. | |
 | 3:00–5:00 | **HERO: live demo.** Paste the finals scoring matrix. Analyse our own pitch. Show a verdict citing the exact sentence. | |
