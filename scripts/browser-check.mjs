@@ -476,6 +476,49 @@ async function run() {
     assert.equal(persisted.sessions, 3);
     assert.match(persisted.rubric, /^User need/u);
 
+    // A booth device passes from visitor to visitor with no account to log out
+    // of, so reset is the handover. It must restore the seed workspace exactly,
+    // and it must also clear the practice state held in memory — a stale
+    // analysis would show the next visitor the previous one's evidence review
+    // even though storage was already clean.
+    //
+    // The dictation language is the deliberate exception: it describes this
+    // device's microphone, not the visitor's work.
+    // Leave the workspace the way a visitor actually leaves it: mid-attempt, in
+    // a later practice stage, with their own words in the box. Resetting from a
+    // clean home screen would assert nothing, because the page load already put
+    // the practice flow back to its first stage.
+    await evaluate(cdp, `document.querySelector('[data-route="practice"]').click()`);
+    await waitFor(cdp, `document.querySelector('#practiceView')?.classList.contains('is-visible')`);
+    await evaluate(cdp, `document.querySelector('#beginAttempt').click()`);
+    await waitFor(cdp, `document.querySelector('#practiceAttempt')?.classList.contains('is-visible')`);
+    await evaluate(cdp, `(() => {
+      const box = document.querySelector('#attemptTranscript');
+      box.value = 'Half-finished words the previous visitor left behind.';
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+
+    await evaluate(cdp, `localStorage.setItem('talkactive.dictation.language', 'id-ID')`);
+    await evaluate(cdp, `document.querySelector('#kioskReset').click()`);
+    await waitFor(cdp, `document.querySelectorAll('.sidebar-project').length === 1`);
+    const kioskReset = await evaluate(cdp, `(() => {
+      const stored = JSON.parse(localStorage.getItem('talkactive.workspace.v1'));
+      return {
+        projects: stored.projects.length,
+        projectName: stored.projects[0]?.name,
+        sessions: stored.sessions.length,
+        landedHome: document.querySelector('#homeView')?.classList.contains('is-visible'),
+        practiceReset: document.querySelector('[data-practice-stage="setup"]')?.classList.contains('is-visible'),
+        dictationLanguage: localStorage.getItem('talkactive.dictation.language')
+      };
+    })()`);
+    assert.equal(kioskReset.projects, 1);
+    assert.equal(kioskReset.projectName, 'Talk-Active — RISTEK Hackathon');
+    assert.equal(kioskReset.sessions, 2);
+    assert.equal(kioskReset.landedHome, true);
+    assert.equal(kioskReset.practiceReset, true);
+    assert.equal(kioskReset.dictationLanguage, 'id-ID');
+
     await cdp.call('Emulation.setDeviceMetricsOverride', {
       width: 390, height: 844, deviceScaleFactor: 1, mobile: true,
     });
@@ -531,6 +574,7 @@ async function run() {
       ['project-creation', 'passed'],
       ['rubric-editing', 'passed'],
       ['reload-persistence', 'passed'],
+      ['kiosk-reset', 'passed'],
       ['mobile-layout', 'passed'],
     ];
     process.stdout.write([

@@ -287,6 +287,21 @@ async function run() {
       assert.equal(after, before, 'saved sessions did not survive a reload');
     });
 
+    // ---- adversarial: the next visitor walks up to the same laptop --------
+    // There is no account to log out of, so this control is the handover. It
+    // has to complete without a console error, because the gate that follows
+    // asserts an empty console and a booth runs this dozens of times a day.
+    await step('kiosk-reset', async () => {
+      await evaluate(cdp, `document.querySelector('#kioskReset').click()`);
+      await waitFor(cdp, `document.querySelector('#homeView')?.classList.contains('is-visible')`);
+      const stored = await evaluate(cdp, `(() => {
+        const workspace = JSON.parse(localStorage.getItem('talkactive.workspace.v1'));
+        return { projects: workspace.projects.length, sessions: workspace.sessions.length };
+      })()`);
+      assert.equal(stored.projects, 1, 'reset did not restore the seed projects');
+      assert.equal(stored.sessions, 2, 'reset did not restore the seed sessions');
+    });
+
     // ---- adversarial: the venue wifi dies at the booth --------------------
     // A plain static site cannot survive an offline *reload* without a service
     // worker, so we do not pretend to test that. The real booth risk is an

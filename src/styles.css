@@ -147,6 +147,10 @@ h3 { margin-bottom: 0; font-size: var(--step-2); line-height: var(--leading-snug
 .sidebar-project span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .sidebar-bottom { margin-top: auto; }
+/* The booth handover control. It sits directly above the "stored on this
+   device" note because that note is exactly what it acts on, and it inherits
+   its colour from .button-ghost-light so the dark sidebar needs no new token. */
+.kiosk-reset { margin: 0 var(--space-3) var(--space-3); }
 .privacy-chip { margin: 0 var(--space-3) var(--space-4); color: var(--text-on-inverse-muted); font-size: var(--step-0); }
 .privacy-chip span { margin-right: var(--space-2); color: var(--inverse-accent); }
 .profile-chip {
