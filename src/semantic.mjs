@@ -162,10 +162,33 @@ const STATUSES = new Set(['covered', 'partial', 'missing']);
 
 // A quoted span only counts as evidence if it is actually in the transcript.
 // This is what stops a fluent model from inventing a supporting sentence.
+//
+// Normalisation runs on BOTH sides. Without it, a model that re-flows a quote
+// across a line break, or types an em dash as a hyphen, has a CORRECT verdict
+// discarded — a false negative that costs the student real credit silently.
+// Case-insensitivity is kept for the same reason: case is a transcription
+// artefact, not evidence of paraphrase.
+export function normaliseForGrounding(value) {
+  return String(value ?? '')
+    .replace(/[‘’‛]/gu, "'")
+    .replace(/[“”]/gu, '"')
+    .replace(/[–—]/gu, '-')
+    .replace(/[\u200B-\u200D\uFEFF]/gu, '')
+    .replace(/\s+/gu, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+// Spans shorter than this match too easily to be evidence of anything: a
+// four-character fragment appears in almost any transcript by chance, so it
+// would ground a verdict without supporting it. Covered by
+// "a span too short to be evidence never grounds".
+export const MIN_SPAN_CHARS = 12;
+
 function spanIsGrounded(span, transcript) {
-  const needle = String(span ?? '').trim().toLowerCase();
-  if (needle.length < 12) return false;
-  return transcript.toLowerCase().includes(needle);
+  const needle = normaliseForGrounding(span);
+  if (needle.length < MIN_SPAN_CHARS) return false;
+  return normaliseForGrounding(transcript).includes(needle);
 }
 
 export function applySemanticVerdicts(base, payload, transcript) {

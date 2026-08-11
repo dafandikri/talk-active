@@ -13,6 +13,7 @@ import {
   analyzeWithSemantics,
   applySemanticVerdicts,
   buildMessages,
+  normaliseForGrounding,
   selectApiCredential,
 } from '../src/semantic.mjs';
 
@@ -74,6 +75,35 @@ test('a verdict quoting a sentence not in the transcript is rejected (INV-3)', (
     ),
     SemanticUnavailable,
     'a fabricated quote must not be accepted as evidence',
+  );
+});
+
+test('a correct quote still grounds across line breaks and smart punctuation', () => {
+  const transcript = 'We reduced preparation time\nby half, and students said—clearly—it helped.';
+
+  // Same words, single-spaced: a model re-flowing a quote is not fabricating.
+  assert.equal(normaliseForGrounding('reduced preparation time by half'),
+    normaliseForGrounding('reduced preparation  time\nby half'));
+
+  // An em dash typed as a hyphen is the same quote.
+  assert.ok(normaliseForGrounding(transcript).includes(normaliseForGrounding('students said-clearly-it helped')));
+});
+
+test('a fabricated quote still fails grounding after normalisation', () => {
+  const transcript = 'We reduced preparation time by half.';
+  assert.ok(!normaliseForGrounding(transcript).includes(normaliseForGrounding('we tripled our revenue')));
+});
+
+test('a span too short to be evidence never grounds', () => {
+  const base = { criteria: [{ id: 'problem-clarity', label: 'Problem clarity', signals: [], score: 0, status: 'missing', missingSignals: [], excerpt: '' }] };
+  const payload = { criteria: [{ id: 'problem-clarity', status: 'covered', span: 'students', missing: [] }] };
+
+  // "students" is in the transcript, but it is 8 characters — too short to
+  // support a criterion. With no grounded support left, the whole semantic
+  // pass is rejected by the existing fabrication guard rather than credited.
+  assert.throws(
+    () => applySemanticVerdicts(base, payload, 'Indonesian students prepare alone.'),
+    SemanticUnavailable,
   );
 });
 
