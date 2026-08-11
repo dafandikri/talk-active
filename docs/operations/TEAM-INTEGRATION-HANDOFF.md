@@ -17,8 +17,11 @@ This is the current integration instruction. The earlier frontend report remains
 | BR-2 and BR-3 | The macaw mark is wired into all public surfaces and the head-only favicon is shipped. |
 
 The six commit IDs named in the frontend report (`9e5fe00`, `ac8145c`, `5879d4e`,
-`1c738eb`, `332e05c`, and `413b69a`) are not present in this clone. Do not claim they were
-merged. The behaviors were verified in the current integration branch independently.
+`1c738eb`, `332e05c`, and `413b69a`) arrived on `origin/main` during the integration audit.
+Merge `b401bc3` preserves those commits in repository history. Where the two tracks touched the
+same lines, the resolution retained the larger semantic, fallback, rubric-import, booth, and
+mobile gate while carrying forward the frontend track's two-attempt trend rule and 44 px mobile
+tap-target requirement.
 
 ## The Vercel blocker, precisely
 
@@ -52,14 +55,13 @@ Official references:
 
 ## Copy-paste message for the frontend developer
 
-> Your GitHub work is still useful; Vercel access is not required to send it. Please push your
-> existing frontend branch to `origin` without rebasing or recreating the commits. Then send me
-> the branch name, `git rev-parse HEAD`, `git status --short`, and the complete `pnpm check`
-> result. Do not send `.env.local`, a Vercel token, or an AI key. The integration branch already
-> contains B3/B4/B5, semantic provenance, rubric import, Windows path/browser fixes, and the
-> macaw/favicon port, so I will compare the diff and keep only non-duplicate improvements. If
-> Vercel reports that you are not a team member, ignore the deployment failure—the GitHub branch
-> is the handoff. I will deploy the reviewed integration as the project owner.
+> Your frontend branches arrived and are now preserved in the integration history—thank you.
+> B3, B4, B5, and the Windows portability work are included. I resolved the overlapping lines
+> with the semantic/fallback, rubric-import, booth, and production work, and retained your
+> two-attempt trend rule plus the 44 px mobile target. You do not need a paid Vercel seat for the
+> remaining handoff. Keep pushing normal GitHub branches and send the branch name, commit hash,
+> and complete `pnpm check` result; I will review and deploy the integrated owner commit. Please
+> never send `.env.local`, a Vercel token, or an AI key.
 
 ## Commands after the branch arrives
 
