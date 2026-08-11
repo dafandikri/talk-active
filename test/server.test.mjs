@@ -49,3 +49,26 @@ test('static server exposes the product workspace but not research documents', a
   const mutation = await fetch(`${origin}/`, { method: 'POST' });
   assert.equal(mutation.status, 405);
 });
+
+test('the allow-list holds on every platform, and traversal never escapes the root', async (context) => {
+  const server = createServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  context.after(() => new Promise((resolve) => server.close(resolve)));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+
+  // A URL path is always slash-separated, so it has to be normalised with POSIX
+  // rules. Normalising with the platform's rules turns "/src/tokens.css" into
+  // "src\tokens.css" on Windows, which misses the allow-list and 404s every
+  // stylesheet, module, and asset — the product loads as unstyled, inert HTML.
+  for (const path of ['/src/tokens.css', '/src/styles.css', '/src/app.mjs']) {
+    assert.equal((await fetch(`${origin}${path}`)).status, 200, `${path} must be served on every platform`);
+  }
+
+  // Backslashes are folded to slashes BEFORE normalising, never after. "%5C"
+  // decodes to a literal backslash; folding it afterwards would hand the
+  // allow-list a clean "src/../../package.json" that escapes the root. This
+  // asserts the ordering, which the comment in serve.mjs alone cannot enforce.
+  for (const path of ['/src/../package.json', '/src%5C..%5C..%5Cpackage.json', '/src/../../../Windows/win.ini']) {
+    assert.equal((await fetch(`${origin}${path}`)).status, 404, `${path} must never resolve outside the allow-list`);
+  }
+});
