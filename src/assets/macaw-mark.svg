@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">Talk-Active speaking bird</title>
+  <desc id="desc">A blue and gold macaw perched across an open speech bubble, beside three listening dots.</desc>
+
+  <!-- Colours are raw token values from src/tokens.css. An SVG loaded via <img>
+       cannot read CSS custom properties, so the hexes are literal BY NECESSITY.
+       If a token moves, this file moves with it:
+       blue-600 #1b7ea6 · blue-700 #145f7e · sun-500 #f2b90c
+       leaf-600 #2f5923 · leaf-500 #3a731f · orange-500 #bf6b04
+       mono-950 #101312 · paper #fffef9 -->
+  <defs>
+    <linearGradient id="bubble-stroke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b7ea6"/>
+      <stop offset="1" stop-color="#f2b90c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- The bubble sits BEHIND and to the right; the bird overlaps its left edge
+       and breaks the frame, exactly as the full lockup does. Drawing it first
+       means the bird's silhouette stays unbroken on top. -->
+  <path d="M26 6h28a8 8 0 0 1 8 8v18a8 8 0 0 1-8 8H41l-6 6-1-6h-8a8 8 0 0 1-8-8V14a8 8 0 0 1 8-8Z"
+        fill="none" stroke="url(#bubble-stroke)" stroke-width="3.5" stroke-linejoin="round"/>
+
+  <!-- Three listening dots in the three brand colours: a typing indicator. -->
+  <circle cx="46" cy="23" r="2.9" fill="#1b7ea6"/>
+  <circle cx="52.5" cy="23" r="2.9" fill="#2f5923"/>
+  <circle cx="59" cy="23" r="2.9" fill="#f2b90c"/>
+
+  <!-- Tail: two tones that read as depth large and merge into one wedge small.
+       It starts inside the body so the bird is one animal, not a bird plus a
+       stick. -->
+  <path fill="#145f7e" d="M17 44 3 58l5 3 11-14Z"/>
+  <path fill="#1b7ea6" d="M21 46 11 60l6-1 8-11Z"/>
+
+  <!-- Gold chest: the largest single shape in the mark. When every other
+       detail has collapsed at 16px, this is what still says macaw. -->
+  <path fill="#f2b90c" d="M21 25c7 0 12 6 12 14s-5 13-12 13-12-5-12-13 5-14 12-14Z"/>
+
+  <!-- Blue wing over the left of the body, leaving the gold chest visible
+       from the front. -->
+  <path fill="#1b7ea6" d="M18 26c-6 3-9 9-9 15 0 4 1 8 4 10-3-9-2-18 5-25Z"/>
+  <path fill="#145f7e" d="M14 33c-3 4-4 8-4 12 0 3 1 5 2 7-1-7-1-13 2-19Z"/>
+
+  <!-- Green crown. Drawn as a full circle, then most of it is covered by the
+       face patch — what remains is a crown and a nape, which is the shape a
+       macaw's head actually is. -->
+  <circle cx="21" cy="20" r="10" fill="#2f5923"/>
+  <path fill="#3a731f" d="M12 16c2-6 8-9 14-8-5 1-8 3-10 6 3-1 6 0 8 2-5-1-9 0-12 4Z"/>
+
+  <!-- White face patch. This is the single most important shape for small
+       sizes: without it the head is one dark mass and stops reading as a face. -->
+  <path fill="#fffef9" d="M24 11c5 0 8 4 8 9s-3 9-8 9c-4 0-6-4-6-9s2-9 6-9Z"/>
+  <circle cx="26" cy="18.5" r="2.6" fill="#101312"/>
+  <circle cx="25.1" cy="17.6" r=".9" fill="#fffef9"/>
+
+  <!-- The hooked macaw beak, parted into a V. A closed beak reads as a duck;
+       the gap is what says mid-sentence. It deliberately crosses the bubble
+       stroke — the bird is speaking INTO the frame. -->
+  <path fill="#101312" d="M31 13c6 1 11 4 11 8 0 3-3 6-7 6 3-2 4-4 4-6 0-3-4-6-8-8Z"/>
+  <path fill="#101312" d="M31 28c4 0 7 1 9 3l-10 1Z"/>
+  <path fill="#bf6b04" d="M33 29c3 0 5 .5 6 1.5l-7 .5Z"/>
+
+  <!-- Perch: the branch, doubling as a base line so the bird is standing
+       rather than floating. -->
+  <path fill="#2f5923" d="M10 52h20v3H10Z"/>
+</svg>
