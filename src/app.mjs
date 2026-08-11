@@ -571,6 +571,15 @@ function evidenceCard(criterion) {
     card.append(absent);
   }
 
+  // INV-4: the overall mode badge cannot speak for a criterion that fell back.
+  // textContent, never innerHTML: this sits beside user input (INV-5).
+  if (criterion.engine === 'deterministic') {
+    const provenance = document.createElement('p');
+    provenance.className = 'evidence-provenance';
+    provenance.textContent = 'Matched by cue matching, not semantic analysis.';
+    card.append(provenance);
+  }
+
   return card;
 }
 
@@ -643,6 +652,13 @@ async function analyzeAttempt() {
   let analysis;
   try {
     analysis = analyzeSpeech(payload);
+    analysis.criteria = analysis.criteria.map((criterion) => ({
+      ...criterion,
+      engine: 'deterministic',
+    }));
+    analysis.weakest = analysis.criteria.find((criterion) => criterion.id === analysis.weakest.id);
+    analysis.semanticCriteria = 0;
+    analysis.totalCriteria = analysis.criteria.length;
   } catch (error) {
     elements.attemptError.textContent = error instanceof AnalysisError
       ? error.message

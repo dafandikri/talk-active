@@ -365,6 +365,8 @@ async function run() {
       weakest: document.querySelector('#reviewWeakest')?.textContent,
       question: document.querySelector('#reviewQuestion')?.textContent,
       criteria: document.querySelectorAll('#reviewCriteria .evidence-item').length,
+      provenanceNotes: document.querySelectorAll('#reviewCriteria .evidence-provenance').length,
+      reviewText: document.querySelector('#reviewCriteria')?.textContent,
       completedSteps: document.querySelectorAll('.practice-steps .is-complete').length,
       heroShadow: getComputedStyle(document.querySelector('.review-hero')).boxShadow,
       judgePreviewShadow: getComputedStyle(document.querySelector('.judge-preview')).boxShadow
@@ -373,6 +375,8 @@ async function run() {
     assert.equal(review.weakest, 'Differentiation');
     assert.match(review.question, /unique product logic/u);
     assert.equal(review.criteria, 4);
+    assert.equal(review.provenanceNotes, 4);
+    assert.match(review.reviewText, /cue matching/u);
     assert.equal(review.completedSteps, 2);
     assert.equal(review.heroShadow, 'none');
     assert.equal(review.judgePreviewShadow, 'none');
@@ -541,6 +545,7 @@ async function run() {
       ['persistent-project-state', 'passed'],
       ['practice-setup', 'passed'],
       ['rubric-grounded-review', 'passed'],
+      ['criterion-provenance', 'passed'],
       ['judge-defense', 'passed'],
       ['session-history', 'passed'],
       ['project-creation', 'passed'],
