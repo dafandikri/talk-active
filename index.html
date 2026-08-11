@@ -9,6 +9,12 @@
     >
     <title>Talk-Active — Rehearsal workspace</title>
     <meta name="theme-color" content="#2f5923">
+    <!-- Without a declared icon a browser requests /favicon.ico on its own, and
+         the static allow-list has no such file to give it: a 404 on every page
+         load, and a blank tab for the booth visitor who arrives by QR. Pointing
+         at the mark already in use keeps this a one-line fix and leaves the
+         pending macaw artwork decision (BR-1) entirely untouched. -->
+    <link rel="icon" href="/src/assets/cockatoo-mark.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/src/tokens.css">
     <link rel="stylesheet" href="/src/styles.css">
   </head>
