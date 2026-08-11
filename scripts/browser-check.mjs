@@ -603,6 +603,50 @@ async function run() {
       if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, `mobile-${route}`));
     }
 
+    // The route loop above covers the four top-level views. The judge path also
+    // runs through four practice stages, and those are where the wide things
+    // live: a long transcript, quoted evidence spans, the defense panel. A
+    // booth visitor reaches all of them on their own phone.
+    const measureStage = async (stage) => {
+      const reading = await evaluate(cdp, `(() => {
+        const visible = (node) => node.getBoundingClientRect().width > 0;
+        const controls = [...document.querySelectorAll('.view.is-visible button, .view.is-visible select, .mobile-nav button')].filter(visible);
+        return {
+          scrollWidth: document.documentElement.scrollWidth,
+          undersized: controls
+            .map((node) => {
+              const box = node.getBoundingClientRect();
+              return { label: (node.id || node.textContent || 'control').trim().slice(0, 32), height: Math.round(box.height), width: Math.round(box.width) };
+            })
+            .filter((target) => target.height < 44 || target.width < 44)
+        };
+      })()`);
+      assert.ok(
+        reading.scrollWidth <= 390,
+        `${stage} overflows at 390px: scrollWidth ${reading.scrollWidth}`,
+      );
+      assert.deepEqual(
+        reading.undersized, [],
+        `${stage} has controls below the 44px minimum: ${JSON.stringify(reading.undersized)}`,
+      );
+    };
+
+    await evaluate(cdp, `document.querySelector('.mobile-nav [data-route="practice"]').click()`);
+    await waitFor(cdp, `document.querySelector('#practiceSetup')?.classList.contains('is-visible')`);
+    await measureStage('practice-setup');
+
+    await evaluate(cdp, `document.querySelector('#beginAttempt').click()`);
+    await waitFor(cdp, `document.querySelector('#practiceAttempt')?.classList.contains('is-visible')`);
+    await measureStage('practice-attempt');
+
+    await evaluate(cdp, `document.querySelector('#analyzeAttempt').click()`);
+    await waitFor(cdp, `document.querySelector('#practiceReview')?.classList.contains('is-visible')`);
+    await measureStage('practice-review');
+
+    await evaluate(cdp, `document.querySelector('#openDefense').click()`);
+    await waitFor(cdp, `document.querySelector('#practiceDefense')?.classList.contains('is-visible')`);
+    await measureStage('practice-defend');
+
     if (screenshotPath) {
       await cdp.call('Emulation.setDeviceMetricsOverride', {
         width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false,
@@ -629,6 +673,7 @@ async function run() {
       ['kiosk-reset', 'passed'],
       ['empty-states', 'passed'],
       ['mobile-layout', 'passed'],
+      ['mobile-judge-path', 'passed'],
     ];
     process.stdout.write([
       'browser:',

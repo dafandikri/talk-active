@@ -1064,6 +1064,16 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   .brief-evidence-header { align-items: start; flex-direction: column; }
   .brief-demo { gap: var(--space-5); }
   .brief-footer { padding: var(--space-5) var(--space-4) var(--space-7); }
+
+  /* A booth visitor drives the judge path with a thumb, and .text-button is
+     19px tall — a target you have to aim at. Growing it to 44 square is the
+     one change the phone actually needs; the type, colour, and position are
+     untouched, so the layout reads the same and only the hit area moves.
+     Desktop keeps the compact treatment, where a pointer makes it a non-issue. */
+  .text-button {
+    min-width: 44px; min-height: 44px;
+    display: inline-flex; align-items: center;
+  }
 }
 
 @media print {
