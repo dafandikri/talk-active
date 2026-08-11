@@ -197,7 +197,9 @@ async function run() {
   const address = await listen(appServer, 0, '127.0.0.1');
   const debugPort = await freePort();
   const profile = mkdtempSync(join(tmpdir(), 'demo-gate-'));
-  const url = `http://127.0.0.1:${address.port}`;
+  // A *.localhost name still resolves to loopback, but exercises the same
+  // client path as deployment instead of the explicit 127.0.0.1 offline path.
+  const url = `http://talk-active.localhost:${address.port}`;
 
   const browser = spawn(browserPath, [
     '--headless', '--disable-gpu', '--hide-scrollbars',
@@ -236,8 +238,64 @@ async function run() {
     });
 
     await step('analyse', async () => {
+      await evaluate(cdp, `(() => {
+        const nativeFetch = window.fetch.bind(window);
+        window.fetch = async (resource, options) => {
+          if (resource === '/api/analyze') {
+            const criteria = [
+              { id: 'problem-clarity', label: 'Problem clarity', score: 100, status: 'covered', excerpt: 'Talk-Active lets a student use the actual evaluation rubric while practicing a pitch.', missingSignals: [], signals: ['students'] },
+              { id: 'solution-fit', label: 'Solution fit', score: 100, status: 'covered', excerpt: 'The product maps rubric criteria to the exact sentence in the transcript that supports them.', missingSignals: [], signals: ['rubric'] },
+              { id: 'differentiation', label: 'Differentiation', score: 0, status: 'missing', excerpt: '', missingSignals: ['unique product logic'], signals: ['unique'] },
+              { id: 'feasibility-and-trust', label: 'Feasibility and trust', score: 0, status: 'missing', excerpt: '', missingSignals: ['privacy boundary'], signals: ['privacy'] }
+            ];
+            return new Response(JSON.stringify({
+              mode: 'semantic', evidenceScore: 50, coveredCount: 2, criterionCount: 4,
+              criteria, weakest: criteria[2],
+              judgeQuestion: 'What unique product logic makes this defensible?',
+              drill: 'State the unique product logic directly.',
+              delivery: { wordCount: 180, durationSeconds: 90, wordsPerMinute: 120, pace: 'steady', fillerCount: 0, fillers: [] }
+            }), { status: 200, headers: { 'content-type': 'application/json' } });
+          }
+          return nativeFetch(resource, options);
+        };
+      })()`);
       await evaluate(cdp, `document.querySelector('#analyzeAttempt').click()`);
       await waitFor(cdp, `document.querySelector('#practiceReview')?.classList.contains('is-visible')`);
+    });
+
+    await step('semantic-mode', async () => {
+      const semantic = await evaluate(cdp, `(() => ({
+        mode: document.querySelector('#reviewMode')?.textContent,
+        cards: document.querySelectorAll('#reviewCriteria .evidence-item').length
+      }))()`);
+      assert.match(semantic.mode, /language model/iu);
+      assert.equal(semantic.cards, 4, 'semantic mode did not render every verdict');
+    });
+
+    // ---- adversarial: the model API dies after the semantic pass ----------
+    await step('fallback-mode', async () => {
+      await evaluate(cdp, `(() => {
+        const nativeFetch = window.fetch.bind(window);
+        window.fetch = async (resource, options) => {
+          if (resource === '/api/analyze') {
+            return new Response(JSON.stringify({ error: 'analysis_failed' }), {
+              status: 500, headers: { 'content-type': 'application/json' }
+            });
+          }
+          return nativeFetch(resource, options);
+        };
+        document.querySelector('#reviseAttempt').click();
+      })()`);
+      await waitFor(cdp, `document.querySelector('#practiceAttempt')?.classList.contains('is-visible')`);
+      await evaluate(cdp, `document.querySelector('#analyzeAttempt').click()`);
+      await waitFor(cdp, `document.querySelector('#practiceReview')?.classList.contains('is-visible')`);
+      const fallback = await evaluate(cdp, `(() => ({
+        mode: document.querySelector('#reviewMode')?.textContent,
+        cards: document.querySelectorAll('#reviewCriteria .evidence-item').length
+      }))()`);
+      assert.doesNotMatch(fallback.mode, /language model/iu);
+      assert.match(fallback.mode, /cue matching/iu);
+      assert.equal(fallback.cards, 4, 'fallback did not render every verdict');
     });
 
     // Every visible verdict must carry evidence. A blank card on stage reads as broken.
@@ -272,6 +330,37 @@ async function run() {
       await reload(cdp);
       const after = await evaluate(cdp, `JSON.parse(localStorage.getItem('talkactive.workspace.v1')).sessions.length`);
       assert.equal(after, before, 'saved sessions did not survive a reload');
+    });
+
+    // ---- adversarial: rubric structuring fails, manual editing survives ---
+    await step('import-failure', async () => {
+      await evaluate(cdp, `document.querySelector('[data-route="rubric"]').click()`);
+      await waitFor(cdp, `document.querySelector('#rubricView')?.classList.contains('is-visible')`);
+      await evaluate(cdp, `(() => {
+        const source = 'Technical Execution 30%\\nPitching and Q&A 20%';
+        const nativeFetch = window.fetch.bind(window);
+        window.fetch = async (resource, options) => {
+          if (resource === '/api/import-rubric') {
+            return new Response(JSON.stringify({
+              error: 'import_unavailable',
+              message: 'Import unavailable — edit the criteria manually instead.'
+            }), { status: 422, headers: { 'content-type': 'application/json' } });
+          }
+          return nativeFetch(resource, options);
+        };
+        document.querySelector('#rubricImport').open = true;
+        document.querySelector('#rubricImportInput').value = source;
+        document.querySelector('#rubricImportButton').click();
+      })()`);
+      await waitFor(cdp, `document.querySelector('#rubricImportStatus')?.textContent.includes('manually')`);
+      const importFallback = await evaluate(cdp, `(() => ({
+        source: document.querySelector('#rubricImportInput')?.value,
+        rows: document.querySelectorAll('#rubricEditor .rubric-row').length,
+        addDisabled: document.querySelector('#addCriterion')?.disabled
+      }))()`);
+      assert.match(importFallback.source, /Technical Execution 30%/u, 'failed import lost the pasted matrix');
+      assert.ok(importFallback.rows > 0, 'failed import left no manual criteria to edit');
+      assert.equal(importFallback.addDisabled, false, 'failed import disabled manual editing');
     });
 
     // ---- adversarial: the venue wifi dies at the booth --------------------
