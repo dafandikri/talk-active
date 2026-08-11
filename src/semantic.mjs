@@ -206,14 +206,20 @@ export function applySemanticVerdicts(base, payload, transcript) {
 
   const criteria = base.criteria.map((criterion) => {
     const verdict = byId.get(criterion.id);
-    if (!verdict || !STATUSES.has(verdict.status)) return criterion;
+    // No verdict for this criterion: the deterministic result stands, and we
+    // say so rather than letting the overall mode badge speak for it.
+    if (!verdict || !STATUSES.has(verdict.status)) {
+      return { ...criterion, engine: 'deterministic' };
+    }
 
     const span = String(verdict.span ?? '').trim();
     const supported = verdict.status !== 'missing';
     if (supported) claimedSupport += 1;
 
     // INV-3: a supporting verdict without a real, quoted span is discarded.
-    if (supported && !spanIsGrounded(span, transcript)) return criterion;
+    if (supported && !spanIsGrounded(span, transcript)) {
+      return { ...criterion, engine: 'deterministic' };
+    }
     if (supported) grounded += 1;
 
     const missing = Array.isArray(verdict.missing)
@@ -225,6 +231,7 @@ export function applySemanticVerdicts(base, payload, transcript) {
     return {
       ...criterion,
       score,
+      engine: 'semantic',
       status: verdict.status === 'missing' ? 'missing' : verdict.status,
       excerpt: supported ? span : '',
       missingSignals: verdict.status === 'missing' && missing.length === 0
@@ -241,6 +248,8 @@ export function applySemanticVerdicts(base, payload, transcript) {
     throw new SemanticUnavailable('no quoted span could be found in the transcript');
   }
 
+  const semanticCriteria = criteria.filter((item) => item.engine === 'semantic').length;
+
   const weakest = [...criteria].sort((left, right) => left.score - right.score)[0];
   const evidenceScore = Math.round(
     criteria.reduce((sum, criterion) => sum + criterion.score, 0) / criteria.length,
@@ -252,6 +261,8 @@ export function applySemanticVerdicts(base, payload, transcript) {
     weakest,
     evidenceScore,
     coveredCount: criteria.filter((criterion) => criterion.status === 'covered').length,
+    semanticCriteria,
+    totalCriteria: criteria.length,
   };
 }
 

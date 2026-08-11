@@ -107,6 +107,29 @@ test('a span too short to be evidence never grounds', () => {
   );
 });
 
+test('each criterion reports which engine actually answered it', () => {
+  const base = {
+    criteria: [
+      { id: 'a', label: 'A', signals: [], score: 0, status: 'missing', missingSignals: [], excerpt: '' },
+      { id: 'b', label: 'B', signals: [], score: 0, status: 'missing', missingSignals: [], excerpt: '' },
+    ],
+  };
+  const transcript = 'Indonesian students rehearse alone without any rubric to check against.';
+  const payload = {
+    criteria: [
+      { id: 'a', status: 'covered', span: 'students rehearse alone without any rubric', missing: [] },
+      { id: 'b', status: 'covered', span: 'we have already signed four universities', missing: [] },
+    ],
+  };
+
+  const result = applySemanticVerdicts(base, payload, transcript);
+
+  assert.equal(result.criteria[0].engine, 'semantic', 'a grounded verdict is semantic');
+  assert.equal(result.criteria[1].engine, 'deterministic', 'an ungrounded verdict fell back');
+  assert.equal(result.semanticCriteria, 1);
+  assert.equal(result.totalCriteria, 2);
+});
+
 test('falls back to deterministic when the gateway errors', async () => {
   const result = await analyzeWithSemantics({
     ...INPUT,
