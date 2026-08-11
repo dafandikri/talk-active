@@ -193,6 +193,7 @@ const elements = {
   cancelProject: $('#cancelProject'),
   sidebarAddProject: $('#sidebarAddProject'),
   mobileAddProject: $('#mobileAddProject'),
+  kioskReset: $('#kioskReset'),
   toast: $('#toast'),
   toastCopy: $('#toastCopy'),
 };
@@ -918,6 +919,35 @@ function createProject(event) {
   showToast('Project created — customize its rubric');
 }
 
+// Booth visitors arrive one after another. Reset restores the seed workspace
+// so nobody inherits the previous visitor's session.
+//
+// It reproduces the cold-start sequence at the bottom of this file rather than
+// clearing a hand-picked list of fields, because in-memory practice state
+// outlives localStorage: a stale `state.analysis` plus a stale practice stage
+// would show the next visitor the previous one's evidence review even though
+// the stored workspace was already clean. setupDictation() is deliberately not
+// repeated — re-running it would attach a second set of listeners.
+//
+// DICTATION_LANGUAGE_KEY is deliberately NOT cleared: it describes this
+// device's microphone, not the visitor's work, and re-picking a language at
+// every handover is friction with no privacy benefit.
+function resetWorkspace() {
+  state.workspace = clone(initialWorkspace);
+  state.practiceProjectId = state.workspace.activeProjectId;
+  state.analysis = null;
+  state.defense = null;
+  try {
+    persist();
+  } catch {
+    // Private mode: the in-memory reset above is still correct.
+  }
+  renderAll();
+  showPracticeStage('setup');
+  setRoute('home');
+  showToast('Workspace reset — ready for the next visitor');
+}
+
 function setupDictation() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
@@ -1038,6 +1068,7 @@ elements.closeProjectDialog.addEventListener('click', closeProjectDialog);
 elements.cancelProject.addEventListener('click', closeProjectDialog);
 elements.sidebarAddProject.addEventListener('click', openProjectDialog);
 elements.mobileAddProject.addEventListener('click', openProjectDialog);
+elements.kioskReset.addEventListener('click', resetWorkspace);
 
 state.practiceProjectId = state.workspace.activeProjectId;
 persist();
