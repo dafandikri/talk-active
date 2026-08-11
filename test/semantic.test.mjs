@@ -60,6 +60,31 @@ test('semantic analysis overlays verdicts when spans are grounded in the transcr
   assert.equal(result.weakest.status, 'missing');
 });
 
+test('semantic weakest criterion drives the judge question and retry drill (INV-3)', () => {
+  const transcript = 'Students need traceable feedback. Talk-Active maps every criterion to a quoted transcript span.';
+  const base = {
+    criteria: [
+      { id: 'validation', label: 'User validation', signals: ['students'], score: 0, status: 'missing', missingSignals: ['students'], excerpt: '' },
+      { id: 'differentiation', label: 'Differentiation', signals: ['rubric'], score: 100, status: 'covered', missingSignals: [], excerpt: transcript },
+    ],
+    judgeQuestion: 'This stale question targets User validation.',
+    drill: 'This stale drill targets User validation.',
+  };
+  const payload = {
+    criteria: [
+      { id: 'validation', status: 'covered', span: 'Students need traceable feedback.', missing: [], why: 'Names the user need.' },
+      { id: 'differentiation', status: 'partial', span: 'Talk-Active maps every criterion to a quoted transcript span.', missing: ['direct comparison'], why: 'The mechanism is present but no comparison is shown.' },
+    ],
+  };
+
+  const result = applySemanticVerdicts(base, payload, transcript);
+
+  assert.equal(result.weakest.id, 'differentiation');
+  assert.match(result.judgeQuestion, /speaking coaches|unique product logic/iu);
+  assert.match(result.drill, /Differentiation/iu);
+  assert.doesNotMatch(result.judgeQuestion, /User validation/iu);
+});
+
 test('a verdict quoting a sentence not in the transcript is rejected (INV-3)', () => {
   const base = {
     criteria: [

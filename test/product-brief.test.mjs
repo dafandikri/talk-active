@@ -24,7 +24,9 @@ test('product brief preserves the complete differentiating loop', () => {
 });
 
 test('product brief states current capabilities and honest boundaries', () => {
-  assert.match(brief, /deterministic cue matching, not semantic understanding/u);
+  assert.match(brief, /Semantic mapping proposes evidence/u);
+  assert.match(brief, /fall back visibly to deterministic cue matching/u);
+  assert.match(brief, /miss or misclassify a real quote/u);
   assert.match(brief, /not confidence or speaking ability/u);
   assert.match(brief, /Raw audio is not stored/u);
   assert.match(brief, /href="\/#practice"/u);

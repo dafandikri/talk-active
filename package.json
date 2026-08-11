@@ -5,6 +5,7 @@
   "type": "module",
   "description": "A persistent rubric-grounded rehearsal workspace for Indonesian students.",
   "scripts": {
+    "build": "node scripts/build-public.mjs",
     "dev": "node scripts/serve.mjs",
     "start": "node scripts/serve.mjs",
     "test": "node --test",

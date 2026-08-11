@@ -8,6 +8,8 @@ import {
   analyzeSpeech,
   compareResults,
   evaluateDefense,
+  makeDrill,
+  makeJudgeQuestion,
   parseRubric,
   tokenize,
 } from '../src/analyzer.mjs';
@@ -31,6 +33,23 @@ test('analyzeSpeech produces an evidence map and a focused next action', () => {
   assert.ok(result.judgeQuestion.length > 30);
   assert.match(result.drill, /claim → evidence → why it matters/u);
   assert.equal(result.delivery.wordCount, tokenize(STARTER_DRAFT).length);
+});
+
+test('semantic missing-evidence sentences remain readable in the question and drill', () => {
+  const criterion = {
+    label: 'Differentiation',
+    missingSignals: [
+      'No actual rubric is shown or described',
+      'No transcript example is provided',
+    ],
+  };
+
+  const question = makeJudgeQuestion(criterion);
+  const drill = makeDrill(criterion);
+
+  assert.match(question, /Evidence still missing: No actual rubric/iu);
+  assert.doesNotMatch(question, /make No actual/iu);
+  assert.match(drill, /Evidence to add: No actual rubric/iu);
 });
 
 test('local filler detection includes Indonesian and English cues', () => {

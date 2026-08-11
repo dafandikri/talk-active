@@ -112,10 +112,10 @@ function evidenceForCriterion(criterion, transcriptTokens, sentences) {
   };
 }
 
-function makeJudgeQuestion(criterion) {
+export function makeJudgeQuestion(criterion) {
   const label = criterion.label.toLocaleLowerCase('en-US');
   const missing = criterion.missingSignals.slice(0, 2).join(' and ');
-  const missingPrompt = missing ? ` Your pitch does not yet make ${missing} explicit.` : '';
+  const missingPrompt = missing ? ` Evidence still missing: ${missing}.` : '';
 
   if (label.includes('problem')) {
     return `What direct evidence proves this problem is urgent for your specific users?${missingPrompt}`;
@@ -132,9 +132,9 @@ function makeJudgeQuestion(criterion) {
   return `Your weakest area is “${criterion.label}.” What concrete claim and evidence would convince a skeptical judge?${missingPrompt}`;
 }
 
-function makeDrill(criterion) {
+export function makeDrill(criterion) {
   const cues = criterion.missingSignals.slice(0, 3);
-  const cueText = cues.length > 0 ? ` Include: ${cues.join(', ')}.` : '';
+  const cueText = cues.length > 0 ? ` Evidence to add: ${cues.join('; ')}.` : '';
   return `Retry only “${criterion.label}” in 30 seconds. Use claim → evidence → why it matters.${cueText}`;
 }
 

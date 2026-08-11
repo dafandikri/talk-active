@@ -1,44 +1,19 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer as createNetServer } from 'node:net';
-import { homedir, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+import { findBrowser } from './browser-paths.mjs';
 import { createServer as createAppServer } from './serve.mjs';
 
-const BROWSER_NAMES = new Set(['chrome-headless-shell', 'headless_shell', 'Google Chrome', 'Chromium']);
+export { findBrowser };
 
 function quoted(value) {
   return JSON.stringify(String(value));
-}
-
-function walkForBrowser(directory, depth = 0) {
-  if (!directory || !existsSync(directory) || depth > 4) return [];
-  const found = [];
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    const fullPath = join(directory, entry.name);
-    if (entry.isFile() && BROWSER_NAMES.has(entry.name)) found.push(fullPath);
-    else if (entry.isDirectory()) found.push(...walkForBrowser(fullPath, depth + 1));
-  }
-  return found;
-}
-
-export function findBrowser() {
-  const explicit = process.env.CHROME_BIN;
-  if (explicit && existsSync(explicit)) return explicit;
-  const installed = [
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Chromium.app/Contents/MacOS/Chromium',
-  ].find((candidate) => existsSync(candidate));
-  if (installed) return installed;
-  const cacheRoots = [
-    join(homedir(), 'Library/Caches/ms-playwright'),
-    join(homedir(), '.cache/ms-playwright'),
-  ];
-  return cacheRoots.flatMap((root) => walkForBrowser(root)).sort().reverse()[0] ?? null;
 }
 
 function listen(server, port, host) {
@@ -293,6 +268,38 @@ async function run() {
     if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'brief-desktop'));
 
     await cdp.call('Emulation.setDeviceMetricsOverride', {
+      width: 1440, height: 810, deviceScaleFactor: 1, mobile: false,
+    });
+    await cdp.call('Page.navigate', { url: `${url}/booth.html` });
+    await waitFor(cdp, `document.readyState === 'complete' && document.querySelector('#boothTitle')`);
+    const booth = await evaluate(cdp, `(() => ({
+      title: document.querySelector('#boothTitle')?.textContent,
+      loopSteps: document.querySelectorAll('.booth-loop > li').length,
+      qrLoaded: Boolean(document.querySelector('.booth-qr-card img')?.complete && document.querySelector('.booth-qr-card img')?.naturalWidth),
+      officialLogoLoaded: Boolean(document.querySelector('.booth-event-logo img')?.complete && document.querySelector('.booth-event-logo img')?.naturalWidth),
+      boundary: document.querySelector('.booth-footer')?.textContent,
+      overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      overflowY: document.documentElement.scrollHeight - document.documentElement.clientHeight,
+      clipped: [...document.querySelectorAll('body *')].filter((element) => {
+        const box = element.getBoundingClientRect();
+        return box.right > innerWidth + 1 || box.bottom > innerHeight + 1;
+      }).slice(0, 6).map((element) => element.tagName.toLowerCase() + (element.className ? '.' + String(element.className).trim().replace(/\\s+/g, '.') : ''))
+    }))()`);
+    assert.match(booth.title, /Bring the rubric/u);
+    assert.match(booth.title, /judge will challenge/u);
+    assert.equal(booth.loopSteps, 4);
+    assert.equal(booth.qrLoaded, true);
+    assert.equal(booth.officialLogoLoaded, true);
+    assert.match(booth.boundary, /not confidence or speaking ability/iu);
+    assert.equal(booth.overflowX, 0);
+    assert.equal(booth.overflowY, 0);
+    assert.deepEqual(booth.clipped, [], `booth display clips: ${booth.clipped.join(', ')}`);
+    if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'booth-display'));
+
+    await cdp.call('Page.navigate', { url: `${url}/brief.html` });
+    await waitFor(cdp, `document.readyState === 'complete' && document.querySelector('#briefTitle')`);
+
+    await cdp.call('Emulation.setDeviceMetricsOverride', {
       width: 390, height: 844, deviceScaleFactor: 1, mobile: true,
     });
     await cdp.call('Page.reload');
@@ -358,6 +365,22 @@ async function run() {
     assert.ok(attempt.duration > 0);
     assert.match(attempt.savedCopy, /saved locally/u);
 
+    // The local client must attempt the same semantic endpoint as production,
+    // while this gate deliberately forces the offline path without spending a
+    // real Gateway credit.
+    await evaluate(cdp, `(() => {
+      const nativeFetch = window.fetch.bind(window);
+      window.__talkactiveApiAttempts = 0;
+      window.fetch = async (resource, options) => {
+        if (resource === '/api/analyze') {
+          window.__talkactiveApiAttempts += 1;
+          return new Response(JSON.stringify({ error: 'analysis_failed' }), {
+            status: 503, headers: { 'content-type': 'application/json' }
+          });
+        }
+        return nativeFetch(resource, options);
+      };
+    })()`);
     await evaluate(cdp, `document.querySelector('#analyzeAttempt').click()`);
     await waitFor(cdp, `document.querySelector('#practiceReview')?.classList.contains('is-visible')`);
     const review = await evaluate(cdp, `(() => ({
@@ -367,6 +390,7 @@ async function run() {
       criteria: document.querySelectorAll('#reviewCriteria .evidence-item').length,
       provenanceNotes: document.querySelectorAll('#reviewCriteria .evidence-provenance').length,
       reviewText: document.querySelector('#reviewCriteria')?.textContent,
+      apiAttempts: window.__talkactiveApiAttempts,
       completedSteps: document.querySelectorAll('.practice-steps .is-complete').length,
       heroShadow: getComputedStyle(document.querySelector('.review-hero')).boxShadow,
       judgePreviewShadow: getComputedStyle(document.querySelector('.judge-preview')).boxShadow
@@ -376,6 +400,7 @@ async function run() {
     assert.match(review.question, /unique product logic/u);
     assert.equal(review.criteria, 4);
     assert.equal(review.provenanceNotes, 4);
+    assert.equal(review.apiAttempts, 1);
     assert.match(review.reviewText, /cue matching/u);
     assert.equal(review.completedSteps, 2);
     assert.equal(review.heroShadow, 'none');
@@ -524,6 +549,16 @@ async function run() {
       assert.equal(mobileWorkflow.overflow, 0);
       assert.ok(mobileWorkflow.markWidth >= 44);
       assert.equal(mobileWorkflow.headerBorder, '2px');
+      if (route === 'progress') {
+        const emptyProgress = await evaluate(cdp, `(() => ({
+          total: document.querySelector('#totalSessions')?.textContent,
+          chart: document.querySelector('#progressChart .chart-empty')?.textContent,
+          archive: document.querySelector('#allSessions .empty-list')?.textContent
+        }))()`);
+        assert.equal(emptyProgress.total, '0');
+        assert.match(emptyProgress.chart, /Save a practice session/iu);
+        assert.match(emptyProgress.archive, /No sessions saved/iu);
+      }
       if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, `mobile-${route}`));
     }
 
@@ -541,6 +576,7 @@ async function run() {
       ['reduced-motion', 'passed'],
       ['product-brief', 'passed'],
       ['product-brief-mobile', 'passed'],
+      ['booth-display', 'passed'],
       ['accessible-fields', 'passed'],
       ['persistent-project-state', 'passed'],
       ['practice-setup', 'passed'],
@@ -552,6 +588,7 @@ async function run() {
       ['rubric-import', 'passed'],
       ['rubric-editing', 'passed'],
       ['reload-persistence', 'passed'],
+      ['empty-states', 'passed'],
       ['mobile-layout', 'passed'],
     ];
     process.stdout.write([

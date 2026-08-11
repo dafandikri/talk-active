@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -52,7 +53,13 @@ test('pnpm check reaches every product-quality gate', () => {
 test('local push and remote CI both enforce the same complete gate', () => {
   const hookPath = join(ROOT, '.githooks/pre-push');
   assert.equal(existsSync(hookPath), true, 'pre-push hook must exist');
-  assert.ok((statSync(hookPath).mode & 0o111) !== 0, 'pre-push hook must be executable');
+  // Git's index is the portable source of truth. Windows filesystems do not
+  // expose POSIX executable bits, but every checkout still receives this mode.
+  const indexEntry = execFileSync('git', ['ls-files', '--stage', '.githooks/pre-push'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+  });
+  assert.match(indexEntry, /^100755\s/u, 'git must distribute the pre-push hook as executable');
   assert.match(read('.githooks/pre-push'), /pnpm check/u);
 
   const workflow = read('.github/workflows/check.yml');

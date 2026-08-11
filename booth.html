@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+      name="description"
+      content="Talk-Active booth display: bring the evaluator's rubric, rehearse once, see the cited evidence, and practise the hardest likely question."
+    >
+    <title>Talk-Active — Booth display</title>
+    <meta name="theme-color" content="#101312">
+    <link rel="icon" href="/src/assets/macaw-favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/src/tokens.css">
+    <link rel="stylesheet" href="/src/booth.css">
+  </head>
+  <body class="booth-body" data-surface="booth">
+    <main class="booth-screen" aria-labelledby="boothTitle">
+      <header class="booth-header">
+        <a class="booth-brand" href="/#home" aria-label="Open the Talk-Active workspace">
+          <img src="/src/assets/macaw-mark-white.svg" alt="">
+          <span>Talk-<strong>Active</strong></span>
+        </a>
+        <div class="booth-event">
+          <span>GRAND FINAL · TEAM FAM</span>
+          <span class="booth-event-logo">
+            <img src="/src/assets/ristek-hackathon-2026-logo.png" alt="RISTEK Fasilkom UI">
+          </span>
+        </div>
+      </header>
+
+      <section class="booth-message">
+        <div class="booth-pitch">
+          <p class="booth-eyebrow"><span aria-hidden="true">●</span> Rubric-grounded rehearsal</p>
+          <h1 id="boothTitle">Bring the rubric.<br>Find the sentence<br>the judge will challenge.</h1>
+          <p class="booth-subtitle">One rehearsal becomes cited evidence, the hardest likely question, and saved progress.</p>
+
+          <ol class="booth-loop" aria-label="Talk-Active rehearsal loop">
+            <li><span>1</span><strong>Paste the rubric</strong></li>
+            <li><span>2</span><strong>Rehearse once</strong></li>
+            <li><span>3</span><strong>Inspect the quote</strong></li>
+            <li><span>4</span><strong>Defend the gap</strong></li>
+          </ol>
+        </div>
+
+        <aside class="booth-proof" aria-label="Example Talk-Active evidence card and product QR">
+          <article class="booth-evidence-card">
+            <header><span>INNOVATION &amp; UNIQUENESS</span><strong>evidence found</strong></header>
+            <blockquote>“A supporting verdict disappears if it cannot quote the transcript.”</blockquote>
+            <p>your words, from this attempt</p>
+          </article>
+
+          <section class="booth-qr-card">
+            <img
+              src="/src/assets/talk-active-production-qr.svg"
+              alt="QR code opening the public Talk-Active workspace"
+              width="1000"
+              height="1000"
+            >
+            <div>
+              <span>TRY IT ON YOUR PHONE</span>
+              <strong>talk-active-id.vercel.app</strong>
+              <p>Public · no sign-in · reset between visitors</p>
+            </div>
+          </section>
+        </aside>
+      </section>
+
+      <footer class="booth-footer">
+        <p><strong>No quote?</strong> No supporting verdict.</p>
+        <p>Evidence coverage—not confidence or speaking ability.</p>
+      </footer>
+    </main>
+  </body>
+</html>

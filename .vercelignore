@@ -1,0 +1,27 @@
+# Vercel needs the app, API modules, middleware, package metadata, and the
+# allow-list build script. Internal evidence and agent material must never be
+# part of the uploaded build context.
+docs/
+test/
+.agents/
+.agent-harness/
+.github/
+.githooks/
+coverage/
+output/
+tmp/
+node_modules/
+.env*
+.DS_Store
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+HANDOVER.md
+QWEN.md
+README.md
+
+scripts/*
+!scripts/build-public.mjs
+
+# Design source captures are not runtime assets.
+src/assets/Screenshot*.png

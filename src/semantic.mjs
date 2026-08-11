@@ -16,7 +16,7 @@
 //  This module performs no I/O of its own beyond the fetch it is handed, so it
 //  is testable without a network.
 // ============================================================================
-import { analyzeSpeech, parseRubric } from './analyzer.mjs';
+import { analyzeSpeech, makeDrill, makeJudgeQuestion, parseRubric } from './analyzer.mjs';
 
 // The Vercel AI Gateway is the default, but it is not the only way in. Its free
 // tier rate-limits every model and BYOK requires purchased credits, so a team
@@ -259,6 +259,8 @@ export function applySemanticVerdicts(base, payload, transcript) {
     ...base,
     criteria,
     weakest,
+    judgeQuestion: makeJudgeQuestion(weakest),
+    drill: makeDrill(weakest),
     evidenceScore,
     coveredCount: criteria.filter((criterion) => criterion.status === 'covered').length,
     semanticCriteria,

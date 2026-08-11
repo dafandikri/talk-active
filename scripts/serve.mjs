@@ -1,16 +1,27 @@
 #!/usr/bin/env node
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer as createHttpServer } from 'node:http';
-import { dirname, extname, join, normalize } from 'node:path';
+import { dirname, extname, join, posix } from 'node:path';
+import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const DEFAULT_ROOT = dirname(dirname(SCRIPT_PATH));
+const LOCAL_ENV_PATH = join(DEFAULT_ROOT, '.env.local');
+
+// Keep `pnpm dev` aligned with Vercel Development without adding a runtime
+// dependency. Existing shell variables win, and an absent file is the normal
+// deterministic/offline configuration.
+if (existsSync(LOCAL_ENV_PATH) && typeof process.loadEnvFile === 'function') {
+  process.loadEnvFile(LOCAL_ENV_PATH);
+}
+
 const MIME_TYPES = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8',
+  '.png': 'image/png',
   '.svg': 'image/svg+xml; charset=utf-8',
   '.webp': 'image/webp',
 };
@@ -29,8 +40,16 @@ function responseHeaders(contentType) {
 function publicPath(urlValue) {
   const pathname = decodeURIComponent(new URL(urlValue, 'http://localhost').pathname);
   if (pathname === '/') return 'index.html';
-  const normalized = normalize(pathname).replace(/^[/\\]+/u, '');
-  if (normalized === 'index.html' || normalized === 'brief.html' || normalized.startsWith('src/')) return normalized;
+  // URL paths always use `/`, even on Windows. Fold encoded backslashes before
+  // POSIX normalization so `src\\app.mjs` works without letting
+  // `src\\..\\..\\secret` escape the allow-list.
+  const normalized = posix.normalize(pathname.replace(/\\/gu, '/')).replace(/^\/+/u, '');
+  if (
+    normalized === 'index.html'
+    || normalized === 'brief.html'
+    || normalized === 'booth.html'
+    || normalized.startsWith('src/')
+  ) return normalized;
   return null;
 }
 
@@ -125,7 +144,7 @@ if (isDirectRun) {
         'server:',
         '  status: listening',
         `  url: ${quoted(`http://127.0.0.1:${actualPort}`)}`,
-        `  privacy: ${quoted('serves only index.html, brief.html, and src/*')}`,
+        `  privacy: ${quoted('serves only index.html, brief.html, booth.html, and src/*')}`,
       ].join('\n') + '\n');
     });
   }

@@ -88,6 +88,7 @@ const state = {
   practiceStage: 'setup',
   practiceProjectId: null,
   analysis: null,
+  analysisRequestId: 0,
   defense: null,
   recognition: null,
   recordingStartedAt: null,
@@ -137,6 +138,9 @@ const elements = {
   dictateLabel: $('#dictateLabel'),
   dictateLanguage: $('#dictateLanguage'),
   analyzeAttempt: $('#analyzeAttempt'),
+  analyzeSpinner: $('#analyzeSpinner'),
+  analyzeLabel: $('#analyzeLabel'),
+  analyzeArrow: $('#analyzeArrow'),
   exitPractice: $('#exitPractice'),
   reviewScore: $('#reviewScore'),
   reviewMode: $('#reviewMode'),
@@ -196,6 +200,11 @@ const elements = {
   cancelProject: $('#cancelProject'),
   sidebarAddProject: $('#sidebarAddProject'),
   mobileAddProject: $('#mobileAddProject'),
+  resetButtons: $$('[data-reset-workspace]'),
+  resetDialog: $('#resetDialog'),
+  closeResetDialog: $('#closeResetDialog'),
+  cancelReset: $('#cancelReset'),
+  confirmReset: $('#confirmReset'),
   toast: $('#toast'),
   toastCopy: $('#toastCopy'),
 };
@@ -589,13 +598,11 @@ const MODE_LABEL = {
   deterministic: 'Evidence mapped by cue matching on this device.',
 };
 
-// `scripts/serve.mjs` serves static files only — there are no functions behind
-// it — so asking it for /api/analyze would log a 404 and fail the demo gate.
-// The deployed origin is the only one that can answer.
+// The local server and Vercel expose the same API paths. Only a directly opened
+// file has no server to answer, so every HTTP origin may attempt the semantic
+// upgrade and fall back cleanly when credentials or connectivity are absent.
 function apiIsReachable() {
-  const { hostname, protocol } = window.location;
-  if (protocol === 'file:') return false;
-  return hostname !== '127.0.0.1' && hostname !== 'localhost';
+  return window.location.protocol !== 'file:';
 }
 
 // A response we cannot trust is a response we do not use. Anything short of the
@@ -637,6 +644,14 @@ async function upgradeWithSemantics(payload) {
   }
 }
 
+function setAnalysisLoading(isLoading) {
+  elements.analyzeAttempt.disabled = isLoading;
+  elements.analyzeAttempt.setAttribute('aria-busy', String(isLoading));
+  elements.analyzeSpinner.hidden = !isLoading;
+  elements.analyzeArrow.hidden = isLoading;
+  elements.analyzeLabel.textContent = isLoading ? 'Mapping evidence…' : 'Review this attempt';
+}
+
 async function analyzeAttempt() {
   elements.attemptError.hidden = true;
   const project = practiceProject();
@@ -667,9 +682,11 @@ async function analyzeAttempt() {
     return;
   }
 
-  elements.analyzeAttempt.disabled = true;
+  setAnalysisLoading(true);
+  const requestId = ++state.analysisRequestId;
   const semantic = await upgradeWithSemantics(payload);
-  elements.analyzeAttempt.disabled = false;
+  if (requestId !== state.analysisRequestId) return;
+  setAnalysisLoading(false);
 
   state.analysis = semantic ?? analysis;
   elements.reviewMode.textContent = MODE_LABEL[semantic ? 'semantic' : 'deterministic'];
@@ -942,6 +959,40 @@ function closeProjectDialog() {
   elements.projectDialog.close();
 }
 
+function openResetDialog() {
+  elements.resetDialog.showModal();
+  elements.cancelReset.focus();
+}
+
+function closeResetDialog() {
+  if (elements.resetDialog.open) elements.resetDialog.close();
+}
+
+function resetWorkspace() {
+  if (state.recordingStartedAt && state.recognition) state.recognition.stop();
+  state.analysisRequestId += 1;
+
+  state.workspace = clone(initialWorkspace);
+  state.route = 'home';
+  state.practiceStage = 'setup';
+  state.practiceProjectId = initialWorkspace.activeProjectId;
+  state.analysis = null;
+  state.defense = null;
+  state.recordingStartedAt = null;
+  state.recordingBaseText = '';
+  state.finalDictation = '';
+
+  elements.dictateButton.classList.remove('is-recording');
+  elements.dictateLabel.textContent = state.recognition ? 'Dictate' : 'Dictation unavailable';
+  setAnalysisLoading(false);
+  persist();
+  closeResetDialog();
+  renderAll();
+  showPracticeStage('setup');
+  setRoute('home');
+  showToast('Demo workspace reset');
+}
+
 function createProject(event) {
   event.preventDefault();
   const name = elements.projectName.value.trim();
@@ -1093,6 +1144,10 @@ elements.closeProjectDialog.addEventListener('click', closeProjectDialog);
 elements.cancelProject.addEventListener('click', closeProjectDialog);
 elements.sidebarAddProject.addEventListener('click', openProjectDialog);
 elements.mobileAddProject.addEventListener('click', openProjectDialog);
+elements.resetButtons.forEach((button) => button.addEventListener('click', openResetDialog));
+elements.closeResetDialog.addEventListener('click', closeResetDialog);
+elements.cancelReset.addEventListener('click', closeResetDialog);
+elements.confirmReset.addEventListener('click', resetWorkspace);
 
 state.practiceProjectId = state.workspace.activeProjectId;
 persist();

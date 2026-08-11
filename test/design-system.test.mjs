@@ -26,8 +26,8 @@ const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 
 const TOKENS = read('src/tokens.css');
 const STYLES = read('src/styles.css');
-const APPAREL_MARK = read('src/assets/cockatoo-mark-white.svg');
-const PRODUCT_MARK = read('src/assets/cockatoo-mark.svg');
+const APPAREL_MARK = read('src/assets/macaw-mark-white.svg');
+const PRODUCT_MARK = read('src/assets/macaw-mark.svg');
 const INDEX = read('index.html');
 const BRIEF = read('brief.html');
 
@@ -261,12 +261,12 @@ test('the captain-supplied speaking-bird palette remains exact', () => {
   }
 });
 
-test('the product mark is a full-body speaking bird with the complete palette', () => {
-  assert.match(PRODUCT_MARK, /full-body blue, green, yellow, and orange speaking bird/iu);
+test('the product mark is a speaking macaw with the complete palette', () => {
+  assert.match(PRODUCT_MARK, /blue and gold macaw/iu);
   for (const colour of ['#101312', '#1b7ea6', '#145f7e', '#2f5923', '#3a731f', '#f2b90c', '#bf6b04', '#fffef9']) {
     assert.match(PRODUCT_MARK, new RegExp(colour, 'iu'), `product mark is missing ${colour}`);
   }
-  assert.match(PRODUCT_MARK, /visibly open orange beak/iu);
+  assert.match(PRODUCT_MARK, /hooked macaw beak, parted/iu);
 });
 
 test('the full-body dimensional mascot is local, visible, and motion-safe', () => {
@@ -282,8 +282,8 @@ test('the full-body dimensional mascot is local, visible, and motion-safe', () =
   );
 });
 
-test('the apparel mark remains a one-ink warm-white speaking bird', () => {
-  assert.match(APPAREL_MARK, /full-body speaking bird inside a white speech-bubble outline/u);
+test('the apparel mark remains a one-ink warm-white speaking macaw', () => {
+  assert.match(APPAREL_MARK, /white macaw perched inside a white speech-bubble outline/u);
   assert.match(APPAREL_MARK, /#fffef9/iu, 'the visible apparel artwork must use warm white ink');
 
   // Black and pure white are permitted only inside the SVG mask: they remove
@@ -493,6 +493,8 @@ test('the Talk-Active lockup is consistent across product and landing surfaces',
   assert.ok((BRIEF.match(/class="brand-wordmark"/gu) ?? []).length >= 4);
   for (const html of [INDEX, BRIEF]) {
     assert.match(html, /Talk-<(?:strong|span) class="brand-wordmark-accent">Active<\/(?:strong|span)>/u);
+    assert.match(html, /src\/assets\/macaw-mark\.svg/u);
+    assert.match(html, /rel="icon" href="\/src\/assets\/macaw-favicon\.svg"/u);
   }
 });
 

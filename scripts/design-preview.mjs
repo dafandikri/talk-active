@@ -148,14 +148,14 @@ function apparelHtml() {
   <div class="apparel-stage">
     <article class="shirt-view">
       <div class="shirt">
-        <div class="shirt-lockup"><img src="/src/assets/cockatoo-mark-white.svg" alt=""><span>Talk-Active</span></div>
+        <div class="shirt-lockup"><img src="/src/assets/macaw-mark-white.svg" alt=""><span>Talk-Active</span></div>
       </div>
       <p>Front · compact left-chest lockup</p>
     </article>
     <article class="shirt-view">
       <div class="shirt">
         <div class="shirt-back-art">
-          <img src="/src/assets/cockatoo-mark-white.svg" alt="">
+          <img src="/src/assets/macaw-mark-white.svg" alt="">
           <strong>Practice the answer before the question.</strong>
           <span>Project → rubric → attempt → evidence → defend</span>
         </div>

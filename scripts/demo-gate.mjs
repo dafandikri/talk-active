@@ -21,40 +21,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 
-import { existsSync, readdirSync } from 'node:fs';
-import { homedir } from 'node:os';
-
+import { analyze as analyzeRequest } from '../api/analyze.mjs';
+import { findBrowser } from './browser-paths.mjs';
 import { createServer as createAppServer } from './serve.mjs';
-
-// Deliberately not imported from browser-check.mjs: that module self-executes
-// its own suite on import, which would run the feature gate twice.
-const BROWSER_NAMES = new Set(['chrome-headless-shell', 'headless_shell', 'Google Chrome', 'Chromium']);
-
-function walkForBrowser(directory, depth = 0) {
-  if (!directory || !existsSync(directory) || depth > 4) return [];
-  const found = [];
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    const fullPath = join(directory, entry.name);
-    if (entry.isFile() && BROWSER_NAMES.has(entry.name)) found.push(fullPath);
-    else if (entry.isDirectory()) found.push(...walkForBrowser(fullPath, depth + 1));
-  }
-  return found;
-}
-
-function findBrowser() {
-  const explicit = process.env.CHROME_BIN;
-  if (explicit && existsSync(explicit)) return explicit;
-  const installed = [
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Chromium.app/Contents/MacOS/Chromium',
-  ].find((candidate) => existsSync(candidate));
-  if (installed) return installed;
-  const cacheRoots = [
-    join(homedir(), 'Library/Caches/ms-playwright'),
-    join(homedir(), '.cache/ms-playwright'),
-  ];
-  return cacheRoots.flatMap((root) => walkForBrowser(root)).sort().reverse()[0] ?? null;
-}
 
 const quoted = (value) => JSON.stringify(String(value));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -222,6 +191,44 @@ async function run() {
 
     const step = async (id, action) => { await action(); steps.push(id); };
 
+    // ---- cost + replay: semantic hits cache, degraded responses never do --
+    await step('semantic-cache', async () => {
+      const semanticInput = {
+        transcript: 'Cache proof transcript unique to the canonical demo gate.',
+        rubricText: 'Cache behavior | repeat, instant',
+        durationSeconds: 30,
+      };
+      let semanticCalls = 0;
+      const semanticStub = async () => {
+        semanticCalls += 1;
+        return { mode: 'semantic', evidenceScore: 100 };
+      };
+      const first = await analyzeRequest(semanticInput, semanticStub);
+      const replayStartedAt = performance.now();
+      const replay = await analyzeRequest(semanticInput, semanticStub);
+      const replayElapsed = performance.now() - replayStartedAt;
+
+      assert.equal(first.cached, false, 'first semantic response was incorrectly labelled as cached');
+      assert.equal(replay.cached, true, 'identical semantic response missed the server cache');
+      assert.equal(semanticCalls, 1, 'identical semantic request called the model twice');
+      assert.ok(replayElapsed < 100, `cached semantic replay took ${replayElapsed}ms; A5 requires under 100ms`);
+
+      const degradedInput = {
+        ...semanticInput,
+        transcript: 'Degraded cache proof transcript unique to the canonical demo gate.',
+      };
+      let degradedCalls = 0;
+      const degradedStub = async () => {
+        degradedCalls += 1;
+        return { mode: 'deterministic', evidenceScore: 50 };
+      };
+      const degradedFirst = await analyzeRequest(degradedInput, degradedStub);
+      const degradedSecond = await analyzeRequest(degradedInput, degradedStub);
+      assert.equal(degradedFirst.cached, false);
+      assert.equal(degradedSecond.cached, false, 'a degraded response was pinned in the server cache');
+      assert.equal(degradedCalls, 2, 'a degraded response prevented a later semantic retry');
+    });
+
     // ---- the exact sequence a judge watches -------------------------------
     await step('cold-start', async () => {
       await waitFor(cdp, `document.readyState === 'complete' && document.querySelector('#homeView')?.classList.contains('is-visible')`);
@@ -361,6 +368,170 @@ async function run() {
       assert.match(importFallback.source, /Technical Execution 30%/u, 'failed import lost the pasted matrix');
       assert.ok(importFallback.rows > 0, 'failed import left no manual criteria to edit');
       assert.equal(importFallback.addDisabled, false, 'failed import disabled manual editing');
+    });
+
+    // ---- kiosk handoff: one control restores a clean, rehearsed workspace --
+    await step('kiosk-reset', async () => {
+      const reset = await evaluate(cdp, `(() => {
+        localStorage.setItem('talkactive.dictation.language', 'en-US');
+        document.querySelector('[data-reset-workspace]').click();
+        return {
+          open: document.querySelector('#resetDialog')?.open,
+          focused: document.activeElement?.id
+        };
+      })()`);
+      assert.equal(reset.open, true, 'reset confirmation did not open');
+      assert.equal(reset.focused, 'cancelReset', 'reset dialog did not focus the safe action');
+
+      await evaluate(cdp, `(() => {
+        window.__kioskResetStartedAt = performance.now();
+        document.querySelector('#confirmReset').click();
+      })()`);
+      await waitFor(cdp, `location.hash === '#home' && document.querySelector('#resetDialog')?.open === false`);
+
+      const restored = await evaluate(cdp, `(() => {
+        const workspace = JSON.parse(localStorage.getItem('talkactive.workspace.v1'));
+        return {
+          elapsed: performance.now() - window.__kioskResetStartedAt,
+          projectIds: workspace.projects.map((project) => project.id),
+          sessionIds: workspace.sessions.map((session) => session.id),
+          activeProjectId: workspace.activeProjectId,
+          draftLength: workspace.projects[0]?.draft?.length ?? 0,
+          language: localStorage.getItem('talkactive.dictation.language'),
+          toast: document.querySelector('#toastCopy')?.textContent
+        };
+      })()`);
+      assert.ok(restored.elapsed < 1000, `kiosk reset took ${restored.elapsed}ms; the requirement is under 1000ms`);
+      assert.deepEqual(restored.projectIds, ['project-talk-active'], 'reset did not restore the seed project');
+      assert.deepEqual(restored.sessionIds, ['session-1', 'session-2'], 'reset did not restore the seed sessions');
+      assert.equal(restored.activeProjectId, 'project-talk-active', 'reset restored the wrong active project');
+      assert.ok(restored.draftLength > 200, 'reset did not restore the seed pitch draft');
+      assert.equal(restored.language, 'en-US', 'reset erased the device dictation preference');
+      assert.match(restored.toast, /workspace reset/iu, 'reset did not confirm completion');
+    });
+
+    await step('reset-survives-reload', async () => {
+      await reload(cdp);
+      const restored = await evaluate(cdp, `(() => {
+        const workspace = JSON.parse(localStorage.getItem('talkactive.workspace.v1'));
+        return {
+          projects: workspace.projects.length,
+          sessions: workspace.sessions.length,
+          activeProjectId: workspace.activeProjectId,
+          language: localStorage.getItem('talkactive.dictation.language')
+        };
+      })()`);
+      assert.deepEqual(restored, {
+        projects: 1,
+        sessions: 2,
+        activeProjectId: 'project-talk-active',
+        language: 'en-US',
+      }, 'the restored kiosk workspace did not survive reload');
+    });
+
+    // ---- visitors: complete the same judge loop on a 390px phone ----------
+    await step('mobile-full-judge-path', async () => {
+      await cdp.call('Emulation.setDeviceMetricsOverride', {
+        width: 390, height: 844, deviceScaleFactor: 1, mobile: true,
+      });
+
+      const assertMobileStage = async (selector, label) => {
+        const layout = await evaluate(cdp, `(() => {
+          const stage = document.querySelector(${quoted(selector)});
+          const controls = [...stage.querySelectorAll('button, input, select, textarea, a')]
+            .filter((control) => control.getClientRects().length > 0)
+            .filter((control) => {
+              const rect = control.getBoundingClientRect();
+              return rect.left < -0.5 || rect.right > window.innerWidth + 0.5;
+            })
+            .map((control) => control.id || control.textContent.trim().slice(0, 30));
+          return {
+            visible: stage.classList.contains('is-visible'),
+            overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            controls
+          };
+        })()`);
+        assert.equal(layout.visible, true, `${label} was not visible at 390px`);
+        assert.equal(layout.overflow, 0, `${label} overflowed the 390px viewport`);
+        assert.deepEqual(layout.controls, [], `${label} clipped controls horizontally`);
+      };
+
+      await evaluate(cdp, `document.querySelector('[data-start-practice]').click()`);
+      await waitFor(cdp, `document.querySelector('#practiceSetup')?.classList.contains('is-visible')`);
+      await assertMobileStage('#practiceSetup', 'mobile setup');
+
+      await evaluate(cdp, `document.querySelector('#beginAttempt').click()`);
+      await waitFor(cdp, `document.querySelector('#practiceAttempt')?.classList.contains('is-visible')`);
+      await assertMobileStage('#practiceAttempt', 'mobile attempt');
+
+      await evaluate(cdp, `(() => {
+        const nativeFetch = window.fetch.bind(window);
+        window.fetch = async (resource, options) => {
+          if (resource !== '/api/analyze') return nativeFetch(resource, options);
+          return new Promise((resolve) => {
+            window.__resolveMobileAnalysis = () => {
+              const criteria = [
+                { id: 'problem-clarity', label: 'Problem clarity', score: 100, status: 'covered', excerpt: 'Talk-Active lets a student use the actual evaluation rubric while practicing a pitch.', missingSignals: [], signals: ['students'] },
+                { id: 'solution-fit', label: 'Solution fit', score: 100, status: 'covered', excerpt: 'The product maps rubric criteria to the exact sentence in the transcript that supports them.', missingSignals: [], signals: ['rubric'] },
+                { id: 'differentiation', label: 'Differentiation', score: 0, status: 'missing', excerpt: '', missingSignals: ['unique product logic'], signals: ['unique'] },
+                { id: 'feasibility-and-trust', label: 'Feasibility and trust', score: 0, status: 'missing', excerpt: '', missingSignals: ['privacy boundary'], signals: ['privacy'] }
+              ];
+              resolve(new Response(JSON.stringify({
+                mode: 'semantic', evidenceScore: 50, coveredCount: 2, criterionCount: 4,
+                criteria, weakest: criteria[2],
+                judgeQuestion: 'What unique product logic makes this defensible?',
+                drill: 'State the unique product logic directly.',
+                delivery: { wordCount: 180, durationSeconds: 90, wordsPerMinute: 120, pace: 'steady', fillerCount: 0, fillers: [] }
+              }), { status: 200, headers: { 'content-type': 'application/json' } }));
+            };
+          });
+        };
+        document.querySelector('#analyzeAttempt').click();
+      })()`);
+      await waitFor(cdp, `document.querySelector('#analyzeAttempt')?.getAttribute('aria-busy') === 'true'`);
+      const loading = await evaluate(cdp, `(() => ({
+        disabled: document.querySelector('#analyzeAttempt')?.disabled,
+        label: document.querySelector('#analyzeLabel')?.textContent,
+        spinner: getComputedStyle(document.querySelector('#analyzeSpinner')).display,
+        stage: document.querySelector('#practiceAttempt')?.classList.contains('is-visible')
+      }))()`);
+      assert.equal(loading.disabled, true, 'slow analysis did not disable repeat submission');
+      assert.match(loading.label, /Mapping evidence/iu, 'slow analysis did not explain its state');
+      assert.notEqual(loading.spinner, 'none', 'slow analysis showed no progress indicator');
+      assert.equal(loading.stage, true, 'slow analysis blanked the attempt panel');
+      await assertMobileStage('#practiceAttempt', 'mobile loading state');
+
+      await evaluate(cdp, `window.__resolveMobileAnalysis()`);
+      await waitFor(cdp, `document.querySelector('#practiceReview')?.classList.contains('is-visible')`);
+      await assertMobileStage('#practiceReview', 'mobile review');
+      const settled = await evaluate(cdp, `(() => ({
+        busy: document.querySelector('#analyzeAttempt')?.getAttribute('aria-busy'),
+        label: document.querySelector('#analyzeLabel')?.textContent,
+        cards: document.querySelectorAll('#reviewCriteria .evidence-item').length
+      }))()`);
+      assert.equal(settled.busy, 'false', 'analysis control stayed busy after completion');
+      assert.match(settled.label, /Review this attempt/iu, 'analysis control did not restore its label');
+      assert.equal(settled.cards, 4, 'mobile review lost criterion cards');
+
+      await evaluate(cdp, `document.querySelector('#openDefense').click()`);
+      await waitFor(cdp, `document.querySelector('#practiceDefense')?.classList.contains('is-visible')`);
+      await evaluate(cdp, `(() => {
+        const answer = document.querySelector('#defenseAnswer');
+        answer.value = 'Unlike generic competitors, we keep every critique traceable to the active rubric and transcript with unique product logic.';
+        answer.dispatchEvent(new Event('input', { bubbles: true }));
+        document.querySelector('#evaluateDefense').click();
+      })()`);
+      await waitFor(cdp, `document.querySelector('#defenseResult')?.hidden === false`);
+      await assertMobileStage('#practiceDefense', 'mobile defense');
+
+      await evaluate(cdp, `document.querySelector('#saveSession').click()`);
+      await waitFor(cdp, `document.querySelector('#progressView')?.classList.contains('is-visible')`);
+      const saved = await evaluate(cdp, `(() => ({
+        sessions: JSON.parse(localStorage.getItem('talkactive.workspace.v1')).sessions.length,
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
+      }))()`);
+      assert.equal(saved.sessions, 3, 'mobile judge path did not save the session');
+      assert.equal(saved.overflow, 0, 'mobile progress overflowed after save');
     });
 
     // ---- adversarial: the venue wifi dies at the booth --------------------

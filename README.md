@@ -44,10 +44,31 @@ flowchart LR
     F --> B
 ```
 
-The current analyzer is transparent deterministic cue matching. It measures how explicitly
-the declared rubric evidence appears in a transcript. It does not claim to measure
-confidence, talent, truth, or general speaking ability. Production semantic analysis must
-retain rubric and transcript citations plus explicit uncertainty.
+Every analysis starts with transparent deterministic cue matching so the product always has a
+usable answer. When the server has an AI Gateway credential, the frontend posts the transcript
+and rubric to `/api/analyze`; a language model proposes criterion evidence, and server code
+rejects any supporting quote that cannot be found in the transcript. The interface identifies
+which engine answered each criterion. A timeout, malformed response, exhausted budget, or lost
+network visibly degrades to the deterministic result instead of breaking the rehearsal.
+
+The result measures explicit rubric evidence in one transcript. It does not claim to measure
+confidence, talent, truth, or general speaking ability.
+
+## Test semantic analysis locally
+
+The local server runs the same `/api/analyze` and `/api/import-rubric` handlers as Vercel.
+Pull the Development environment once, then start normally:
+
+```bash
+vercel env pull .env.local --environment=development --yes
+pnpm dev
+```
+
+Open `http://127.0.0.1:4173`, start a practice attempt, and select **Review this attempt**.
+With a working Gateway response, the review says “Evidence mapped by a language model, then
+checked against your transcript.” Without a credential or network, it says “Evidence mapped by
+cue matching on this device.” Both paths complete the same evidence → question → saved-progress
+loop. Never commit `.env.local` or paste its value into browser code.
 
 ## Repository commands
 
@@ -65,21 +86,23 @@ rubric editing, reload persistence, and mobile layout.
 
 ## Current boundary
 
-This is a dependency-free, device-local product prototype. It has a real recurring workflow
-and persistent data, but it does not yet have accounts, cloud sync, document upload,
-production transcription, or a semantic model. Those are implementation boundaries—not
-reasons to present the product as a mockup.
+This is a dependency-free, device-local client with server-assisted semantic mapping. It has a
+real recurring workflow and persistent data, but it does not yet have accounts, cloud sync,
+document upload, or production transcription. The server does not durably store the full
+transcript or raw audio; semantic responses may remain briefly in an in-memory cache for replay.
+Those are implementation boundaries—not reasons to present the product as a mockup.
 
 Body-language scoring, streaks, generic speaking scenarios, and institutional dashboards
 remain outside the product until the rubric → evidence → defend loop is validated with
 students using their own materials.
 
-## Private Vercel deployment
+## Vercel deployment
 
-Production deployment is protected by `middleware.js` using HTTP Basic Authentication.
-Set `SITE_PASSWORD` in Vercel for every deployed environment; the middleware fails closed
-with a `503` if the secret is absent. The username is `talkactive`. Never commit the password
-to this repository or place it in client-side JavaScript.
+The exhibition deployment is public by default so judges and QR visitors can use it without an
+account. `middleware.js` can still protect an internal deployment when
+`PRIVATE_DEPLOYMENT=1` and `SITE_PASSWORD` are both configured; if privacy is requested without
+a password, it fails closed with `503`. Never commit a password, Gateway credential, or Vercel
+token, and never place one in client-side JavaScript.
 
 The decision brief is in [docs/FEASIBILITY.md](docs/FEASIBILITY.md), and the product contract
 is in [docs/specs/2026-08-06-talk-active-mvp.md](docs/specs/2026-08-06-talk-active-mvp.md).

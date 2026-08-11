@@ -9,6 +9,7 @@
     >
     <title>Talk-Active — Rehearsal workspace</title>
     <meta name="theme-color" content="#2f5923">
+    <link rel="icon" href="/src/assets/macaw-favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/src/tokens.css">
     <link rel="stylesheet" href="/src/styles.css">
   </head>
@@ -16,7 +17,7 @@
     <div class="app-shell">
       <aside class="sidebar" aria-label="Main navigation">
         <a class="brand" href="#home" data-route="home" aria-label="Talk-Active home">
-          <img class="brand-mark" src="/src/assets/cockatoo-mark.svg" alt="">
+          <img class="brand-mark" src="/src/assets/macaw-mark.svg" alt="">
           <span class="brand-wordmark">Talk-<strong class="brand-wordmark-accent">Active</strong></span>
         </a>
 
@@ -47,6 +48,9 @@
         </div>
 
         <div class="sidebar-bottom">
+          <button class="kiosk-reset" type="button" data-reset-workspace>
+            <span aria-hidden="true">↺</span><span>Reset demo workspace</span>
+          </button>
           <div class="privacy-chip"><span aria-hidden="true">●</span> Stored on this device</div>
           <div class="profile-chip">
             <span class="avatar" aria-hidden="true">DF</span>
@@ -58,10 +62,11 @@
 
       <header class="mobile-header">
         <a class="brand" href="#home" data-route="home" aria-label="Talk-Active home">
-          <img class="brand-mark" src="/src/assets/cockatoo-mark.svg" alt="">
+          <img class="brand-mark" src="/src/assets/macaw-mark.svg" alt="">
           <span class="brand-wordmark">Talk-<strong class="brand-wordmark-accent">Active</strong></span>
         </a>
         <div class="mobile-header-actions">
+          <button class="icon-button" type="button" data-reset-workspace aria-label="Reset demo workspace">↺</button>
           <a class="icon-button" href="/brief.html" aria-label="See how Talk-Active works">?</a>
           <button class="icon-button" id="mobileAddProject" type="button" aria-label="Create project">+</button>
         </div>
@@ -167,7 +172,7 @@
         <section class="view" id="practiceView" data-view="practice" aria-labelledby="practiceTitle">
           <header class="page-header compact-header workflow-header">
             <div class="workflow-heading">
-              <img class="workflow-mark" src="/src/assets/cockatoo-mark.svg" alt="">
+              <img class="workflow-mark" src="/src/assets/macaw-mark.svg" alt="">
               <div>
                 <p class="overline">Practice room</p>
                 <h1 id="practiceTitle">Rehearse one attempt at a time.</h1>
@@ -242,7 +247,11 @@
                   <span class="save-state" id="draftStatus"><span aria-hidden="true">✓</span> Draft saved locally</span>
                 </div>
                 <p class="form-error" id="attemptError" role="alert" hidden></p>
-                <button class="button button-primary button-full" id="analyzeAttempt" type="button">Review this attempt <span aria-hidden="true">→</span></button>
+                <button class="button button-primary button-full" id="analyzeAttempt" type="button" aria-busy="false">
+                  <span class="button-spinner" id="analyzeSpinner" aria-hidden="true" hidden></span>
+                  <span id="analyzeLabel">Review this attempt</span>
+                  <span id="analyzeArrow" aria-hidden="true">→</span>
+                </button>
               </div>
               <aside class="session-sidebar">
                 <section class="surface session-goal">
@@ -333,7 +342,7 @@
                 </section>
                 <section class="surface defense-feedback" id="defenseFeedback" aria-live="polite">
                   <div class="feedback-empty" id="defenseEmpty">
-                    <img class="mascot-guide" src="/src/assets/cockatoo-mark.svg" alt=""><h3>Say it in your own words.</h3><p>Your speaking cockatoo will trace the answer only to evidence expected by the active rubric criterion.</p>
+                    <img class="mascot-guide" src="/src/assets/macaw-mark.svg" alt=""><h3>Say it in your own words.</h3><p>Your speaking macaw will trace the answer only to evidence expected by the active rubric criterion.</p>
                   </div>
                   <div id="defenseResult" hidden>
                     <div class="verdict-row"><div><p class="overline">Answer coverage</p><h3 id="defenseStatus">—</h3></div><strong id="defenseScore">0%</strong></div>
@@ -352,7 +361,7 @@
         <section class="view" id="rubricView" data-view="rubric" aria-labelledby="rubricTitle">
           <header class="page-header compact-header workflow-header">
             <div class="workflow-heading">
-              <img class="workflow-mark" src="/src/assets/cockatoo-mark.svg" alt="">
+              <img class="workflow-mark" src="/src/assets/macaw-mark.svg" alt="">
               <div><p class="overline">Evaluation setup</p><h1 id="rubricTitle">Make feedback follow the real rules.</h1><p class="page-lede">Define what evaluators need to hear. Talk-Active will trace every practice result back to these cues.</p></div>
             </div>
             <button class="button button-primary" id="saveRubric" type="button">Save rubric</button>
@@ -381,7 +390,7 @@
         <section class="view" id="progressView" data-view="progress" aria-labelledby="progressTitle">
           <header class="page-header compact-header workflow-header">
             <div class="workflow-heading">
-              <img class="workflow-mark" src="/src/assets/cockatoo-mark.svg" alt="">
+              <img class="workflow-mark" src="/src/assets/macaw-mark.svg" alt="">
               <div><p class="overline">Practice history</p><h1 id="progressTitle">See what changed between attempts.</h1><p class="page-lede">Track explicit evidence and recurring weak claims without inventing a universal speaking score.</p></div>
             </div>
             <button class="button button-primary" type="button" data-start-practice>New practice</button>
@@ -422,6 +431,20 @@
         <input id="projectDeadline" name="projectDeadline" type="date">
         <p class="form-error" id="projectError" role="alert" hidden></p>
         <div class="dialog-actions"><button class="button button-secondary" id="cancelProject" type="button">Cancel</button><button class="button button-primary" type="submit">Create project</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="resetDialog" class="project-dialog reset-dialog" aria-labelledby="resetDialogTitle">
+      <form method="dialog">
+        <div class="dialog-header">
+          <div><p class="overline">Kiosk reset</p><h2 id="resetDialogTitle">Restore the demo workspace?</h2></div>
+          <button class="dialog-close" id="closeResetDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <p>This deletes projects and sessions saved in this browser, then restores the Talk-Active seed project. Your dictation language stays unchanged.</p>
+        <div class="dialog-actions">
+          <button class="button button-secondary" id="cancelReset" type="button">Cancel</button>
+          <button class="button button-danger" id="confirmReset" type="button">Reset workspace</button>
+        </div>
       </form>
     </dialog>
 
