@@ -194,6 +194,7 @@ const elements = {
   sidebarAddProject: $('#sidebarAddProject'),
   mobileAddProject: $('#mobileAddProject'),
   kioskReset: $('#kioskReset'),
+  analyseStatus: $('#analyseStatus'),
   toast: $('#toast'),
   toastCopy: $('#toastCopy'),
 };
@@ -351,11 +352,19 @@ function sessionRow(session) {
   return row;
 }
 
-function renderSessionList(container, sessions, limit = sessions.length) {
+// The empty copy is a parameter because the same list appears in two places
+// that want to say different things: on Home it should point at the next
+// action, while on Progress the reader is already looking at their history.
+function renderSessionList(
+  container,
+  sessions,
+  limit = sessions.length,
+  emptyCopy = 'No sessions saved yet. Your first attempt will appear here.',
+) {
   if (sessions.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'empty-list';
-    empty.textContent = 'No sessions saved yet. Your first attempt will appear here.';
+    empty.textContent = emptyCopy;
     container.replaceChildren(empty);
     return;
   }
@@ -408,7 +417,12 @@ function renderDashboard() {
 
   elements.rubricCount.textContent = String(rubric.length);
   elements.homeCriteria.replaceChildren(...rubric.slice(0, 5).map(miniCriterion));
-  renderSessionList(elements.recentSessions, sessions, 3);
+  renderSessionList(
+    elements.recentSessions,
+    sessions,
+    3,
+    'No attempts yet. Start one to see which criteria your draft already covers.',
+  );
 }
 
 function renderSetup() {
@@ -645,17 +659,29 @@ async function analyzeAttempt() {
     return;
   }
 
+  // The provider chain may work for up to 25 seconds before the deterministic
+  // result is used instead. Silence for that long is indistinguishable from a
+  // hang, and a judge will read it as one, so say what is happening.
+  //
+  // Both are cleared in `finally`: an error thrown while rendering the review
+  // must not strand the button disabled with a stale message beneath it.
   elements.analyzeAttempt.disabled = true;
-  const semantic = await upgradeWithSemantics(payload);
-  elements.analyzeAttempt.disabled = false;
+  elements.analyseStatus.textContent = 'Analysing against your rubric…';
+  let semantic = null;
+  try {
+    semantic = await upgradeWithSemantics(payload);
 
-  state.analysis = semantic ?? analysis;
-  elements.reviewMode.textContent = MODE_LABEL[semantic ? 'semantic' : 'deterministic'];
-  project.draft = elements.attemptTranscript.value.trim();
-  project.draftDuration = Number(elements.attemptDuration.value);
-  persist();
-  renderReview(state.analysis);
-  showPracticeStage('review');
+    state.analysis = semantic ?? analysis;
+    elements.reviewMode.textContent = MODE_LABEL[semantic ? 'semantic' : 'deterministic'];
+    project.draft = elements.attemptTranscript.value.trim();
+    project.draftDuration = Number(elements.attemptDuration.value);
+    persist();
+    renderReview(state.analysis);
+    showPracticeStage('review');
+  } finally {
+    elements.analyzeAttempt.disabled = false;
+    elements.analyseStatus.textContent = '';
+  }
 }
 
 function openDefense() {
@@ -777,7 +803,19 @@ function renderRubricEditor() {
   const project = state.workspace.projects.find((item) => item.id === projectId) ?? activeProject();
   elements.rubricProject.value = project.id;
   elements.rubricProjectName.textContent = project.name;
-  elements.rubricEditor.replaceChildren(...rubricFor(project).map(rubricRow));
+
+  // rubricFor() returns [] for a rubric that will not parse, so this panel is
+  // the one place a project can legitimately have nothing to show. An empty
+  // editor under a heading reads as a broken screen rather than an invitation.
+  const criteria = rubricFor(project);
+  if (criteria.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'empty-list';
+    empty.textContent = 'Add a criterion, or import an evaluator\'s scoring matrix.';
+    elements.rubricEditor.replaceChildren(empty);
+    return;
+  }
+  elements.rubricEditor.replaceChildren(...criteria.map(rubricRow));
 }
 
 function saveRubric() {
@@ -823,10 +861,13 @@ function renderProgress() {
   elements.recurringGap.textContent = recurring ?? 'No data yet';
 
   const chartSessions = [...sessions].reverse().slice(-8);
-  if (chartSessions.length === 0) {
+  // One bar is not a trend. This view exists to show what changed between
+  // attempts, so a single column would imply a comparison the data cannot
+  // support — saying what to do next is more honest and more useful.
+  if (chartSessions.length < 2) {
     const empty = document.createElement('p');
     empty.className = 'chart-empty';
-    empty.textContent = 'Save a practice session to start your evidence trend.';
+    empty.textContent = 'Practise twice to see what changed between attempts.';
     elements.progressChart.replaceChildren(empty);
   } else {
     elements.progressChart.replaceChildren(...chartSessions.map((session, index) => {

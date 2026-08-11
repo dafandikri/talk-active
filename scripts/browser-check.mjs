@@ -519,6 +519,58 @@ async function run() {
     assert.equal(kioskReset.practiceReset, true);
     assert.equal(kioskReset.dictationLanguage, 'id-ID');
 
+    // A blank panel reads as a bug even when it is correct, so every view has
+    // to say what to do next. The seed workspace is deliberately full, so the
+    // empty conditions are constructed here rather than waited for.
+    await evaluate(cdp, `(() => {
+      localStorage.setItem('talkactive.workspace.v1', JSON.stringify({
+        version: 1,
+        activeProjectId: 'project-empty',
+        projects: [{
+          id: 'project-empty',
+          name: 'Nothing yet',
+          event: 'First rehearsal',
+          deadline: '2026-09-01',
+          rubric: '',
+          draft: '',
+          draftDuration: 90,
+          createdAt: '2026-08-12T00:00:00.000Z'
+        }],
+        sessions: []
+      }));
+    })()`);
+    await cdp.call('Page.reload');
+    await waitFor(cdp, `document.readyState === 'complete' && document.querySelector('#homeView')?.classList.contains('is-visible')`);
+
+    const emptyStates = await evaluate(cdp, `(() => {
+      const readable = (selector) => {
+        const node = document.querySelector(selector);
+        return { text: node?.textContent.trim() ?? '', children: node?.children.length ?? -1 };
+      };
+      document.querySelector('[data-route="progress"]').click();
+      document.querySelector('[data-route="rubric"]').click();
+      return {
+        home: readable('#recentSessions'),
+        progress: readable('#progressChart'),
+        allSessions: readable('#allSessions'),
+        rubric: readable('#rubricEditor')
+      };
+    })()`);
+    assert.match(emptyStates.home.text, /No attempts yet/u);
+    assert.match(emptyStates.progress.text, /Practise twice/u);
+    assert.match(emptyStates.rubric.text, /Add a criterion/u);
+    assert.ok(emptyStates.allSessions.text.length > 0, 'the session list left a bare container');
+    // Nothing is a container standing empty under its own heading: each one
+    // holds the paragraph that explains itself.
+    for (const [view, panel] of Object.entries(emptyStates)) {
+      assert.equal(panel.children, 1, `${view} rendered ${panel.children} children instead of one empty-state paragraph`);
+    }
+
+    // Restore the workspace the rest of the gate and the demo expect.
+    await evaluate(cdp, `localStorage.removeItem('talkactive.workspace.v1')`);
+    await cdp.call('Page.reload');
+    await waitFor(cdp, `document.readyState === 'complete' && document.querySelectorAll('.sidebar-project').length === 1`);
+
     await cdp.call('Emulation.setDeviceMetricsOverride', {
       width: 390, height: 844, deviceScaleFactor: 1, mobile: true,
     });
@@ -575,6 +627,7 @@ async function run() {
       ['rubric-editing', 'passed'],
       ['reload-persistence', 'passed'],
       ['kiosk-reset', 'passed'],
+      ['empty-states', 'passed'],
       ['mobile-layout', 'passed'],
     ];
     process.stdout.write([
