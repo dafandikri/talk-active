@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
-import logo from '../../../src/assets/LOGO-dashboard.png';
+import logo from '../../../src/assets/brand/talk-active-logo.svg';
 import {
   analyzeSpeech,
   DEFAULT_RUBRIC,

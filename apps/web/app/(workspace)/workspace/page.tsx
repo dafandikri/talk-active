@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import mascot from '../../../../../src/assets/macaw-mascot-3d.webp';
+import mascot from '../../../../../src/assets/mascot/kato-macaw-reading.svg';
 
 const criteria = ['Problem clarity', 'Solution fit', 'Differentiation', 'Feasibility and trust'];
 

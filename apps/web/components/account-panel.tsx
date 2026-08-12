@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-import logo from '../../../src/assets/LOGO-dashboard.png';
+import logo from '../../../src/assets/brand/talk-active-logo.svg';
 import { authClient } from '@/lib/auth-client';
 import { jsonRequest, requestContract } from '@/lib/api/client';
 import {

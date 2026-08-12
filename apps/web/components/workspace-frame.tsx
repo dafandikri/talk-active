@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
-import logo from '../../../src/assets/LOGO-dashboard.png';
+import logo from '../../../src/assets/brand/talk-active-logo.svg';
+import { initialsFor, readGuestIdentity } from '@/lib/guest-identity';
 
 const navigation = [
   { href: '/workspace', icon: '⌂', label: 'Home' },
@@ -19,6 +20,11 @@ function isActive(pathname: string, href: string): boolean {
 
 export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) {
   const pathname = usePathname();
+  // Read after mount, never during render: the name lives in localStorage and
+  // the server has no way to know it. Reading it during render would make the
+  // server and client markup disagree and React would throw out the tree.
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  useEffect(() => { setDisplayName(readGuestIdentity()?.name ?? null); }, []);
 
   return (
     <div className="app-shell">
@@ -45,9 +51,16 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
         </div>
         <div className="sidebar-bottom">
           <div className="privacy-chip"><span aria-hidden="true">●</span> Local guest workspace</div>
-          <Link className="profile-chip" href="/account" aria-label="Optional account sync">
-            <span className="avatar" aria-hidden="true">G</span>
-            <span><strong>Guest</strong><small>Optional account sync</small></span>
+          <Link
+            className="profile-chip"
+            href={displayName ? '/account' : '/enter'}
+            aria-label={displayName ? `Rehearsing as ${displayName}. Open account options.` : 'Put your name on this workspace'}
+          >
+            <span className="avatar" aria-hidden="true">{displayName ? initialsFor(displayName) : 'G'}</span>
+            <span>
+              <strong>{displayName ?? 'Guest'}</strong>
+              <small>{displayName ? 'Optional account sync' : 'Add your name'}</small>
+            </span>
             <span aria-hidden="true">•••</span>
           </Link>
         </div>

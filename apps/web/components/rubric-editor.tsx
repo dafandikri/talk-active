@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import logo from '../../../src/assets/LOGO-dashboard.png';
+import logo from '../../../src/assets/brand/talk-active-logo.svg';
 import { DEFAULT_RUBRIC, parseRubric } from '@/lib/analyzer';
 import { RubricParseResponseSchema, type RubricSource } from '@/lib/contracts';
 import { RUBRIC_TEMPLATES, templateRubricText, type RubricTemplate } from '@/lib/rubric-library';

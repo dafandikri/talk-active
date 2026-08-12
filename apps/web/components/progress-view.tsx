@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
-import logo from '../../../src/assets/LOGO-dashboard.png';
+import logo from '../../../src/assets/brand/talk-active-logo.svg';
 import { requestContract } from '@/lib/api/client';
 import {
   ProgressResponseSchema,
