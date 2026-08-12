@@ -205,7 +205,41 @@ site is the vanilla `.mjs` build. These are what stand between here and flipping
 |---|---|---|---|
 | **C-1** | **The strict CSP does not survive the port, and nobody has noticed.** `vercel.json` ships `script-src 'self'` with no `unsafe-inline`; `apps/web` ships no CSP at all. Cutting over as-is silently drops the header. | M | See below — the obvious fix does not work. |
 | **C-2** | Repoint `vercel.json` at the Next build (`framework: nextjs`, monorepo root `apps/web`) and verify against a real preview deployment, not a local `next start`. | M | Blocked by C-1. |
-| **C-3** | Delete the vanilla tree only after C-2 is verified on a preview URL. | S | `index.html`, `src/*.mjs`, `scripts/build-public.mjs`, `middleware.js`, and their gates. |
+| **C-3** | **Unblocked — delete the vanilla tree.** | M | 25 files are coupled to it; see below. |
+
+### C-1 and C-2 are done
+
+Cut over on 12 August. `vercel.json` builds `apps/web`; production serves Next.js on all
+eight routes with all four security headers, no covered controls at 1440/1280/390, and no
+console errors.
+
+The failure worth remembering: the first attempt named `outputDirectory: apps/web/.next`.
+Vercel kept serving the previous deployment with the previous CSP for ten minutes — which is
+what it does when a build **fails**, not when one is slow. Pointing the framework handler at a
+path outside its expected layout stops it recognising the app. `framework` plus
+`buildCommand` is enough; the handler finds `.next` itself.
+
+### What C-3 actually touches
+
+Not a `rm`. Twenty-five files reference the vanilla runtime, and four need rewriting rather
+than deleting:
+
+| Keep, but rewrite | Why |
+|---|---|
+| `test/invariants.test.mjs` | `PRODUCT_SURFACES` lists `index.html` and `src/app.mjs`. Re-point at `apps/web/app/**` and `components/**` or the eight invariants stop being enforced anywhere. |
+| `test/design-system.test.mjs` | Proves the visual port is faithful. It must keep passing — it is the evidence the port did not quietly redesign anything. |
+| `test/golden-path.test.mjs` | Drop the `.mjs` half of each parity pair; the recorded JSON stays the contract for `apps/web/lib/analyzer.ts`. |
+| `scripts/project.mjs` | Its artifact manifest names vanilla files. |
+
+**Keep regardless:** `src/tokens.css`, `src/styles.css`, `src/landing.css`, `src/assets/**`
+(all imported by `apps/web`), and `scripts/browser-paths.mjs` (used by the Playwright config).
+
+**Delete:** `index.html`, `brief.html`, `booth.html`, `404.html`, `robots.txt`,
+`src/{app,analyzer,semantic,rubric-import,analysis-progress}.mjs`, `src/booth.css`,
+`api/*.mjs`, `middleware.js`, and the vanilla gates —
+`build-public.mjs`, `serve.mjs`, `browser-check.mjs`, `demo-gate.mjs`,
+`built-artifact-gate.mjs`, `design-preview.mjs` — then rebuild `pnpm check` around
+`check:production`.
 
 ### Why C-1 is not a one-liner
 
