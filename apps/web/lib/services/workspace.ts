@@ -52,6 +52,7 @@ import {
 } from '../db/schema';
 import { parseRubric } from '../analyzer';
 import { compareAttemptEvidence } from '../progress';
+import { selectWeakestCriterion } from '../weakest-criterion';
 import {
   MAX_SOURCE_DOCUMENTS,
   SourceDocumentError,
@@ -502,7 +503,7 @@ export async function createAttemptQuestion(
     .where(eq(attempts.id, attemptId)).limit(1);
   if (!attemptOwner) notFound('Attempt');
   await assertProjectAccess(db, attemptOwner.projectId, userId);
-  const [weakest] = await db.select({
+  const candidates = await db.select({
     attempt: attempts,
     criterion: criteria,
     verdict: evidenceVerdicts,
@@ -512,9 +513,8 @@ export async function createAttemptQuestion(
     .where(and(
       eq(evidenceVerdicts.attemptId, attemptId),
       eq(evidenceVerdicts.stage, 'initial'),
-    ))
-    .orderBy(asc(evidenceVerdicts.coverageScore), asc(criteria.displayOrder))
-    .limit(1);
+    ));
+  const weakest = selectWeakestCriterion(candidates);
   if (!weakest) notFound('Initial evidence review');
 
   const judgment = {

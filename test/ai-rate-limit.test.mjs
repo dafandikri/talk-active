@@ -87,6 +87,19 @@ test('A-7 guests consume only the pseudonymized IP bucket', async () => {
   assert.equal(backend.calls[0].cost, 1);
 });
 
+test('A-7 stateless analysis pays for evidence fan-out and one judge question', async () => {
+  const backend = recordingStore();
+  await enforceAiRateLimit(
+    request(),
+    'analysis',
+    null,
+    { environment: CONFIGURED_ENV, store: backend.store },
+  );
+  assert.equal(backend.calls[0].route, 'analysis');
+  assert.equal(backend.calls[0].cost, 6);
+  assert.equal(aiRouteUsesModel('analysis', CONFIGURED_ENV), true);
+});
+
 test('A-7 rejects paid execution when configuration or a trustworthy IP is missing', async () => {
   await assert.rejects(
     enforceAiRateLimit(request(), 'evidence', null, {

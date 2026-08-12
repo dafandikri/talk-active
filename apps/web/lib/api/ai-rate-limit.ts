@@ -6,7 +6,7 @@ import { Redis } from '@upstash/redis';
 
 import { ApiProblem } from './problem.ts';
 
-export type AiRateLimitRoute = 'rubric' | 'evidence' | 'question' | 'defense' | 'confirmation';
+export type AiRateLimitRoute = 'rubric' | 'analysis' | 'evidence' | 'question' | 'defense' | 'confirmation';
 
 export interface AiRateLimitResult {
   success: boolean;
@@ -33,6 +33,7 @@ export interface AiRateLimitDecision {
 
 export const AI_RATE_LIMIT_ROUTE_COST: Readonly<Record<AiRateLimitRoute, number>> = {
   rubric: 1,
+  analysis: 6,
   evidence: 5,
   question: 1,
   defense: 1,
@@ -41,6 +42,7 @@ export const AI_RATE_LIMIT_ROUTE_COST: Readonly<Record<AiRateLimitRoute, number>
 
 const MODEL_ENVIRONMENT: Readonly<Record<AiRateLimitRoute, readonly string[]>> = {
   rubric: ['AI_RUBRIC_MODEL'],
+  analysis: ['AI_EVIDENCE_MODEL', 'AI_QUESTION_MODEL'],
   evidence: ['AI_EVIDENCE_MODEL'],
   question: ['AI_QUESTION_MODEL'],
   defense: ['AI_DEFENSE_MODEL', 'AI_EVIDENCE_MODEL'],
@@ -96,7 +98,7 @@ export function aiRateLimitConfigured(environment: NodeJS.ProcessEnv = process.e
       'AI_RATE_LIMIT_MAX_TOKENS',
       DEFAULT_MAX_TOKENS,
     );
-    return maximum >= Math.max(refill, AI_RATE_LIMIT_ROUTE_COST.evidence);
+    return maximum >= Math.max(refill, ...Object.values(AI_RATE_LIMIT_ROUTE_COST));
   } catch {
     return false;
   }
@@ -141,8 +143,8 @@ class UpstashAiRateLimitStore implements AiRateLimitStore {
       'AI_RATE_LIMIT_MAX_TOKENS',
       DEFAULT_MAX_TOKENS,
     );
-    if (this.maxTokens < Math.max(this.refillTokens, AI_RATE_LIMIT_ROUTE_COST.evidence)) {
-      throw new Error('AI_RATE_LIMIT_MAX_TOKENS must cover the refill and evidence-route cost.');
+    if (this.maxTokens < Math.max(this.refillTokens, ...Object.values(AI_RATE_LIMIT_ROUTE_COST))) {
+      throw new Error('AI_RATE_LIMIT_MAX_TOKENS must cover the refill and highest route cost.');
     }
     this.redis = new Redis({ url, token, enableTelemetry: false });
   }

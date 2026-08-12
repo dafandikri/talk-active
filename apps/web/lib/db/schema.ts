@@ -161,8 +161,12 @@ export const evidenceVerdicts = pgTable('evidence_verdicts', {
     sql`${table.verdict} = 'unsupported' or char_length(trim(${table.citedSpan})) > 0`,
   ),
   check(
-    'evidence_verdicts_unsupported_has_gap',
-    sql`${table.verdict} <> 'unsupported' or jsonb_array_length(${table.missingEvidence}) > 0`,
+    'evidence_verdicts_unsupported_has_no_span',
+    sql`${table.verdict} <> 'unsupported' or ${table.citedSpan} is null`,
+  ),
+  check(
+    'evidence_verdicts_non_supported_has_gap',
+    sql`${table.verdict} = 'supported' or jsonb_array_length(${table.missingEvidence}) > 0`,
   ),
   check(
     'evidence_verdicts_override_consistent',
@@ -200,8 +204,12 @@ export const evidenceConfirmations = pgTable('evidence_confirmations', {
     sql`${table.judgedVerdict} = 'unsupported' or char_length(trim(${table.judgedCitedSpan})) > 0`,
   ),
   check(
-    'evidence_confirmations_unsupported_has_gap',
-    sql`${table.judgedVerdict} <> 'unsupported' or jsonb_array_length(${table.judgedMissingEvidence}) > 0`,
+    'evidence_confirmations_unsupported_has_no_span',
+    sql`${table.judgedVerdict} <> 'unsupported' or ${table.judgedCitedSpan} is null`,
+  ),
+  check(
+    'evidence_confirmations_non_supported_has_gap',
+    sql`${table.judgedVerdict} = 'supported' or jsonb_array_length(${table.judgedMissingEvidence}) > 0`,
   ),
   check(
     'evidence_confirmations_acceptance_does_not_rejudge',

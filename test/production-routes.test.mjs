@@ -12,6 +12,7 @@ import {
 } from '../apps/web/lib/contracts.ts';
 
 const routeFiles = [
+  'apps/web/app/api/analyze/route.ts',
   'apps/web/app/api/rubrics/parse/route.ts',
   'apps/web/app/api/projects/route.ts',
   'apps/web/app/api/projects/[id]/rubric/route.ts',
@@ -35,6 +36,7 @@ test('M-9 exposes every target route behind the typed error boundary', async () 
 
 test('A-7 rate-limits every paid route before its model-backed service call', async () => {
   const paidRoutes = new Map([
+    ['apps/web/app/api/analyze/route.ts', 'analysis'],
     ['apps/web/app/api/rubrics/parse/route.ts', 'rubric'],
     ['apps/web/app/api/attempts/[id]/evidence/route.ts', 'evidence'],
     ['apps/web/app/api/attempts/[id]/question/route.ts', 'question'],

@@ -43,6 +43,13 @@
       "when": 1786524559927,
       "tag": "0005_early_raider",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786551405835,
+      "tag": "0006_tense_abomination",
+      "breakpoints": true
     }
   ]
 }

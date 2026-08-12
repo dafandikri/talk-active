@@ -33,7 +33,10 @@ test('M-2 encodes traceability and deletion obligations in Postgres constraints'
   assert.match(schema, /evidence_verdicts_supported_or_partial_has_span/u);
   assert.match(schema, /evidence_confirmations_verdict_unique/u);
   assert.match(schema, /judgedCitedSpan: text\('judged_cited_span'\)/u);
-  assert.match(schema, /evidence_verdicts_unsupported_has_gap/u);
+  assert.match(schema, /evidence_verdicts_unsupported_has_no_span/u);
+  assert.match(schema, /evidence_verdicts_non_supported_has_gap/u);
+  assert.match(schema, /evidence_confirmations_unsupported_has_no_span/u);
+  assert.match(schema, /evidence_confirmations_non_supported_has_gap/u);
   assert.match(schema, /questionBasis\('basis'\)\.default\('legacy-unknown'\)\.notNull\(\)/u);
   assert.match(schema, /questions_source_basis_consistent/u);
   assert.match(schema, /source_documents_size_domain/u);
@@ -53,6 +56,8 @@ test('M-2 checks in a generated SQL migration, not only an ORM declaration', () 
   assert.match(migration, /"engine" "evidence_engine" NOT NULL/u);
   assert.match(migration, /ON DELETE cascade/u);
   assert.match(migration, /evidence_verdicts_supported_or_partial_has_span/u);
+  assert.match(migration, /evidence_verdicts_unsupported_has_no_span/u);
+  assert.match(migration, /evidence_verdicts_non_supported_has_gap/u);
   assert.match(migration, /CREATE TYPE "public"\."question_basis"/u);
   assert.match(migration, /questions_source_basis_consistent/u);
   assert.match(migration, /source_documents_size_domain/u);

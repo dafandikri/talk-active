@@ -40,6 +40,7 @@ test('M-7 grounds a challenged transcript claim to the original words', async ()
         questionText: 'How is starting from the evaluator rubric different from a prompt template?',
         challengedClaim: 'talk-active starts from the evaluator rubric',
         basis: 'transcript',
+        sourceDocumentId: null,
       },
       modelId: 'test/question-model',
     }),
@@ -56,6 +57,7 @@ test('M-7 accepts only a gap the evidence judge actually reported', async () => 
         questionText: 'Which named competitor proves this is not a generic speaking coach?',
         challengedClaim: 'direct competitor comparison',
         basis: 'missing-evidence',
+        sourceDocumentId: null,
       },
       modelId: 'test/question-model',
     }),
@@ -72,6 +74,7 @@ test('M-7 falls back when a question invents a new gap twice', async () => {
         questionText: 'What proof shows this doubles every student outcome?',
         challengedClaim: 'doubling every student outcome',
         basis: 'missing-evidence',
+        sourceDocumentId: null,
       },
       modelId: 'test/question-model',
     }),
@@ -150,6 +153,7 @@ test('M-8 judges only the defense answer, never the original transcript', async 
       seenTranscript = request.transcript;
       return {
         output: {
+          reasoning: 'The answer names a mechanism but does not name a specific alternative.',
           verdict: 'partial',
           citedSpan: 'Unlike generic tools, our mechanism',
           missingEvidence: ['named alternative'],

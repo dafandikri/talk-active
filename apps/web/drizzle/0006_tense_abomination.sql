@@ -1,0 +1,6 @@
+ALTER TABLE "evidence_confirmations" DROP CONSTRAINT "evidence_confirmations_unsupported_has_gap";--> statement-breakpoint
+ALTER TABLE "evidence_verdicts" DROP CONSTRAINT "evidence_verdicts_unsupported_has_gap";--> statement-breakpoint
+ALTER TABLE "evidence_confirmations" ADD CONSTRAINT "evidence_confirmations_unsupported_has_no_span" CHECK ("evidence_confirmations"."judged_verdict" <> 'unsupported' or "evidence_confirmations"."judged_cited_span" is null);--> statement-breakpoint
+ALTER TABLE "evidence_confirmations" ADD CONSTRAINT "evidence_confirmations_non_supported_has_gap" CHECK ("evidence_confirmations"."judged_verdict" = 'supported' or jsonb_array_length("evidence_confirmations"."judged_missing_evidence") > 0);--> statement-breakpoint
+ALTER TABLE "evidence_verdicts" ADD CONSTRAINT "evidence_verdicts_unsupported_has_no_span" CHECK ("evidence_verdicts"."verdict" <> 'unsupported' or "evidence_verdicts"."cited_span" is null);--> statement-breakpoint
+ALTER TABLE "evidence_verdicts" ADD CONSTRAINT "evidence_verdicts_non_supported_has_gap" CHECK ("evidence_verdicts"."verdict" = 'supported' or jsonb_array_length("evidence_verdicts"."missing_evidence") > 0);

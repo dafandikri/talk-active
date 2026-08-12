@@ -93,11 +93,18 @@ export const EvidenceVerdictSchema = z.object({
       message: 'A supported or partial verdict must cite a transcript span.',
     });
   }
-  if (value.verdict === 'unsupported' && value.missingEvidence.length === 0) {
+  if (value.verdict === 'unsupported' && value.citedSpan !== null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['citedSpan'],
+      message: 'An unsupported verdict cannot retain a supporting citation.',
+    });
+  }
+  if (value.verdict !== 'supported' && value.missingEvidence.length === 0) {
     context.addIssue({
       code: 'custom',
       path: ['missingEvidence'],
-      message: 'An unsupported verdict must name the evidence that is missing.',
+      message: 'A partial or unsupported verdict must name the evidence that is missing.',
     });
   }
   if (value.studentOverridden !== (value.studentOverrideVerdict !== null)) {
@@ -128,11 +135,18 @@ export const EvidenceConfirmationSchema = z.object({
       message: 'A supported or partial evaluation label must retain the cited span it judged.',
     });
   }
-  if (value.judgedVerdict === 'unsupported' && value.judgedMissingEvidence.length === 0) {
+  if (value.judgedVerdict === 'unsupported' && value.judgedCitedSpan !== null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['judgedCitedSpan'],
+      message: 'An unsupported evaluation label cannot retain a supporting citation.',
+    });
+  }
+  if (value.judgedVerdict !== 'supported' && value.judgedMissingEvidence.length === 0) {
     context.addIssue({
       code: 'custom',
       path: ['judgedMissingEvidence'],
-      message: 'An unsupported evaluation label must retain the missing evidence it judged.',
+      message: 'A partial or unsupported evaluation label must retain the missing evidence it judged.',
     });
   }
   if (value.accepted && value.rejudgedAt !== null) {
@@ -306,6 +320,107 @@ export const ReusedCitationSchema = z.object({
   ),
 });
 
+export const StatelessAnalysisRequestSchema = z.object({
+  transcript: z.string().trim().min(1).max(12_000),
+  rubricText: z.string().trim().min(1).max(8_000),
+  durationSeconds: z.number().int().positive().max(3_600),
+});
+
+const StatelessCriterionSchema = z.object({
+  id: IdSchema,
+  label: z.string().trim().min(1).max(200),
+  requirementText: z.string().trim().max(2_000),
+  signals: z.array(z.string().trim().min(1).max(200)).max(40),
+  score: z.number().min(0).max(100),
+  status: z.enum(['covered', 'partial', 'missing']),
+  matchedSignals: z.array(z.string().trim().min(1).max(200)).max(40),
+  missingSignals: z.array(z.string().trim().min(1).max(200)).max(40),
+  excerpt: z.string().max(12_000),
+}).superRefine((value, context) => {
+  if (value.status !== 'missing' && !value.excerpt.trim()) {
+    context.addIssue({
+      code: 'custom',
+      path: ['excerpt'],
+      message: 'Covered and partial criteria must retain their grounded transcript span.',
+    });
+  }
+  if (value.status === 'missing' && value.excerpt !== '') {
+    context.addIssue({
+      code: 'custom',
+      path: ['excerpt'],
+      message: 'A missing criterion cannot retain a supporting transcript span.',
+    });
+  }
+  if (value.status !== 'covered' && value.missingSignals.length === 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['missingSignals'],
+      message: 'Partial and missing criteria must name the evidence still missing.',
+    });
+  }
+});
+
+const StatelessDeliverySchema = z.object({
+  wordCount: z.number().int().nonnegative(),
+  durationSeconds: z.number().positive().max(3_600),
+  wordsPerMinute: z.number().int().nonnegative(),
+  pace: z.enum(['deliberate', 'steady', 'fast']),
+  fillerCount: z.number().int().nonnegative(),
+  fillers: z.array(z.object({
+    label: z.string().trim().min(1).max(100),
+    count: z.number().int().positive(),
+  })).max(20),
+});
+
+const StatelessAnalysisResultSchema = z.object({
+  evidenceScore: z.number().min(0).max(100),
+  coveredCount: z.number().int().nonnegative(),
+  criterionCount: z.number().int().positive().max(20),
+  criteria: z.array(StatelessCriterionSchema).min(1).max(20),
+  weakest: StatelessCriterionSchema,
+  judgeQuestion: z.string().trim().min(1).max(2_000),
+  drill: z.string().trim().min(1).max(2_000),
+  delivery: StatelessDeliverySchema,
+}).superRefine((value, context) => {
+  if (value.criteria.length !== value.criterionCount) {
+    context.addIssue({
+      code: 'custom',
+      path: ['criterionCount'],
+      message: 'The criterion count must match the returned evidence rows.',
+    });
+  }
+  if (!value.criteria.some((criterion) => criterion.id === value.weakest.id)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['weakest', 'id'],
+      message: 'The weakest criterion must exist in the returned evidence rows.',
+    });
+  }
+});
+
+export const StatelessAnalysisResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  analysis: StatelessAnalysisResultSchema,
+  mode: z.enum(['semantic', 'mixed', 'deterministic']),
+  criterionEngines: z.array(z.object({
+    criterionId: IdSchema,
+    engine: EvidenceEngineSchema,
+  })).min(1).max(20),
+  reusedCitations: z.array(ReusedCitationSchema).max(20),
+  questionEngine: EvidenceEngineSchema,
+  cached: z.boolean(),
+}).superRefine((value, context) => {
+  const analysisIds = new Set(value.analysis.criteria.map((criterion) => criterion.id));
+  const engineIds = new Set(value.criterionEngines.map((item) => item.criterionId));
+  if (analysisIds.size !== engineIds.size || [...analysisIds].some((id) => !engineIds.has(id))) {
+    context.addIssue({
+      code: 'custom',
+      path: ['criterionEngines'],
+      message: 'Every returned criterion must have exactly one analysis engine.',
+    });
+  }
+});
+
 export const EvidenceResponseSchema = z.object({
   contractVersion: z.literal(CONTRACT_VERSION),
   attemptId: IdSchema,
@@ -446,11 +561,18 @@ export const SavedCriterionResultSchema = z.object({
       message: 'Supported and partial local results must retain their cited span.',
     });
   }
-  if (value.verdict === 'unsupported' && value.missingEvidence.length === 0) {
+  if (value.verdict === 'unsupported' && value.citedSpan !== null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['citedSpan'],
+      message: 'Unsupported local results cannot retain a supporting citation.',
+    });
+  }
+  if (value.verdict !== 'supported' && value.missingEvidence.length === 0) {
     context.addIssue({
       code: 'custom',
       path: ['missingEvidence'],
-      message: 'Unsupported local results must retain their explicit evidence gap.',
+      message: 'Partial and unsupported local results must retain their explicit evidence gap.',
     });
   }
 });
@@ -623,6 +745,8 @@ export type EvidenceResponse = z.infer<typeof EvidenceResponseSchema>;
 export type EvidenceConfirmationRequest = z.infer<typeof EvidenceConfirmationRequestSchema>;
 export type EvidenceConfirmationResponse = z.infer<typeof EvidenceConfirmationResponseSchema>;
 export type ReusedCitation = z.infer<typeof ReusedCitationSchema>;
+export type StatelessAnalysisRequest = z.infer<typeof StatelessAnalysisRequestSchema>;
+export type StatelessAnalysisResponse = z.infer<typeof StatelessAnalysisResponseSchema>;
 export type QuestionResponse = z.infer<typeof QuestionResponseSchema>;
 export type SourceDocumentUploadResponse = z.infer<typeof SourceDocumentUploadResponseSchema>;
 export type SourceDocumentListResponse = z.infer<typeof SourceDocumentListResponseSchema>;
