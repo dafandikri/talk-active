@@ -5,7 +5,7 @@ Official deadline: **Thursday, 13 August 2026 at 18.00 WIB**. Internal target: *
 ## Items that must be resolved by the team
 
 - [ ] Confirm the exact filename format in Google Classroom or with manager Najwa Salsabil. The technical-meeting screenshots specify a -1 point penalty but do not contain the naming pattern.
-- [ ] Make `https://github.com/dafandikri/talk-active` publicly accessible and retest it in an anonymous/private browser. It returned HTTP 404 anonymously on 12 August 2026.
+- [x] Make `https://github.com/dafandikri/talk-active` publicly accessible and retest it anonymously. GitHub reported `PUBLIC` and the URL returned HTTP 200 without authentication on 12 August 2026.
 - [ ] Confirm the organizer’s interpretation of AI assistance and ensure the originality disclosure matches it.
 - [ ] Confirm the final staffing split and formal dress check.
 

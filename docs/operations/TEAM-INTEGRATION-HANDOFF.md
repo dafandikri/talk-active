@@ -23,15 +23,17 @@ same lines, the resolution retained the larger semantic, fallback, rubric-import
 mobile gate while carrying forward the frontend track's two-attempt trend rule and 44 px mobile
 tap-target requirement.
 
-## The Vercel blocker, precisely
+## The Vercel blocker is removed
 
 Vercel cannot block a Git commit or a GitHub push. It can block the automatic **deployment**
 created from a private-repository commit whose author does not have the required Vercel project
 access.
 
-Use this zero-additional-seat workflow for the remaining sprint:
+The repository owner approved public visibility on 12 August 2026. GitHub reports the repository
+as `PUBLIC`, and an unauthenticated request to `https://github.com/dafandikri/talk-active`
+returned HTTP 200. No additional Vercel seat is needed for the remaining collaboration workflow:
 
-1. The frontend developer pushes a normal branch to the private GitHub repository.
+1. The frontend developer pushes a normal branch to the public GitHub repository.
 2. The repository owner reviews the diff and integrates it.
 3. The owner runs `pnpm check` and deploys the integrated commit.
 4. Share the resulting Preview URL with the developer as an external preview collaborator.
@@ -40,11 +42,9 @@ This keeps GitHub authorship intact and does not require sharing a Vercel token 
 credential. A free Viewer seat or a shared Preview link permits review and comments, but it does
 not grant deployment rights.
 
-If every private-repository commit must deploy directly under a Pro team, Vercel documents an
-additional deploying Member seat at **$20/month**. Do not buy that seat for a two-day handoff.
-The official finals rules already require the repository to become public before submission;
-after the publication audit and captain approval, public-repository collaboration removes this
-private-repository restriction.
+Do not buy another Vercel seat for a two-day handoff. Contributors do not need deployment rights
+to preserve authorship or submit reviewable GitHub branches, and the integration owner can deploy
+the accepted release.
 
 Official references:
 
@@ -58,8 +58,9 @@ Official references:
 > Your frontend branches arrived and are now preserved in the integration history—thank you.
 > B3, B4, B5, and the Windows portability work are included. I resolved the overlapping lines
 > with the semantic/fallback, rubric-import, booth, and production work, and retained your
-> two-attempt trend rule plus the 44 px mobile target. You do not need a paid Vercel seat for the
-> remaining handoff. Keep pushing normal GitHub branches and send the branch name, commit hash,
+> two-attempt trend rule plus the 44 px mobile target. The repository is now public, and you do
+> not need a paid Vercel seat for the remaining handoff. Keep pushing normal GitHub branches and
+> send the branch name, commit hash,
 > and complete `pnpm check` result; I will review and deploy the integrated owner commit. Please
 > never send `.env.local`, a Vercel token, or an AI key.
 
@@ -75,13 +76,17 @@ git diff HEAD...origin/<frontend-branch> -- index.html src scripts test
 Review before merging. Never force-push, never share credentials, and do not cherry-pick a change
 whose behavior already exists under a different commit.
 
-## Publication audit completed locally
+## Publication and branch audit completed
 
-- The tracked tree and all reachable Git history were scanned for common provider, GitHub,
-  Vercel, cloud, and private-key patterns.
+- Every remote feature branch named in the frontend report is an ancestor of the release.
+- Every surviving backend topic patch is patch-equivalent to an integrated release commit. The
+  early A1 branch's Gateway fix is patch-equivalent; its ignore/example-file changes are
+  superseded by the stricter current `.gitignore` and documented `.env.example`.
+- The public remote history was scanned with Gitleaks and targeted provider, GitHub, Vercel,
+  cloud, and private-key patterns; Gitleaks scanned 50 commits and found no leaks.
 - The only matching path was `.env.example`; every historical Gateway value there was a
   placeholder.
 - `.env*` and `.vercel/` are ignored. The actual local and Vercel credentials are not tracked.
-- No blob larger than 5 MB exists in reachable history.
+- No blob larger than 5 MB exists in the public remote history.
 - The repository still contains event documents, member names, and source PDFs by design. The
-  captain must approve making that material public; visibility is not changed automatically.
+  captain approved making that material public on 12 August 2026.
