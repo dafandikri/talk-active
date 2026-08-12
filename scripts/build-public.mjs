@@ -20,6 +20,7 @@ export const PUBLIC_RUNTIME_FILES = Object.freeze([
   'booth.html',
   'src/app.mjs',
   'src/analyzer.mjs',
+  'src/analysis-progress.mjs',
   'src/tokens.css',
   'src/styles.css',
   'src/landing.css',
