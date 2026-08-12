@@ -29,8 +29,10 @@ From the workspace you can:
 6. save the attempt and review the evidence trend in Progress;
 7. reload the browser without losing projects, drafts, rubrics, or session history.
 
-All workspace data is stored in browser `localStorage`. Dictation uses the browser's speech
-recognition capability when available; Talk-Active does not record or persist raw audio.
+Guest workspace data is stored in browser `localStorage`. Dictation uses the browser's speech
+recognition capability when available. Multimodal rehearsal can create a camera-and-microphone
+replay only after explicit opt-in; guest replay stays in the current page, while a configured,
+signed-in deployment can save it privately for later timestamp review.
 
 ## Product loop
 
@@ -86,11 +88,10 @@ rubric editing, reload persistence, and mobile layout.
 
 ## Current boundary
 
-This is a dependency-free, device-local client with server-assisted semantic mapping. It has a
-real recurring workflow and persistent data, but it does not yet have accounts, cloud sync,
-document upload, or production transcription. The server does not durably store the full
-transcript or raw audio; semantic responses may remain briefly in an in-memory cache for replay.
-Those are implementation boundaries—not reasons to present the product as a mockup.
+The default guest path stays device-local with server-assisted semantic mapping. The Next.js
+deployment can additionally enable accounts, Postgres sync, private source files, and opt-in
+private attempt replay when their services are configured. Browser dictation remains vendor-
+dependent, and saved replay is never required for transcript or rubric analysis.
 
 Body-language scoring, streaks, generic speaking scenarios, and institutional dashboards
 remain outside the product until the rubric → evidence → defend loop is validated with

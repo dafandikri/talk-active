@@ -25,12 +25,14 @@ import {
   EvidenceConfirmationResponseSchema,
   EvidenceResponseSchema,
   QuestionResponseSchema,
+  SaveAttemptDeliveryReviewResponseSchema,
   SourceDocumentDeleteResponseSchema,
   SourceDocumentUploadResponseSchema,
   type RubricSource,
   type Criterion,
   type ReusedCitation,
   type SourceDocument,
+  type SaveAttemptDeliveryReviewRequest,
 } from '@/lib/contracts';
 import {
   appendLocalEvidenceConfirmation,
@@ -38,6 +40,7 @@ import {
 } from '@/lib/evidence-confirmations';
 import { parseSavedSessions, PRODUCTION_SESSIONS_KEY } from '@/lib/progress';
 import { readRubricSourceType, RUBRIC_STORAGE_KEY } from '@/lib/rubric-storage';
+import { uploadAttemptRecording } from '@/lib/rehearsal/recording-upload';
 import {
   MultimodalReview,
   MultimodalStudio,
@@ -54,6 +57,42 @@ const REMOTE_PROJECT_TITLE = 'Talk-Active · RISTEK Finals';
 interface RemoteContext {
   projectId: string;
   criteria: Criterion[];
+}
+
+function deliveryReviewPayload(result: MultimodalAttemptResult): SaveAttemptDeliveryReviewRequest {
+  const visual = result.visionSummary;
+  return {
+    mode: result.mode,
+    vocalScore: Math.round(result.metrics.vocal.rehearsalScore ?? 0),
+    visualScore: result.metrics.visual?.rehearsalScore === null
+      || result.metrics.visual?.rehearsalScore === undefined
+      ? null
+      : Math.round(result.metrics.visual.rehearsalScore),
+    trackingCoveragePercent: visual
+      ? Math.round(visual.metrics.trackingCoveragePercent)
+      : null,
+    fillerCount: result.metrics.fillerCount,
+    repeatedWordCount: result.metrics.repeatedWordCount,
+    boundary: result.metrics.boundary,
+    events: [
+      ...(result.speechDisruptions ?? []).map((event) => ({
+        source: event.source,
+        kind: event.kind,
+        startMs: Math.max(0, Math.round(event.startMs)),
+        endMs: Math.max(0, Math.round(event.endMs)),
+        label: event.label,
+        evidence: event.evidence,
+      })),
+      ...(visual?.events ?? []).map((event) => ({
+        source: 'vision' as const,
+        kind: event.kind,
+        startMs: Math.max(0, Math.round(event.startMs)),
+        endMs: Math.max(0, Math.round(event.endMs)),
+        label: event.label,
+        evidence: 'Derived from on-device camera landmarks; review the surrounding replay before interpreting it.',
+      })),
+    ],
+  };
 }
 
 function storedRubric(): { rubricText: string; sourceType: RubricSource } {
@@ -89,6 +128,7 @@ export function PracticeRoom() {
   const [busy, setBusy] = useState(false);
   const [persistence, setPersistence] = useState<'local' | 'neon'>('local');
   const [sourceDocumentsAvailable, setSourceDocumentsAvailable] = useState(false);
+  const [recordingsAvailable, setRecordingsAvailable] = useState(false);
   const [sourceDocuments, setSourceDocuments] = useState<SourceDocument[]>([]);
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [sourceBusy, setSourceBusy] = useState(false);
@@ -106,6 +146,7 @@ export function PracticeRoom() {
   const [confirmationNotes, setConfirmationNotes] = useState<Record<string, string>>({});
   const [reviewId, setReviewId] = useState('');
   const [multimodalResult, setMultimodalResult] = useState<MultimodalAttemptResult | null>(null);
+  const [recordingStatus, setRecordingStatus] = useState('');
   const studioRef = useRef<MultimodalStudioHandle>(null);
   const rubric = useMemo(() => parseRubric(rubricText), [rubricText]);
 
@@ -117,12 +158,49 @@ export function PracticeRoom() {
       .then((capabilities) => {
         setPersistence(capabilities.persistence);
         setSourceDocumentsAvailable(capabilities.sourceDocuments);
+        setRecordingsAvailable(capabilities.recordings);
       })
       .catch(() => {
         setPersistence('local');
         setSourceDocumentsAvailable(false);
+        setRecordingsAvailable(false);
       });
   }, []);
+
+  async function syncMultimodalAttempt(attemptId: string, result: MultimodalAttemptResult) {
+    setRecordingStatus('Saving timestamped delivery observations…');
+    try {
+      await requestContract(
+        `/api/attempts/${attemptId}/review`,
+        SaveAttemptDeliveryReviewResponseSchema,
+        jsonRequest('POST', deliveryReviewPayload(result)),
+      );
+    } catch (caught) {
+      setRecordingStatus(result.recording
+        ? `Replay is available in this page but was not synced. Download it before leaving. ${caught instanceof Error ? caught.message : ''}`.trim()
+        : `Delivery observations were not synced. ${caught instanceof Error ? caught.message : ''}`.trim());
+      return;
+    }
+
+    if (!result.recording) {
+      setRecordingStatus('Timestamped delivery observations were saved with this attempt. No replay was recorded.');
+      return;
+    }
+    if (!recordingsAvailable) {
+      setRecordingStatus('Timestamped observations were saved. This replay stays in this page only; download it before leaving.');
+      return;
+    }
+
+    setRecordingStatus('Uploading the private replay… Keep this review open until it finishes.');
+    try {
+      await uploadAttemptRecording(attemptId, result.recording, {
+        onProgress: (percentage) => setRecordingStatus(`Uploading the private replay… ${Math.round(percentage)}%`),
+      });
+      setRecordingStatus('Private replay saved. It is now available from attempt history and can be deleted without deleting feedback.');
+    } catch (caught) {
+      setRecordingStatus(`The timestamped observations were saved, but the replay upload failed. Download this page copy before leaving. ${caught instanceof Error ? caught.message : ''}`.trim());
+    }
+  }
 
   async function ensureRemoteContext(): Promise<RemoteContext> {
     if (remoteContext) return remoteContext;
@@ -151,6 +229,7 @@ export function PracticeRoom() {
 
   async function runAnalysis() {
     setBusy(true);
+    setRecordingStatus('');
     setRemoteAttemptId(null);
     setReusedCitations([]);
     setConfirmations({});
@@ -158,11 +237,13 @@ export function PracticeRoom() {
     setReviewId(crypto.randomUUID());
     setQuestionSourceFilename(null);
     try {
+      let currentMultimodal: MultimodalAttemptResult | null = null;
       const captured = await studioRef.current?.stop();
       const analysisTranscript = transcript.trim() || captured?.transcript || '';
       const analysisDuration = captured?.durationSeconds ?? duration;
       if (captured) {
         const refreshedCapture = refreshMultimodalTranscript(captured, analysisTranscript);
+        currentMultimodal = refreshedCapture;
         setTranscript(analysisTranscript);
         setDuration(Math.max(1, Math.round(captured.durationSeconds)));
         setMultimodalResult(refreshedCapture);
@@ -180,6 +261,9 @@ export function PracticeRoom() {
         setCriterionEngines(localEngines);
         setReusedCitations(localReusedCitations);
         setEngineNote('Evidence mapped by deterministic cue matching on this device.');
+        if (currentMultimodal?.recording) {
+          setRecordingStatus('This replay is available only in this page. Download it before leaving.');
+        }
       } else {
         try {
           const context = await ensureRemoteContext();
@@ -234,6 +318,9 @@ export function PracticeRoom() {
           ));
           setReusedCitations(evidence.reusedCitations);
           setRemoteAttemptId(created.attempt.id);
+          if (currentMultimodal) {
+            void syncMultimodalAttempt(created.attempt.id, currentMultimodal);
+          }
           setEngineNote(evidence.degraded
             ? 'The hosted review was saved, with one or more criteria explicitly evaluated by deterministic fallback.'
             : 'The hosted review was evaluated semantically and every citation was grounded before display.');
@@ -524,7 +611,7 @@ export function PracticeRoom() {
             <div className="capture-header"><div><p className="overline">Current attempt</p><h2>Talk-Active · RISTEK Finals</h2></div><div className="timer">studio beta</div></div>
             <div className="capture-tabs capture-layer-chips" aria-label="Capture layers"><span className="is-active">Camera + voice</span><span className="is-active"><i className="record-dot" />Live dictation</span></div>
             <label className="sr-only" htmlFor="attemptTranscript">Practice transcript</label>
-            <MultimodalStudio ref={studioRef} transcript={transcript} onTranscriptChange={setTranscript} onResult={setMultimodalResult} />
+            <MultimodalStudio ref={studioRef} transcript={transcript} durableRecordingAvailable={recordingsAvailable} onTranscriptChange={setTranscript} onResult={setMultimodalResult} />
             <textarea id="attemptTranscript" rows={15} maxLength={12_000} value={transcript} onChange={(event) => setTranscript(event.target.value)} />
             {sourceDocumentsAvailable && <section className="production-source-attachment" aria-labelledby="sourceAttachmentTitle">
               <div><strong id="sourceAttachmentTitle">Ground the judge question in your material</strong><p>Optional: attach up to three UTF-8 text, Markdown, or JSON files, 40 KB each. Files stay in private project storage.</p></div>
@@ -537,7 +624,7 @@ export function PracticeRoom() {
             {error && <p className="form-error" role="alert">{error}</p>}
             <button className="button button-primary button-full" type="button" disabled={busy} aria-busy={busy} onClick={() => void runAnalysis()}>{busy ? 'Reviewing each criterion…' : 'Review this attempt'} <span aria-hidden="true">→</span></button>
           </div>
-          <aside className="session-sidebar"><section className="surface session-goal"><p className="overline">Session goal</p><h3>Make every important claim defensible.</h3><p>Complete the attempt naturally. The review isolates only the next weakness worth fixing.</p></section><section className="surface privacy-card"><span className="privacy-icon" aria-hidden="true">⌾</span><div><strong>{persistence === 'local' ? 'Your work stays local in this iteration' : 'Project sync is active on this deployment'}</strong><p>{persistence === 'local' ? 'Text session history is stored in this browser. Raw audio is never saved.' : 'Attempts and private source files are saved to the configured project services. Raw audio is never saved.'}</p></div></section></aside>
+          <aside className="session-sidebar"><section className="surface session-goal"><p className="overline">Session goal</p><h3>Make every important claim defensible.</h3><p>Complete the attempt naturally. The review isolates only the next weakness worth fixing.</p></section><section className="surface privacy-card"><span className="privacy-icon" aria-hidden="true">⌾</span><div><strong>{persistence === 'local' ? 'Guest work stays in this browser' : 'Project sync is active on this deployment'}</strong><p>{persistence === 'local' ? 'Text history is local. A camera-and-microphone replay exists only when you opt in, and remains in this page unless you download it.' : 'Attempts and private source files can sync. A replay uploads only after explicit opt-in and signed-in ownership checks.'}</p></div></section></aside>
         </div>
       </section>}
 
@@ -565,7 +652,7 @@ export function PracticeRoom() {
             </article>;
           })}</div>
         </section>
-        {multimodalResult && <MultimodalReview result={multimodalResult} substanceScore={analysis.evidenceScore} />}
+        {multimodalResult && <MultimodalReview result={multimodalResult} substanceScore={analysis.evidenceScore} recordingStatus={recordingStatus} savedAttemptId={remoteAttemptId} />}
         {!multimodalResult && <section className="surface delivery-section"><div className="section-title-row"><div><p className="overline">Delivery notes</p><h2>Supporting context</h2></div></div><p className="delivery-boundary">Word-pattern counts from this transcript. This does not change the rubric evidence above.</p><div className="delivery-metrics"><div className="delivery-metric"><strong>{analysis.delivery.wordsPerMinute}</strong><span>words per minute</span></div><div className="delivery-metric"><strong>{analysis.delivery.wordCount}</strong><span>words spoken</span></div><div className="delivery-metric"><strong>{analysis.delivery.fillerCount}</strong><span>potential fillers</span></div></div></section>}
         <div className="review-actions"><button className="button button-secondary" type="button" onClick={() => setStage('attempt')}>Revise transcript</button><button className="button button-secondary" type="button" onClick={saveSession}>Save without Q&amp;A</button></div>
       </section>}

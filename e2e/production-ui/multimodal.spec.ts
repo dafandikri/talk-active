@@ -29,6 +29,7 @@ test('multimodal studio captures local camera cues and assembles the three-layer
   await expect(page.getByRole('button', { name: /Start camera rehearsal/i })).toBeVisible();
 
   await page.getByRole('button', { name: /Presentation/i }).click();
+  await page.getByLabel(/Keep a replay of this attempt/i).check();
   await page.getByRole('button', { name: /Start camera rehearsal/i }).click();
   await expect(page.getByRole('button', { name: /Finish & assemble review/i })).toBeVisible({ timeout: 20_000 });
   await page.waitForTimeout(3_800);
@@ -53,6 +54,9 @@ test('multimodal studio captures local camera cues and assembles the three-layer
   await expect(page.getByText('Transcript cue evidence', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Possible hesitation cues' })).toBeVisible();
   await expect(page.getByText(/not a diagnosis/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Review the moment, not just the number.' })).toBeVisible();
+  await expect(page.getByLabel('Recorded attempt replay')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Download this replay' })).toBeVisible();
   await page.screenshot({ path: '.codex-qa/multimodal-review.png', fullPage: true });
 
   expect([...localAssets]).toEqual(expect.arrayContaining([

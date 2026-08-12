@@ -189,7 +189,8 @@ tests, and give every autonomous loop an explicit stop condition.
 - The differentiating loop is project → rubric → attempt → evidence → hardest question → saved progress.
 - Feedback is formative and traceable; never claim an objective confidence or ability score.
 - Delivery metrics are supporting context, not the core value proposition.
-- Raw audio is not persisted. Production needs consent, expiry, and deletion.
+- Camera-and-microphone replay is persisted only after explicit opt-in, signed-in ownership
+  checks, private storage, expiry metadata, and an independent delete control.
 
 ## Guardrails
 

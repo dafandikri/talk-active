@@ -148,6 +148,11 @@ export class BrowserVisionSession {
     return this.summary;
   }
 
+  /** Monotonic page-clock origin used by every timestamp in the current run. */
+  get startedAtMs(): number | null {
+    return this.sessionStartedAtMs > 0 ? this.sessionStartedAtMs : null;
+  }
+
   async start(startOptions: VisionStartOptions): Promise<void> {
     if (this.disposed) {
       throw new VisionEngineError(

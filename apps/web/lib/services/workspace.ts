@@ -39,6 +39,9 @@ import {
 } from '../contracts';
 import type { Database } from '../db/client';
 import {
+  attemptDeliveryEvents,
+  attemptDeliveryReviews,
+  attemptRecordings,
   attempts,
   criteria,
   defenseAnswers,
@@ -52,6 +55,10 @@ import {
 } from '../db/schema';
 import { parseRubric } from '../analyzer';
 import { compareAttemptEvidence } from '../progress';
+import {
+  type RecordingStorage,
+  vercelRecordingStorage,
+} from '../attempt-recordings';
 import {
   MAX_SOURCE_DOCUMENTS,
   SourceDocumentError,
@@ -674,6 +681,29 @@ export async function getProjectProgress(
     .having(sql`coalesce(avg(${evidenceVerdicts.coverageScore}), max(${attempts.legacyEvidenceCoverage}) / 100) is not null`)
     .orderBy(asc(attempts.createdAt));
 
+  const progressAttemptIds = progress.map((point) => point.attemptId);
+  const deliveryReviewRows = progressAttemptIds.length > 0
+    ? await db.select({ attemptId: attemptDeliveryReviews.attemptId })
+      .from(attemptDeliveryReviews)
+      .where(inArray(attemptDeliveryReviews.attemptId, progressAttemptIds))
+    : [];
+  const recordingStatusRows = progressAttemptIds.length > 0
+    ? await db.select({
+      attemptId: attemptRecordings.attemptId,
+      status: attemptRecordings.status,
+    }).from(attemptRecordings)
+      .where(inArray(attemptRecordings.attemptId, progressAttemptIds))
+    : [];
+  const attemptsWithDelivery = new Set(deliveryReviewRows.map((row) => row.attemptId));
+  const recordingStatusByAttempt = new Map(
+    recordingStatusRows.map((row) => [row.attemptId, row.status] as const),
+  );
+  const enrichedProgress = progress.map((point) => ({
+    ...point,
+    hasDeliveryReview: attemptsWithDelivery.has(point.attemptId),
+    recordingStatus: recordingStatusByAttempt.get(point.attemptId) ?? null,
+  }));
+
   const weaknessRows = await db.select({
     criterionId: criteria.id,
     criterionName: criteria.name,
@@ -764,7 +794,7 @@ export async function getProjectProgress(
   return ProgressResponseSchema.parse({
     contractVersion: CONTRACT_VERSION,
     projectId,
-    attempts: progress,
+    attempts: enrichedProgress,
     recurringWeaknesses,
     attemptComparisons,
   });
@@ -783,6 +813,7 @@ export async function exportOwnedWorkspace(
       exportedAt: now(),
       projects: [], rubrics: [], criteria: [], attempts: [], verdicts: [], questions: [],
       evidenceConfirmations: [], defenseAnswers: [], sourceDocuments: [],
+      deliveryReviews: [], deliveryEvents: [], recordings: [],
     });
   }
 
@@ -808,6 +839,31 @@ export async function exportOwnedWorkspace(
   const answerRows = questionIds.length > 0
     ? await db.select().from(defenseAnswers).where(inArray(defenseAnswers.questionId, questionIds))
     : [];
+  const deliveryReviewRows = attemptIds.length > 0
+    ? await db.select().from(attemptDeliveryReviews)
+      .where(inArray(attemptDeliveryReviews.attemptId, attemptIds))
+    : [];
+  const deliveryEventRows = attemptIds.length > 0
+    ? await db.select().from(attemptDeliveryEvents)
+      .where(inArray(attemptDeliveryEvents.attemptId, attemptIds))
+    : [];
+  // Blob references are private access coordinates, not portable user data.
+  // Export the lifecycle metadata needed to understand retention without
+  // exposing either the private URL or storage pathname.
+  const recordingMetadataRows = attemptIds.length > 0
+    ? await db.select({
+      id: attemptRecordings.id,
+      attemptId: attemptRecordings.attemptId,
+      status: attemptRecordings.status,
+      contentType: attemptRecordings.contentType,
+      sizeBytes: attemptRecordings.sizeBytes,
+      durationMs: attemptRecordings.durationMs,
+      expiresAt: attemptRecordings.expiresAt,
+      createdAt: attemptRecordings.createdAt,
+      uploadedAt: attemptRecordings.uploadedAt,
+    }).from(attemptRecordings)
+      .where(inArray(attemptRecordings.attemptId, attemptIds))
+    : [];
   const documentRows = await db.select().from(sourceDocuments)
     .where(inArray(sourceDocuments.projectId, projectIds));
   let exportedDocuments: Array<SourceDocument & { content: string }> = [];
@@ -832,6 +888,9 @@ export async function exportOwnedWorkspace(
     questions: questionRows,
     defenseAnswers: answerRows,
     sourceDocuments: exportedDocuments,
+    deliveryReviews: deliveryReviewRows,
+    deliveryEvents: deliveryEventRows,
+    recordings: recordingMetadataRows,
   });
 }
 
@@ -839,11 +898,32 @@ export async function deleteOwnedAccount(
   db: Database,
   userId: string,
   storage: SourceDocumentStorage = vercelSourceDocumentStorage,
+  recordingStorage: RecordingStorage = vercelRecordingStorage,
 ) {
   const ownedSources = await db.select({ blobUrl: sourceDocuments.blobUrl })
     .from(sourceDocuments)
     .innerJoin(projects, eq(projects.id, sourceDocuments.projectId))
     .where(eq(projects.userId, userId));
+  const ownedRecordings = await db.select({
+    blobUrl: attemptRecordings.blobUrl,
+    pathname: attemptRecordings.pathname,
+  })
+    .from(attemptRecordings)
+    .innerJoin(attempts, eq(attempts.id, attemptRecordings.attemptId))
+    .innerJoin(projects, eq(projects.id, attempts.projectId))
+    .where(eq(projects.userId, userId));
+  try {
+    await recordingStorage.delete(ownedRecordings.map((recording) => (
+      recording.blobUrl ?? recording.pathname
+    )));
+  } catch {
+    throw new ApiProblem(
+      503,
+      'recording_storage_unavailable',
+      'Private recording storage could not complete account deletion.',
+      true,
+    );
+  }
   try {
     await storage.delete(ownedSources.map((source) => source.blobUrl));
   } catch (error) {

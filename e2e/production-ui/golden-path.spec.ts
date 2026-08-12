@@ -169,6 +169,7 @@ test('private source upload grounds the saved judge question with visible proven
       persistence: 'neon',
       accounts: false,
       sourceDocuments: true,
+      recordings: false,
       semantic: { rubric: false, evidence: false, question: false, defense: false },
     });
     if (url.pathname === '/api/projects' && request.method() === 'POST') return respond({

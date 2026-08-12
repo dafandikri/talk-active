@@ -26,6 +26,11 @@ import {
   type SpeechRecognitionState,
 } from '@/lib/rehearsal/speech-recognition';
 import {
+  createRehearsalRecordingSession,
+  type RehearsalRecording,
+  type RehearsalRecordingSession,
+} from '@/lib/rehearsal/recording';
+import {
   InterimFillerTracker,
   SpeechDisruptionDetector,
   mergeSpeechDisruptionEvents,
@@ -50,6 +55,7 @@ export interface MultimodalCapture {
   visionSummary: VisionSessionSummary | null;
   audioSummary: AudioObservationSummary | null;
   speechDisruptions?: readonly SpeechDisruptionEvent[];
+  recording: RehearsalRecording | null;
 }
 
 export interface MultimodalAttemptResult extends MultimodalCapture {
@@ -62,6 +68,7 @@ export interface MultimodalStudioHandle {
 
 interface MultimodalStudioProps {
   transcript: string;
+  durableRecordingAvailable?: boolean;
   onTranscriptChange: (value: string) => void;
   onResult: (result: MultimodalAttemptResult | null) => void;
 }
@@ -100,6 +107,24 @@ function observationFromVision(summary: VisionSessionSummary | null): VisionObse
     trackedFrames,
     framedFrames: Math.round(summary.measuredFrames * summary.metrics.fullBodyVisiblePercent / 100),
     movementActiveFrames: Math.round(trackedFrames * summary.metrics.gestureActivePercent / 100),
+  };
+}
+
+function alignVisionSummary(
+  summary: VisionSessionSummary | null,
+  offsetMs: number,
+  recordingDurationMs: number,
+): VisionSessionSummary | null {
+  if (!summary) return null;
+  const bounded = (value: number) => Math.max(0, Math.min(recordingDurationMs, value + offsetMs));
+  return {
+    ...summary,
+    durationMs: recordingDurationMs,
+    events: summary.events.map((event) => {
+      const startMs = bounded(event.startMs);
+      const endMs = Math.max(startMs, bounded(event.endMs));
+      return { ...event, startMs, endMs, durationMs: endMs - startMs };
+    }),
   };
 }
 
@@ -175,14 +200,16 @@ function drawOverlay(canvas: HTMLCanvasElement, frame: VisionFrameSnapshot): voi
 }
 
 export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStudioProps>(
-  function MultimodalStudio({ transcript, onTranscriptChange, onResult }, ref) {
+  function MultimodalStudio({ transcript, durableRecordingAvailable = false, onTranscriptChange, onResult }, ref) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const visionRef = useRef<BrowserVisionSession | null>(null);
     const audioRef = useRef<AudioObserver | null>(null);
     const speechRef = useRef<SpeechRecognitionSession | null>(null);
+    const recordingRef = useRef<RehearsalRecordingSession | null>(null);
     const startedAtRef = useRef(0);
+    const visionOffsetRef = useRef(0);
     const transcriptRef = useRef(transcript);
     const pitchSamplesRef = useRef<number[]>([]);
     const energySamplesRef = useRef<number[]>([]);
@@ -199,6 +226,8 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
     const [frame, setFrame] = useState<VisionFrameSnapshot | null>(null);
     const [audioSample, setAudioSample] = useState<AudioObservationSample | null>(null);
     const [speechDisruptionCount, setSpeechDisruptionCount] = useState(0);
+    const [saveReplay, setSaveReplay] = useState(false);
+    const [recordingState, setRecordingState] = useState<'off' | 'recording' | 'failed'>('off');
     const [status, setStatus] = useState('Choose a mode, then start a camera rehearsal.');
     const [lastCapture, setLastCapture] = useState<MultimodalCapture | null>(null);
 
@@ -222,6 +251,8 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
       audioRef.current = null;
       visionRef.current?.dispose();
       visionRef.current = null;
+      await recordingRef.current?.dispose();
+      recordingRef.current = null;
       for (const track of mediaStreamRef.current?.getTracks() ?? []) track.stop();
       mediaStreamRef.current = null;
       if (videoRef.current) videoRef.current.srcObject = null;
@@ -235,9 +266,14 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
     }
 
     async function stopSession(): Promise<MultimodalCapture | null> {
-      if (!active && !loading) return lastCapture;
+      if (!active) return lastCapture;
       setLoading(true);
-      const durationSeconds = Math.max(1, (performance.now() - startedAtRef.current) / 1_000);
+      const stoppedAtMs = performance.now();
+      const elapsedDurationMs = Math.max(1_000, stoppedAtMs - startedAtRef.current);
+      const recordingSession = recordingRef.current;
+      const recordingPromise = recordingSession?.state === 'recording'
+        ? recordingSession.stop().catch(() => null)
+        : Promise.resolve(recordingSession?.lastRecording ?? null);
       const speech = speechRef.current;
       speech?.stop();
       const recognizedTranscript = speech?.snapshot().transcript.trim() ?? '';
@@ -246,12 +282,16 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
       const audioObserver = audioRef.current;
       await audioObserver?.stop();
       const audioSummary = audioObserver?.summary() ?? null;
-      acousticDisruptionsRef.current.finish(durationSeconds * 1_000);
+      acousticDisruptionsRef.current.finish(elapsedDurationMs);
       const speechDisruptions = mergeSpeechDisruptionEvents(
         acousticDisruptionsRef.current.events(),
         interimFillersRef.current.events(),
       );
-      const visionSummary = visionRef.current?.stop() ?? null;
+      const rawVisionSummary = visionRef.current?.stop() ?? null;
+      const recording = await recordingPromise;
+      const durationMs = Math.max(1_000, recording?.durationMs ?? elapsedDurationMs);
+      const durationSeconds = durationMs / 1_000;
+      const visionSummary = alignVisionSummary(rawVisionSummary, visionOffsetRef.current, durationMs);
       const metrics = finalTranscript
         ? analyzeDeliveryMetrics({
           durationSeconds,
@@ -277,6 +317,7 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         visionSummary,
         audioSummary,
         speechDisruptions,
+        recording,
       };
       if (finalTranscript) {
         transcriptRef.current = finalTranscript;
@@ -304,6 +345,8 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
       setFrame(null);
       setAudioSample(null);
       setSpeechDisruptionCount(0);
+      setRecordingState('off');
+      visionOffsetRef.current = 0;
       pitchSamplesRef.current = [];
       energySamplesRef.current = [];
       acousticDisruptionsRef.current = new SpeechDisruptionDetector({ ignoreBeforeMs: 3_000 });
@@ -320,7 +363,10 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         const vision = createVisionSession({
           mode,
           maxFramesPerSecond: 8,
-          onFrame: setFrame,
+          onFrame: (nextFrame) => setFrame({
+            ...nextFrame,
+            timestampMs: Math.max(0, nextFrame.timestampMs + visionOffsetRef.current),
+          }),
           onPhaseChange: setVisionPhase,
           onError: (error) => setStatus(`${error.message} Voice and transcript capture can continue.`),
         });
@@ -329,8 +375,12 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         const audio = createAudioObserver(stream, {
           sampleIntervalMs: 100,
           onSample: (sample) => {
-            setAudioSample(sample);
-            const emitted = acousticDisruptionsRef.current.addSample(sample);
+            const alignedSample = {
+              ...sample,
+              timestampMs: Math.max(0, performance.now() - startedAtRef.current),
+            };
+            setAudioSample(alignedSample);
+            const emitted = acousticDisruptionsRef.current.addSample(alignedSample);
             if (emitted.length > 0) updateSpeechDisruptionCount();
             if (sample.pitchHz !== null) pitchSamplesRef.current.push(sample.pitchHz);
             if (!sample.quiet) energySamplesRef.current.push(sample.rms);
@@ -359,10 +409,30 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         onTranscriptChange('');
         transcriptRef.current = '';
 
-        startedAtRef.current = performance.now();
-        setActive(true);
         setStatus('Calibrating for 3 seconds. Face the camera in a neutral starting position.');
-        await Promise.all([vision.start({ video, stream }), audio.start()]);
+        await vision.start({ video, stream });
+
+        let originMs = performance.now();
+        if (saveReplay) {
+          try {
+            const recording = createRehearsalRecordingSession(stream, {
+              onStateChange: (next) => {
+                if (next === 'recording') setRecordingState('recording');
+                if (next === 'error' || next === 'unsupported') setRecordingState('failed');
+              },
+              onError: (failure) => setStatus(`${failure.message} Camera observations and transcript capture can continue.`),
+            });
+            recordingRef.current = recording;
+            recording.start();
+            originMs = recording.startedAtMs ?? originMs;
+          } catch {
+            setRecordingState('failed');
+          }
+        }
+        startedAtRef.current = originMs;
+        visionOffsetRef.current = (vision.startedAtMs ?? originMs) - originMs;
+        setActive(true);
+        await audio.start();
         if (speech.supported) speech.start({ resetTranscript: true });
         else setStatus('Live browser dictation is unavailable here. Visual and voice measurements are running; type the transcript afterward.');
       } catch (error) {
@@ -393,7 +463,7 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
       <div className="studio-stage">
         <video ref={videoRef} aria-label="Live rehearsal camera" muted playsInline />
         <canvas ref={canvasRef} width="640" height="360" aria-hidden="true" />
-        {!active && <div className="studio-camera-empty"><span aria-hidden="true">◉</span><strong>Video analysis runs on this device</strong><small>Talk-Active does not save frames or raw audio.</small></div>}
+        {!active && <div className="studio-camera-empty"><span aria-hidden="true">◉</span><strong>Video analysis runs on this device</strong><small>A replay is created only when you explicitly select the option below.</small></div>}
         <div className="studio-hud"><span><i className={frame?.tracked ? 'good' : ''} />{trackingLabel}</span><span>{mode === 'presentation' ? '33-point pose' : 'face landmarks'}</span></div>
         {active && <div className="voice-meter" aria-label="Live voice level"><span>VOICE</span><i><b style={{ width: `${liveVoice}%` }} /></i><small>{audioSample?.pitchHz ? `${Math.round(audioSample.pitchHz)} Hz` : audioSample?.quiet ? 'pause' : 'listening'}</small><em>{speechDisruptionCount} possible cues</em></div>}
       </div>
@@ -404,12 +474,38 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
           ? <button className="button button-primary studio-record" type="button" disabled={loading} onClick={() => void startSession()}><span aria-hidden="true">●</span>{loading ? 'Loading local models…' : 'Start camera rehearsal'}</button>
           : <button className="button button-primary studio-stop" type="button" disabled={loading} onClick={() => void stopSession()}><span aria-hidden="true">■</span>Finish &amp; assemble review</button>}
       </div>
+      <label className="studio-recording-consent">
+        <input type="checkbox" checked={saveReplay} disabled={active || loading} onChange={(event) => setSaveReplay(event.target.checked)} />
+        <span><strong>Keep a replay of this attempt</strong><small>{durableRecordingAvailable ? 'Includes camera and microphone. Signed-in attempts can upload to private storage; deleting a replay keeps its feedback.' : 'Includes camera and microphone. This deployment keeps it only in this page for review or download.'}</small></span>
+      </label>
+      {active && saveReplay && <p className="recording-sync-status"><span aria-hidden="true">●</span>{recordingState === 'recording' ? ' Camera and microphone replay recording is active.' : ' Replay recording was unavailable; analysis is continuing.'}</p>}
       <p className="studio-status" aria-live="polite">{status} {active && speechRecognitionIsSupported() ? `Dictation: ${speechState}. Browser dictation may use the browser vendor's speech service.` : ''}</p>
     </section>;
   },
 );
 
-export function MultimodalReview({ result, substanceScore }: Readonly<{ result: MultimodalAttemptResult; substanceScore: number }>) {
+export function MultimodalReview({
+  result,
+  substanceScore,
+  recordingStatus,
+  savedAttemptId,
+}: Readonly<{
+  result: MultimodalAttemptResult;
+  substanceScore: number;
+  recordingStatus?: string;
+  savedAttemptId?: string | null;
+}>) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!result.recording) {
+      setRecordingUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(result.recording.blob);
+    setRecordingUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [result.recording]);
   const visual = result.visionSummary;
   const vocalScore = result.metrics.vocal.rehearsalScore;
   const reliableVisualTracking = (visual?.metrics.trackingCoveragePercent ?? 0) >= 80;
@@ -425,9 +521,39 @@ export function MultimodalReview({ result, substanceScore }: Readonly<{ result: 
     { label: 'Vocal delivery', value: vocalScore, note: `${result.metrics.fillerCount} transcript fillers · ${result.metrics.repeatedWordCount} adjacent repeats` },
     { label: 'Visual delivery', value: visualScore, note: reliableVisualTracking ? `${result.metrics.visual?.measurementCoverage ?? 0}% measurement coverage` : 'Insufficient reliable tracking; excluded from the overall grade' },
   ];
+  const replayEvents = [
+    ...speechDisruptions.map((event, index) => ({
+      key: `speech-${event.startMs}-${index}`,
+      startMs: event.startMs,
+      label: event.label,
+      detail: event.evidence,
+      source: event.source === 'interim-transcript' ? 'dictation cue' : 'voice cue',
+    })),
+    ...(visual?.events ?? []).map((event, index) => ({
+      key: `vision-${event.startMs}-${index}`,
+      startMs: event.startMs,
+      label: event.label,
+      detail: 'Camera-landmark observation. Review the surrounding context before interpreting it.',
+      source: 'camera cue',
+    })),
+  ].sort((left, right) => left.startMs - right.startMs);
+  function playFrom(startMs: number) {
+    const player = videoRef.current;
+    if (!player) return;
+    player.currentTime = Math.max(0, startMs / 1_000 - 2);
+    void player.play();
+  }
   return <section className="surface multimodal-review">
     <div className="multimodal-review-heading"><div><p className="overline">Multimodal performance map</p><h2>How the attempt came across</h2><p>50% rubric substance · 25% vocal signals · 25% visual signals</p></div><div className="overall-grade"><span>Overall rehearsal</span><strong>{overallGrade}</strong><small>/ 100</small></div></div>
     <p className="delivery-boundary">Experimental rehearsal grades from configured, inspectable thresholds. Missing sensors are excluded from the delivery mean. These grades describe observable camera, transcript, and acoustic signals—not emotion, confidence, health, or hiring suitability.</p>
+    {recordingUrl && <section className="recording-review" aria-labelledby="replayTitle">
+      <div><p className="overline">Attempt replay</p><h3 id="replayTitle">Review the moment, not just the number.</h3><p>Timestamp buttons start two seconds before each observation so you can judge the surrounding context yourself.</p></div>
+      <video ref={videoRef} className="recording-player" src={recordingUrl} controls playsInline preload="metadata" aria-label="Recorded attempt replay" />
+      <div className="recording-review-actions"><a className="button button-secondary" href={recordingUrl} download={`talk-active-attempt.${result.recording?.mimeType.includes('mp4') ? 'mp4' : 'webm'}`}>Download this replay</a>{savedAttemptId && <a className="text-button" href={`/attempts/${savedAttemptId}`}>Open saved review</a>}</div>
+      {recordingStatus && <p className="recording-sync-status" role="status">{recordingStatus}</p>}
+      <ol className="replay-timeline">{replayEvents.length > 0 ? replayEvents.map((event) => <li key={event.key}><button className="replay-event-button" type="button" onClick={() => playFrom(event.startMs)}><time>{formatTime(event.startMs)}</time><span><strong>{event.label}</strong><small>{event.source} · {event.detail}</small></span><b aria-hidden="true">Play →</b></button></li>) : <li><p>No timestamp observation crossed the prototype thresholds. You can still scrub the complete replay.</p></li>}</ol>
+    </section>}
+    {!recordingUrl && recordingStatus && <p className="recording-sync-status" role="status">{recordingStatus}</p>}
     <div className="performance-score-grid">{metricCards.map((card) => <article key={card.label}><span>{card.label}</span><strong className={card.value === null ? 'is-text' : undefined}>{card.value === null ? 'insufficient' : card.value}</strong><small>{card.note}</small>{card.value !== null && <i><b style={{ width: `${card.value}%` }} /></i>}</article>)}</div>
     <div className="performance-details">
       <div><h3>Voice evidence</h3><ul>{result.metrics.vocal.metrics.map((metric) => <li key={metric.id}><span><strong>{metric.label}</strong><small>{metric.explanation}</small></span><b>{metric.observedValue === null ? 'not measured' : `${metric.observedValue} ${metric.unit}`}</b></li>)}</ul>{(result.metrics.fillers.length > 0 || result.metrics.repeatedWordEvents.length > 0) && <div className="event-timeline transcript-cue-list"><span>Transcript cue evidence</span>{result.metrics.fillers.map((filler) => <p key={filler.label}><time>filler</time><q>{filler.label}</q> × {filler.count}</p>)}{result.metrics.repeatedWordEvents.slice(0, 6).map((event) => <p key={`${event.word}-${event.tokenIndex}`}><time>{event.timestampSeconds === null ? `word ${event.tokenIndex + 1}` : formatTime(event.timestampSeconds * 1_000)}</time><q>{event.word}</q> repeated {event.additionalOccurrences + 1} times in sequence</p>)}</div>}<div className="event-timeline speech-disruption-list"><h4>Possible hesitation cues</h4><ul>{speechDisruptions.length > 0 ? speechDisruptions.slice(0, 8).map((event, index) => <li key={`${event.kind}-${event.startMs}-${index}`}><time>{formatTime(event.startMs)}</time><span><strong>{event.label}</strong><small>{event.evidence}</small></span></li>) : <li><time>—</time><span><strong>No audio or interim-dictation candidate crossed the prototype thresholds.</strong><small>Short or unvoiced hesitations may still be missed.</small></span></li>}</ul></div></div>

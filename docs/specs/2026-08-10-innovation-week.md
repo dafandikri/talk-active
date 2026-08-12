@@ -71,16 +71,22 @@ of the product worthy of it.**
 5. **Pitch + Q&A** — 7-minute script, live demo choreography, drilled answers.
 6. **Experimental multimodal rehearsal (captain-approved branch, 12 Aug)** — opt-in browser
    dictation plus on-device MediaPipe face/pose landmarks and Web Audio observations. Results
-   keep rubric substance, vocal signals, and visual signals separately inspectable; raw frames
-   and audio are not persisted. Possible prolonged-vocalization and clustered stop-start cues
-   are timestamped experimental observations, never a medical diagnosis or speaking-ability
-   judgment. The manual transcript path remains the demo-safe fallback.
+   keep rubric substance, vocal signals, and visual signals separately inspectable. Possible
+   prolonged-vocalization and clustered stop-start cues are timestamped experimental
+   observations, never a medical diagnosis or speaking-ability judgment. The manual transcript
+   path remains the demo-safe fallback.
+7. **Private attempt replay (captain-approved branch, 13 Aug)** — a separate, explicit opt-in
+   records the rehearsal camera and microphone so a signed-in student can revisit timestamped
+   delivery observations. A guest can review the in-memory replay only for the current page;
+   durable upload requires an owned account, Postgres, and configured private Blob storage.
+   Recording/upload failure is non-blocking and never prevents rubric analysis or saving the
+   text-based attempt.
 
 ### Out — decided, not deferred by accident
 
-Accounts and auth · cloud sync · stored audio/video · identity recognition · emotion,
-personality, confidence, health, gaze, or hiring inference · candidate ranking · streaks or
-gamification · institutional dashboards · payment.
+Identity recognition · emotion, personality, confidence, health, gaze, or hiring inference ·
+candidate ranking · background recording · mandatory recording · streaks or gamification ·
+institutional dashboards · payment.
 
 > Adding scope during a four-day sprint is how demos break. INV-6 is in force. Any addition
 > to this list requires the lead's sign-off and a note in this file.
@@ -100,6 +106,8 @@ gamification · institutional dashboards · payment.
 | **AD-7** | Feature flag `SEMANTIC_ANALYSIS` defaults **on locally, on in production, off if the key is absent**. | Absent key must never crash — it silently degrades. |
 | **AD-8** | Multimodal rehearsal is optional and fail-open. MediaPipe/WASM/model assets are same-origin; browser speech recognition may use the browser vendor's speech service. | The stage path survives denied permissions, unsupported dictation, or failed landmark tracking without losing typed rubric analysis. |
 | **AD-9** | Composite rehearsal grades use a disclosed 50% substance / 25% vocal / 25% visual presentation weighting. Every component exposes observations and missing-measurement coverage. | A demo-friendly summary must not conceal what was actually measured or turn landmarks into emotion/personality claims. |
+| **AD-10** | Saved replay is opt-in, private, ownership-checked on every metadata and media request, and retained separately from delivery observations. Each recording carries a 30-day target expiry timestamp and an explicit delete control; account deletion removes the private blob before database ownership cascades. | Camera and microphone data need a stronger boundary than derived feedback. Deleting a replay keeps its transcript, rubric evidence, and delivery observations useful. Expiry metadata is implemented, but automatic physical cleanup is not claimed until a cleanup job is deployed and verified. |
+| **AD-11** | Replay and timestamped delivery observations are supporting context only. Recording availability, upload success, and replay deletion do not change rubric coverage, vocal, visual, or composite results. | Storage state is not evidence of presentation quality, and a private-storage outage must not change a student's feedback. |
 
 ### Data flow (target)
 
