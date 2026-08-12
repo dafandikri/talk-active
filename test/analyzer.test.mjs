@@ -69,6 +69,20 @@ test('local filler detection includes Indonesian and English cues', () => {
   );
 });
 
+test('local filler detection includes common elongated hesitation spellings', () => {
+  const result = analyzeSpeech({
+    transcript: 'Eeh emm hmm mm ahh err, the prototype works.',
+    rubricText: 'Prototype | prototype',
+    durationSeconds: 12,
+  });
+
+  assert.equal(result.delivery.fillerCount, 6);
+  assert.deepEqual(
+    result.delivery.fillers.map((item) => item.label),
+    ['eh', 'emm', 'hmm', 'mm', 'ah', 'er'],
+  );
+});
+
 test('compareResults reports improvement without inventing a judgment', () => {
   const baseline = analyzeSpeech({
     transcript: 'Students have a problem.',

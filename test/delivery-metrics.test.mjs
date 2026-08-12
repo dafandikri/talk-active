@@ -43,16 +43,20 @@ test('transcript observations expose configured fillers and adjacent repeated wo
 test('filler variants include English and Indonesian cues without double-counting repeats', () => {
   const result = analyzeDeliveryMetrics({
     durationSeconds: 20,
-    transcript: 'Um umm uhhh ee eeee emm ahh anu kayak gitu apa ya basically finish.',
+    transcript: 'Um umm uhhh ee eeee eeh emm hmm mm ahh err anu kayak gitu apa ya basically finish.',
   });
 
-  assert.equal(result.fillerCount, 12);
+  assert.equal(result.fillerCount, 16);
   assert.deepEqual(result.fillers, [
     { label: 'um', count: 2 },
     { label: 'uh', count: 1 },
     { label: 'ee', count: 2 },
+    { label: 'eh', count: 1 },
     { label: 'emm', count: 1 },
+    { label: 'hmm', count: 1 },
+    { label: 'mm', count: 1 },
     { label: 'ah', count: 1 },
+    { label: 'er', count: 1 },
     { label: 'anu', count: 1 },
     { label: 'kayak', count: 1 },
     { label: 'gitu', count: 1 },

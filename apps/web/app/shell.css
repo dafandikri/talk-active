@@ -164,6 +164,7 @@
 .voice-meter > i { height: var(--space-2); flex: 1; background: var(--inverse-raised); border-radius: var(--radius-full); overflow: hidden; }
 .voice-meter > i b { height: 100%; display: block; background: var(--inverse-accent); border-radius: inherit; transition: width var(--duration-fast) var(--ease); }
 .voice-meter small { min-width: 4.5rem; color: var(--text-on-inverse-muted); text-align: right; }
+.voice-meter em { color: var(--inverse-accent); font-size: var(--step-0); font-style: normal; white-space: nowrap; }
 
 .studio-controls { justify-content: space-between; gap: var(--space-4); margin-top: var(--space-4); }
 .studio-controls label { display: grid; gap: var(--space-1); margin: 0; color: var(--text-on-inverse-muted); font-size: var(--step-0); }
@@ -198,10 +199,14 @@
 .performance-details li span small { margin-top: var(--space-1); color: var(--text-muted); font-size: var(--step-0); }
 .performance-details li > b { flex: 0 0 8rem; align-self: center; font-size: var(--step-0); text-align: right; }
 .event-timeline { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); }
-.event-timeline > span { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+.event-timeline > span, .event-timeline > h4 { margin: 0; color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
 .event-timeline p { display: grid; grid-template-columns: 3.5rem 1fr; gap: var(--space-2); margin: var(--space-2) 0 0; font-size: var(--step-0); }
 .event-timeline time { color: var(--accent-sky); font-variant-numeric: tabular-nums; font-weight: var(--weight-heavy); }
 .transcript-cue-list p { grid-template-columns: 5rem 1fr; }
+.speech-disruption-list ul { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
+.speech-disruption-list li { display: grid; grid-template-columns: 3.5rem 1fr; gap: var(--space-2); padding: 0; background: transparent; font-size: var(--step-0); }
+.speech-disruption-list strong, .speech-disruption-list small { display: block; }
+.speech-disruption-list small { margin-top: var(--space-1); color: var(--text-muted); }
 .metrics-boundary, .performance-empty { margin: var(--space-5) 0 0; color: var(--text-muted); font-size: var(--step-0); }
 
 @media (max-width: 760px) {
@@ -218,6 +223,7 @@
   .performance-details li > b { text-align: left; }
   .multimodal-review { overflow: hidden; }
   .multimodal-review > * { min-width: 0; }
+  .voice-meter em { display: none; }
 }
 
 @media (max-width: 760px) {

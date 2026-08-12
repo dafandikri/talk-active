@@ -31,14 +31,10 @@ test('multimodal studio captures local camera cues and assembles the three-layer
   await page.getByRole('button', { name: /Presentation/i }).click();
   await page.getByRole('button', { name: /Start camera rehearsal/i }).click();
   await expect(page.getByRole('button', { name: /Finish & assemble review/i })).toBeVisible({ timeout: 20_000 });
-  await page.getByLabel('Practice transcript').fill(
-    'Um our problem affects students. Our rubric feedback makes every claim traceable. '
-    + 'The prototype architecture keeps privacy explicit and the implementation feasible.',
-  );
   await page.waitForTimeout(3_800);
   await page.screenshot({ path: '.codex-qa/multimodal-attempt.png', fullPage: true });
   await page.getByRole('button', { name: /Finish & assemble review/i }).click();
-  await expect(page.locator('.studio-status')).toContainText('Rehearsal captured');
+  await expect(page.locator('.studio-status')).toContainText('type one and review again');
   await page.getByLabel('Practice transcript').fill(
     'Um, our problem affects students and our evidence shows urgency. '
     + 'Our solution uses rubric feedback so every retry improves. '
@@ -55,6 +51,8 @@ test('multimodal studio captures local camera cues and assembles the three-layer
   await expect(page.getByText('Voice evidence', { exact: true })).toBeVisible();
   await expect(page.getByText('Camera evidence', { exact: true })).toBeVisible();
   await expect(page.getByText('Transcript cue evidence', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Possible hesitation cues' })).toBeVisible();
+  await expect(page.getByText(/not a diagnosis/i)).toBeVisible();
   await page.screenshot({ path: '.codex-qa/multimodal-review.png', fullPage: true });
 
   expect([...localAssets]).toEqual(expect.arrayContaining([

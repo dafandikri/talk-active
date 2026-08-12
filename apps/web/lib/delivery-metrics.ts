@@ -1,3 +1,5 @@
+import { matchFillerTokens, tokenizeSpeech } from './rehearsal/filler-cues.ts';
+
 export type VisionMode = 'interview' | 'presentation';
 
 export interface TimedTranscriptWord {
@@ -113,21 +115,6 @@ interface WeightedComponent {
   weight: number;
 }
 
-const FILLER_TOKEN_PATTERNS: ReadonlyArray<Readonly<{
-  label: string;
-  pattern: RegExp;
-}>> = [
-  { label: 'um', pattern: /^u+m+$/u },
-  { label: 'uh', pattern: /^u+h+$/u },
-  { label: 'ee', pattern: /^e{2,}$/u },
-  { label: 'emm', pattern: /^e+m+$/u },
-  { label: 'ah', pattern: /^a+h+$/u },
-  { label: 'anu', pattern: /^anu$/u },
-  { label: 'kayak', pattern: /^kayak$/u },
-  { label: 'gitu', pattern: /^gitu$/u },
-  { label: 'basically', pattern: /^basically$/u },
-];
-
 const BOUNDARY = 'These are configurable rehearsal heuristics from observable speech and camera signals. '
   + 'They do not infer emotion, personality, intent, health, or speaking ability; repeated-word events '
   + 'can also come from deliberate repetition or transcription errors.';
@@ -142,10 +129,7 @@ function round(value: number, decimals = 0): number {
 }
 
 function tokenize(value: string): string[] {
-  return value
-    .toLocaleLowerCase('id-ID')
-    .normalize('NFKC')
-    .match(/[\p{L}\p{N}]+/gu) ?? [];
+  return tokenizeSpeech(value);
 }
 
 function assertFiniteNonNegative(value: number, field: string): void {
@@ -209,20 +193,7 @@ function normalizeTokens(
 }
 
 function findFillers(tokens: readonly NormalizedToken[]): FillerMatch[] {
-  const matches: FillerMatch[] = [];
-  for (let index = 0; index < tokens.length; index += 1) {
-    const current = tokens[index]?.value;
-    const next = tokens[index + 1]?.value;
-    if (current === 'apa' && next === 'ya') {
-      matches.push({ label: 'apa ya', tokenIndexes: [index, index + 1] });
-      index += 1;
-      continue;
-    }
-    if (!current) continue;
-    const definition = FILLER_TOKEN_PATTERNS.find(({ pattern }) => pattern.test(current));
-    if (definition) matches.push({ label: definition.label, tokenIndexes: [index] });
-  }
-  return matches;
+  return matchFillerTokens(tokens.map((token) => token.value));
 }
 
 function summarizeFillers(matches: readonly FillerMatch[]): FillerBreakdown[] {

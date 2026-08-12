@@ -72,7 +72,9 @@ of the product worthy of it.**
 6. **Experimental multimodal rehearsal (captain-approved branch, 12 Aug)** — opt-in browser
    dictation plus on-device MediaPipe face/pose landmarks and Web Audio observations. Results
    keep rubric substance, vocal signals, and visual signals separately inspectable; raw frames
-   and audio are not persisted. The manual transcript path remains the demo-safe fallback.
+   and audio are not persisted. Possible prolonged-vocalization and clustered stop-start cues
+   are timestamped experimental observations, never a medical diagnosis or speaking-ability
+   judgment. The manual transcript path remains the demo-safe fallback.
 
 ### Out — decided, not deferred by accident
 

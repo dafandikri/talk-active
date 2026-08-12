@@ -11,6 +11,7 @@ export interface SpeechTranscriptSnapshot {
   finalTranscript: string;
   interimTranscript: string;
   transcript: string;
+  observedAtMs: number;
 }
 
 export interface SpeechRecognitionFailure {
@@ -160,6 +161,7 @@ export function createSpeechRecognitionSession(
       finalTranscript,
       interimTranscript,
       transcript: cleanTranscript(finalTranscript, interimTranscript),
+      observedAtMs: typeof performance === 'undefined' ? Date.now() : performance.now(),
     };
   }
 

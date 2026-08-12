@@ -185,9 +185,9 @@ export function PracticeRoom() {
           const context = await ensureRemoteContext();
           const created = await requestContract('/api/attempts', CreateAttemptResponseSchema, jsonRequest('POST', {
             projectId: context.projectId,
-            mode: captured ? 'dictated' : 'typed',
+            mode: captured?.transcriptSource === 'web-speech' ? 'dictated' : 'typed',
             transcript: analysisTranscript,
-            transcriptSource: captured ? 'web-speech' : 'typed',
+            transcriptSource: captured?.transcriptSource ?? 'typed',
             durationSeconds: analysisDuration,
           }));
           const evidence = await requestContract(
