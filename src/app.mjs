@@ -1141,11 +1141,12 @@ function resetWorkspace() {
   renderAll();
   showPracticeStage('setup');
   setRoute('home');
-  showToast('Demo workspace reset');
-  // Pressing reset *is* the booth handover, so this is the one moment where
-  // asking for a name is help rather than friction. A visitor who arrives by
-  // scanning the QR is never gated: they get the product first.
-  openRehearserDialog();
+  // Do NOT open the name dialog here. It was tried, and a modal makes every
+  // other control inert: after a reset the sidebar "+" was covered by the
+  // dialog's top layer, so a booth attendant could not create a project until
+  // they dealt with a prompt they never asked for. The chip already reads
+  // "Guest · Add your name", which is the affordance without the roadblock.
+  showToast('Demo workspace reset — add your name in the sidebar');
 }
 
 function createProject(event) {

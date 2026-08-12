@@ -715,12 +715,32 @@ async function run() {
     await waitFor(cdp, `document.querySelector('#resetDialog').open === true`);
     await evaluate(cdp, `document.querySelector('#confirmReset').click()`);
     await waitFor(cdp, `document.querySelector('#rehearserName').textContent === 'Guest'`);
-    const handover = await evaluate(cdp, `(() => ({
-      stored: JSON.parse(localStorage.getItem('talkactive.workspace.v1')).rehearser,
-      prompted: document.querySelector('#rehearserDialog').open === true,
-    }))()`);
+    // element.click() ignores hit-testing, so it happily "clicks" a control
+    // buried under a modal backdrop. A real user cannot. Every control the
+    // reset leaves behind is checked with elementFromPoint instead — that is
+    // the difference between a passing test and a working product.
+    const handover = await evaluate(cdp, `(() => {
+      const reachable = (selector) => {
+        const node = document.querySelector(selector);
+        if (!node) return 'missing';
+        const box = node.getBoundingClientRect();
+        if (box.width === 0 || box.height === 0) return 'not rendered';
+        const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+        return node.contains(hit) || node === hit ? true : 'covered by ' + (hit?.id || hit?.tagName || 'unknown');
+      };
+      return {
+        stored: JSON.parse(localStorage.getItem('talkactive.workspace.v1')).rehearser,
+        blockingDialog: [...document.querySelectorAll('dialog')].find((node) => node.open)?.id ?? null,
+        addProject: reachable('#sidebarAddProject'),
+        chip: reachable('#rehearserChip'),
+        startPractice: reachable('[data-route="practice"]'),
+      };
+    })()`);
     assert.equal(handover.stored, null, 'the kiosk reset must clear the previous visitor’s name');
-    assert.equal(handover.prompted, true, 'the handover should ask who is rehearsing next');
+    assert.equal(handover.blockingDialog, null, 'the reset must not leave a modal covering the workspace');
+    assert.equal(handover.addProject, true, `sidebar "+" unusable after reset: ${handover.addProject}`);
+    assert.equal(handover.chip, true, `name chip unusable after reset: ${handover.chip}`);
+    assert.equal(handover.startPractice, true, `practice nav unusable after reset: ${handover.startPractice}`);
 
     const checks = [
       ['product-workspace', 'passed'],
