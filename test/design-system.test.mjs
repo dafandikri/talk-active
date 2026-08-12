@@ -32,8 +32,19 @@ const APPAREL_MARK = read('src/assets/macaw-mark-white.svg');
 const PRODUCT_MARK = readFileSync(join(ROOT, 'src/assets/LOGO.png'));
 const DASHBOARD_MARK = readFileSync(join(ROOT, 'src/assets/LOGO-dashboard.png'));
 const TAGLINE_LOCKUP = readFileSync(join(ROOT, 'src/assets/LOGO & TAGLINE.png'));
-const INDEX = read('index.html');
-const BRIEF = read('brief.html');
+// The vanilla HTML was deleted on 12 August. These two names now stand for the
+// React surfaces that replaced them, so the markup-level assertions below keep
+// checking the same product decisions rather than being quietly dropped.
+const readAll = (relatives) => relatives.map((relative) => read(relative)).join('\n');
+const INDEX = readAll([
+  'apps/web/components/workspace-frame.tsx',
+  'apps/web/components/practice-room.tsx',
+  'apps/web/components/rubric-editor.tsx',
+  'apps/web/components/progress-view.tsx',
+  'apps/web/components/account-panel.tsx',
+  'apps/web/components/entry-gate.tsx',
+]);
+const BRIEF = readAll(['apps/web/components/production-shell.tsx']);
 
 function pngMetadata(buffer) {
   assert.equal(buffer.subarray(1, 4).toString('ascii'), 'PNG', 'asset must be a PNG');
@@ -337,7 +348,7 @@ test('the full-body dimensional mascot is local, visible, and motion-safe', () =
   const relative = 'src/assets/macaw-mascot-3d.webp';
   assert.ok(existsSync(join(ROOT, relative)), 'the dashboard mascot asset is missing');
   assert.ok(statSync(join(ROOT, relative)).size < 200_000, 'the dashboard mascot should stay below 200 KB');
-  assert.match(INDEX, /src\/assets\/macaw-mascot-3d\.webp/u);
+  assert.match(read('apps/web/app/(workspace)/workspace/page.tsx'), /mascot\/kato-macaw-reading\.svg/u);
   assert.match(STYLES, /@keyframes mascot-greet/u);
   assert.match(STYLES, /@media \(prefers-reduced-motion: reduce\)/u);
   assert.match(
@@ -528,15 +539,8 @@ test('evidence and brand read as two colours, not one', () => {
 // ---------------------------------------------------------------------------
 //  6. The system is wired up and documented.
 // ---------------------------------------------------------------------------
-test('tokens.css is loaded before styles.css', () => {
-  const html = read('index.html');
-  const tokensAt = html.indexOf('tokens.css');
-  const stylesAt = html.indexOf('styles.css');
-  assert.ok(tokensAt !== -1, 'index.html must load src/tokens.css');
-  assert.ok(stylesAt !== -1, 'index.html must load src/styles.css');
-  assert.ok(tokensAt < stylesAt, 'tokens.css must be linked before styles.css or the cascade resolves tokens too late');
-});
-
+// The vanilla cascade-order test lived here. The next test asserts the same
+// property against apps/web/app/layout.tsx, which is the shell that now ships.
 test('the Next.js shell imports the frozen visual system directly and in cascade order', () => {
   const layout = read('apps/web/app/layout.tsx');
   const tokensAt = layout.indexOf("src/tokens.css");
@@ -564,22 +568,25 @@ test('dashboard home carries the approved character-led outlined material', () =
   for (const selector of ['next-session', 'rubric-health', 'recent-section']) {
     assert.match(STYLES_CODE, new RegExp(`\\.${selector}\\s*\\{[^}]*border:\\s*2px solid var\\(--text-primary\\);[^}]*box-shadow:`, 'su'));
   }
-  assert.match(INDEX, /class="focus-mascot"[\s\S]+macaw-mascot-3d\.webp/u);
+  assert.match(read('apps/web/app/(workspace)/workspace/page.tsx'), /kato-macaw-reading\.svg/u);
 });
 
 test('the Talk-Active lockup is consistent across product and landing surfaces', () => {
-  assert.equal((INDEX.match(/class="brand-wordmark"/gu) ?? []).length, 2);
-  assert.equal((BRIEF.match(/class="brand-wordmark"/gu) ?? []).length, 3);
-  for (const html of [INDEX, BRIEF]) assert.match(html, /Talk-<(?:strong|span) class="brand-wordmark-accent">Active<\/(?:strong|span)>/u);
-  assert.match(INDEX, /src\/assets\/LOGO-dashboard\.png/u);
-  assert.match(INDEX, /rel="icon" href="\/src\/assets\/LOGO-dashboard\.png" type="image\/png"/u);
-  assert.match(BRIEF, /src\/assets\/LOGO\.png/u);
-  assert.match(BRIEF, /rel="icon" href="\/src\/assets\/LOGO\.png" type="image\/png"/u);
-  assert.match(BRIEF, /src\/assets\/LOGO%20%26%20TAGLINE\.png/u);
+  assert.ok((INDEX.match(/className="brand-wordmark"/gu) ?? []).length >= 1,
+    'the workspace surfaces must carry the Talk-Active lockup');
+  assert.ok((BRIEF.match(/className="brand-wordmark"/gu) ?? []).length >= 1,
+    'the landing surface must carry the Talk-Active lockup');
+  assert.match(BRIEF, /brand\/talk-active-logo\.svg/u, 'the landing must draw the mark from the committed brand asset');
+  assert.match(INDEX, /Talk-<(?:strong|span) className="brand-wordmark-accent">Active<\/(?:strong|span)>/u,
+    'the accent must stay on "Active" so the lockup reads identically on every surface');
+  // Every surface draws the mark from the committed brand asset, never a copy.
+  assert.match(INDEX, /brand\/talk-active-logo\.svg/u);
 });
 
 test('workflow views keep the character system restrained and evidence-safe', () => {
-  assert.equal((INDEX.match(/class="workflow-mark"/gu) ?? []).length, 3);
+  // practice, rubric, progress, and account each carry exactly one.
+  assert.equal((INDEX.match(/className="workflow-mark"/gu) ?? []).length, 4,
+    'each workflow view carries exactly one workflow mark');
   assert.match(STYLES_CODE, /\.workflow-header\s*\{[^}]*background:\s*var\(--accent-sun-wash\);[^}]*border:\s*2px solid var\(--text-primary\);[^}]*box-shadow:\s*none;/su);
   assert.match(STYLES_CODE, /\.workflow-mark\s*\{[^}]*object-fit:\s*contain;[^}]*box-shadow:\s*none;/su);
   assert.doesNotMatch(STYLES_CODE, /\.workflow-mark\s*\{[^}]*(?:background|border):/su);

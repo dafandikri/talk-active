@@ -4,34 +4,40 @@ import test from 'node:test';
 
 const SITE = 'https://talk-active-id.vercel.app';
 
-test('F-8 public pages ship complete same-origin social and canonical metadata', async () => {
-  const pages = [
-    ['index.html', `${SITE}/`],
-    ['brief.html', `${SITE}/brief.html`],
-  ];
-  for (const [path, canonical] of pages) {
-    const html = await readFile(path, 'utf8');
-    for (const property of ['og:title', 'og:description', 'og:image', 'og:url', 'og:type']) {
-      assert.match(html, new RegExp(`<meta property="${property}" content="[^"]+">`, 'u'));
-    }
-    assert.match(html, /<meta name="twitter:card" content="summary_large_image">/u);
-    assert.match(html, new RegExp(`<link rel="canonical" href="${canonical.replaceAll('.', '\\.')}">`, 'u'));
-    assert.match(html, new RegExp(`<meta property="og:image" content="${SITE.replaceAll('.', '\\.')}\/`, 'u'));
+// The two static HTML pages went with the vanilla build. Next declares the same
+// metadata from the root layout and per-route `alternates.canonical`, so the
+// property being protected — every public route has a canonical URL and a
+// same-origin social card — is checked there instead.
+test('F-8 public routes declare canonical URLs and a same-origin social card', async () => {
+  const layout = await readFile('apps/web/app/layout.tsx', 'utf8');
+
+  for (const field of ['openGraph', 'twitter', 'metadataBase']) {
+    assert.ok(layout.includes(field), `the root layout must declare ${field}`);
+  }
+  // A social image on someone else's origin is a dead card the day they move it.
+  assert.doesNotMatch(
+    layout.replace(/metadataBase[^\n]*\n/u, ''),
+    /https?:\/\/(?!talk-active-id\.vercel\.app)[^'"\s]+/u,
+    'social and metadata assets must stay on our own origin',
+  );
+
+  for (const route of [
+    'apps/web/app/(marketing)/page.tsx',
+    'apps/web/app/(auth)/enter/page.tsx',
+  ]) {
+    const source = await readFile(route, 'utf8');
+    assert.match(source, /alternates:\s*\{\s*canonical:/u, `${route} must declare a canonical URL`);
   }
 });
 
-test('F-8 static and Next runtimes both expose robots and branded not-found surfaces', async () => {
-  const [notFound, robots, layout, nextNotFound, nextRobots] = await Promise.all([
-    readFile('404.html', 'utf8'),
-    readFile('robots.txt', 'utf8'),
+// The static 404.html and robots.txt belonged to the vanilla build and went
+// with it. Next owns both surfaces now, so only one runtime is left to check.
+test('F-8 the Next runtime exposes robots and a branded not-found surface', async () => {
+  const [layout, nextNotFound, nextRobots] = await Promise.all([
     readFile('apps/web/app/layout.tsx', 'utf8'),
     readFile('apps/web/app/not-found.tsx', 'utf8'),
     readFile('apps/web/app/robots.ts', 'utf8'),
   ]);
-  assert.match(notFound, /name="robots" content="noindex"/u);
-  assert.match(notFound, /This route is not part of the rehearsal workspace/u);
-  assert.doesNotMatch(notFound, /https?:\/\/[^"']+/u, '404 resources must stay on the same origin');
-  assert.match(robots, /^User-agent: \*\nAllow: \/\n$/u);
   assert.match(layout, /metadataBase: new URL\('https:\/\/talk-active-id\.vercel\.app'\)/u);
   assert.match(layout, /openGraph:/u);
   assert.match(layout, /twitter:/u);

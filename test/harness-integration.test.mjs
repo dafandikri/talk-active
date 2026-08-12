@@ -36,17 +36,28 @@ test('the repository ships its captain workflow as an executable skill contract'
   assert.match(skill, /Never auto-commit\/push\/PR without an explicit request/iu);
 });
 
+// The vanilla browser-check and demo-gate were deleted with the build they
+// drove. The dimensions they covered — a real browser, and the full judge path
+// end to end — did not go away: check:production runs the Playwright suite in
+// e2e/production-ui against `next start`. This asserts the dimensions, not the
+// filenames, so the next migration cannot quietly drop one.
 test('pnpm check reaches every product-quality gate', () => {
   const scripts = JSON.parse(read('package.json')).scripts;
   assert.equal(scripts.test, 'node --test');
+
   for (const command of [
-    'node --test',
-    'node scripts/browser-check.mjs',
-    'node scripts/demo-gate.mjs',
-    'node scripts/project.mjs check',
+    'node --test',                        // unit, invariants, golden path
+    'pnpm check:production',              // typecheck, build, real-browser e2e
+    'node scripts/project.mjs check',     // required artifacts
     'node scripts/finals-rubric.mjs check',
   ]) {
     assert.match(scripts.check, new RegExp(command.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), 'u'));
+  }
+
+  // check:production must keep all three of its own stages, or "green" starts
+  // meaning less than it did.
+  for (const stage of ['typecheck:production', 'build:production', 'test:production:browser']) {
+    assert.match(scripts['check:production'], new RegExp(stage, 'u'), `check:production lost ${stage}`);
   }
 });
 

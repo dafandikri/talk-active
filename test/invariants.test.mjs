@@ -18,7 +18,7 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-import { DEFAULT_RUBRIC, STARTER_DRAFT, analyzeSpeech } from '../src/analyzer.mjs';
+import { DEFAULT_RUBRIC, STARTER_DRAFT, analyzeSpeech } from '../apps/web/lib/analyzer.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => (existsSync(join(ROOT, rel)) ? readFileSync(join(ROOT, rel), 'utf8') : null);
@@ -55,12 +55,14 @@ const NEXT_PRODUCT_SURFACES = [
   ...sourceFilesUnder('apps/web/app'),
   ...sourceFilesUnder('apps/web/components'),
 ];
+// The vanilla ES-module build was deleted on 12 August once production had
+// been serving the Next.js app for a full verification pass. Its entries lived
+// here; removing them without putting the Next surfaces in their place would
+// have left all eight invariants enforced over nothing, silently — which is
+// the failure this file exists to prevent, applied to itself.
 const PRODUCT_SURFACES = [
-  'index.html',
-  'brief.html',
-  'src/app.mjs',
-  'src/analyzer.mjs',
   ...NEXT_PRODUCT_SURFACES,
+  'apps/web/lib/analyzer.ts',
 ];
 const PROPOSAL_BODY = 'docs/proposal/body.tex';
 const PROPOSAL_REFS = 'docs/proposal/backmatter.tex';
@@ -160,9 +162,33 @@ test('INV-2 the product never overclaims what the analyzer does', () => {
   }
 });
 
-// The deployed vanilla product still has only a local display-name label and
-// must not borrow account vocabulary. The production build may use it only
-// while the real Better Auth handler and generated credential schema exist.
+// This guard used to ban account vocabulary outright, because the vanilla
+// build had nothing behind it. The Next build has two things behind it: real
+// Better Auth on /account, and a deliberate demonstration sign-in on /enter.
+// A ban would now be wrong, so the rule became the one that actually protects
+// the user — wherever the interface asks for a password it cannot check, it
+// has to say so on the same screen.
+test('INV-2 a sign-in the build cannot check discloses that it cannot', () => {
+  const gate = read('apps/web/components/entry-gate.tsx');
+  if (!gate) return;
+
+  assert.match(
+    gate,
+    /demonstration sign-in/iu,
+    'the entry screen collects a password it never verifies; it must say so where the user can read it',
+  );
+  assert.match(
+    gate,
+    /No account is created/iu,
+    'the disclosure must state that no account is created',
+  );
+  assert.doesNotMatch(
+    gate,
+    /\b(?:secure|encrypted|protected|safe)\b/iu,
+    'a demonstration form must not borrow the vocabulary of security it does not provide',
+  );
+});
+
 const AUTHENTICATION_CLAIMS = [
   /\bsign[-\s]?in(?:g)?\b/iu,
   /\bsign[-\s]?up\b/iu,
@@ -172,8 +198,16 @@ const AUTHENTICATION_CLAIMS = [
   /\bpassword\b/iu,
 ];
 
-test('INV-2 account language appears only where the build has real authentication', () => {
-  for (const relative of ['index.html', 'brief.html', 'src/app.mjs', 'src/analyzer.mjs']) {
+// Everywhere that is not the entry screen or the real account page still has
+// no business implying an account exists.
+test('INV-2 account language stays on the screens that own it', () => {
+  const owners = new Set([
+    'apps/web/components/entry-gate.tsx',
+    'apps/web/components/account-panel.tsx',
+    'apps/web/app/(auth)/enter/page.tsx',
+    'apps/web/app/(workspace)/account/page.tsx',
+  ]);
+  for (const relative of PRODUCT_SURFACES.filter((file) => !owners.has(file))) {
     const source = read(relative);
     if (!source) continue;
     for (const [number, line] of source.split(/\r?\n/u).entries()) {
@@ -198,16 +232,16 @@ test('INV-2 account language appears only where the build has real authenticatio
 // A workspace that greets every booth visitor by one teammate's name is
 // telling them something false about whose device they are holding.
 test('INV-2 the workspace does not ship a hardcoded personal identity', () => {
-  const markup = read('index.html');
-  const chip = /<div class="profile-chip">([\s\S]*?)<\/div>\s*<\/div>/u.exec(markup)?.[1] ?? '';
+  const frame = read('apps/web/components/workspace-frame.tsx');
+  if (!frame) return;
   assert.ok(
-    !/>\s*(?:Dafa|DF)\s*</u.test(chip),
-    'index.html hardcodes a personal name into the profile chip; render it from workspace state instead.',
+    !/["'>]\s*(?:Dafa|DF)\s*[<"']/u.test(frame),
+    'the profile chip hardcodes a personal name; render it from the stored identity instead.',
   );
   assert.match(
-    markup,
-    /id="rehearserName"/u,
-    'the profile chip needs an element the interface can fill with the current rehearser.',
+    frame,
+    /readGuestIdentity/u,
+    'the profile chip must read the current rehearser rather than ship a fixed name.',
   );
 });
 
@@ -259,7 +293,7 @@ test('INV-3 the weakest criterion always drives the judge question', () => {
 // ---------------------------------------------------------------------------
 
 test('INV-4 the product states what its analysis is not', () => {
-  const markup = read('index.html');
+  const markup = read('apps/web/components/practice-room.tsx');
   if (!markup) return;
   assertContains(
     markup,
@@ -286,7 +320,7 @@ test('INV-4 the proposal states its honest boundary', () => {
 // ---------------------------------------------------------------------------
 
 test('INV-5 user-supplied content is never assigned as HTML', () => {
-  for (const relative of ['src/app.mjs', ...NEXT_PRODUCT_SURFACES]) {
+  for (const relative of NEXT_PRODUCT_SURFACES) {
     const source = read(relative);
     if (!source) continue;
     const lines = source.split(/\r?\n/u);
@@ -354,15 +388,16 @@ test('INV-7 invalid input raises a typed error instead of guessing', () => {
 //        score, we are selling the generic speaking-coach we said we are not.
 // ---------------------------------------------------------------------------
 test('INV-4 delivery coaching names its own limit and stays subordinate to evidence', () => {
-  const index = read('index.html');
+  const room = read('apps/web/components/practice-room.tsx');
+  if (!room) return;
 
   assertContains(
-    index,
+    room,
     /not a measure of speaking ability/u,
     'the delivery panel must state that it does not measure speaking ability',
   );
   assertContains(
-    index,
+    room,
     /does not change the rubric evidence/u,
     'the delivery panel must state that it does not affect the rubric verdicts',
   );
@@ -370,17 +405,18 @@ test('INV-4 delivery coaching names its own limit and stays subordinate to evide
   // Position encodes priority. If delivery ever moves above the evidence map,
   // the screen starts arguing that HOW you spoke matters more than WHETHER you
   // supported the criterion, which inverts the entire product thesis.
-  const evidenceAt = index.indexOf('id="reviewCriteria"');
-  const deliveryAt = index.indexOf('class="surface delivery-section"');
+  const evidenceAt = room.indexOf('Rubric evidence map');
+  const deliveryAt = room.indexOf('delivery-section');
   assert.ok(evidenceAt !== -1 && deliveryAt !== -1, 'both the evidence map and the delivery panel must exist');
   assert.ok(
     evidenceAt < deliveryAt,
-    'the rubric evidence map must come before delivery notes; rubric grounding is the product, delivery is support',
+    'the delivery panel must stay below the rubric evidence map; position is what keeps it supporting context',
   );
 });
 
 test('INV-2 filler feedback is written out, not reduced to a grade', () => {
-  const app = read('src/app.mjs');
+  const app = read('apps/web/components/practice-room.tsx');
+  if (!app) return;
 
   // "7 fillers" is a number a student cannot practise against. The individual
   // words are the actionable part, so the code must actually render them.

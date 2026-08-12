@@ -33,6 +33,6 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true
   },
-  "include": ["src/**/*.mjs", "api/**/*.mjs"],
-  "exclude": ["node_modules", "public", "output", "tmp"]
+  "include": ["scripts/**/*.mjs", "test/**/*.mjs"],
+  "exclude": ["node_modules", "output", "tmp", "apps"]
 }

@@ -546,7 +546,17 @@ export function PracticeRoom() {
             </article>;
           })}</div>
         </section>
-        <section className="surface delivery-section"><div className="section-title-row"><div><p className="overline">Delivery notes</p><h2>Supporting context</h2></div></div><p className="delivery-boundary">Word-pattern counts from this transcript. This does not change the rubric evidence above.</p><div className="delivery-metrics"><div className="delivery-metric"><strong>{analysis.delivery.wordsPerMinute}</strong><span>words per minute</span></div><div className="delivery-metric"><strong>{analysis.delivery.wordCount}</strong><span>words spoken</span></div><div className="delivery-metric"><strong>{analysis.delivery.fillerCount}</strong><span>potential fillers</span></div></div></section>
+        <section className="surface delivery-section"><div className="section-title-row"><div><p className="overline">Delivery notes</p><h2>Supporting context</h2></div></div><p className="delivery-boundary">Word-pattern counts from this transcript, and not a measure of speaking ability. This does not change the rubric evidence above.</p><div className="delivery-metrics"><div className="delivery-metric"><strong>{analysis.delivery.wordsPerMinute}</strong><span>words per minute</span></div><div className="delivery-metric"><strong>{analysis.delivery.wordCount}</strong><span>words spoken</span></div><div className="delivery-metric"><strong>{analysis.delivery.fillerCount}</strong><span>potential fillers</span></div></div>
+          {/* "7 fillers" is a number nobody can practise against. The words
+              themselves are the actionable part, so they are written out. */}
+          {analysis.delivery.fillers.length > 0 ? (
+            <ul className="delivery-filler-list">
+              {analysis.delivery.fillers.map((filler) => (
+                <li key={filler.label}><strong>{filler.label}</strong><span>×{filler.count}</span></li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
         <div className="review-actions"><button className="button button-secondary" type="button" onClick={() => setStage('attempt')}>Revise transcript</button><button className="button button-secondary" type="button" onClick={saveSession}>Save without Q&amp;A</button></div>
       </section>}
 

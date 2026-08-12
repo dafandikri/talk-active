@@ -9,13 +9,11 @@ const ROOT = dirname(dirname(SCRIPT_PATH));
 const REQUIRED = [
   'README.md',
   'AGENTS.md',
-  'index.html',
-  'brief.html',
-  'src/app.mjs',
-  'src/analyzer.mjs',
+  'apps/web/app/layout.tsx',
+  'apps/web/lib/analyzer.ts',
+  'apps/web/lib/contracts.ts',
+  'apps/web/next.config.ts',
   'src/styles.css',
-  'scripts/browser-check.mjs',
-  'middleware.js',
   'vercel.json',
   'docs/FEASIBILITY.md',
   'docs/TECHNICAL-MEETING-2026.md',
@@ -25,7 +23,7 @@ const REQUIRED = [
   'docs/specs/2026-08-10-innovation-week.md',
   'scripts/finals-rubric.mjs',
   '.agent-harness/install.json',
-  'test/analyzer.test.mjs',
+  'test/golden-path.test.mjs',
 ];
 
 function quoted(value) {

@@ -1,12 +1,19 @@
 import Link from 'next/link';
 
+import logo from '../../../src/assets/brand/talk-active-logo.svg';
 import type { Project } from '@/lib/contracts';
 
 export function ProductionShell({ project }: Readonly<{ project: Project }>) {
   return (
     <main className="production-shell">
       <nav className="production-shell__nav" aria-label="Primary navigation">
-        <Link className="production-shell__brand" href="/">Talk-Active</Link>
+        {/* The landing had lost its mark in the port and shipped a bare text
+            link. The visual system is frozen, so the lockup is restored here in
+            the same shape the workspace uses. */}
+        <Link className="production-shell__brand brand" href="/" aria-label="Talk-Active home">
+          <img className="brand-mark" src={logo.src} alt="" />
+          <span className="brand-wordmark">Talk-<strong className="brand-wordmark-accent">Active</strong></span>
+        </Link>
         <Link href="/workspace">Open workspace</Link>
       </nav>
 

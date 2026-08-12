@@ -18,7 +18,7 @@
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { AnalysisError, analyzeSpeech, evaluateDefense } from '../src/analyzer.mjs';
+import { AnalysisError, analyzeSpeech, evaluateDefense } from '../apps/web/lib/analyzer.ts';
 import {
   ANALYSIS_SCENARIOS,
   DEFENSE_SCENARIOS,

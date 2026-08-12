@@ -3,11 +3,10 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { AnalysisError, analyzeSpeech, evaluateDefense } from '../src/analyzer.mjs';
 import {
-  AnalysisError as TypeScriptAnalysisError,
-  analyzeSpeech as analyzeSpeechTypeScript,
-  evaluateDefense as evaluateDefenseTypeScript,
+  AnalysisError,
+  analyzeSpeech,
+  evaluateDefense,
 } from '../apps/web/lib/analyzer.ts';
 import {
   ANALYSIS_SCENARIOS,
@@ -43,17 +42,11 @@ for (const entry of golden.analyses) {
   test(`analysis is unchanged: ${entry.id} — ${entry.description}`, () => {
     assert.deepEqual(analyzeSpeech(entry.input), entry.output);
   });
-  test(`TypeScript parity: ${entry.id}`, () => {
-    assert.deepEqual(analyzeSpeechTypeScript(entry.input), entry.output);
-  });
 }
 
 for (const entry of golden.defenses) {
   test(`defense evaluation is unchanged: ${entry.id} — ${entry.description}`, () => {
     assert.deepEqual(evaluateDefense(entry.input), entry.output);
-  });
-  test(`TypeScript defense parity: ${entry.id}`, () => {
-    assert.deepEqual(evaluateDefenseTypeScript(entry.input), entry.output);
   });
 }
 
@@ -63,17 +56,6 @@ for (const entry of golden.errors) {
       () => analyzeSpeech(entry.input),
       (error) => {
         assert.ok(error instanceof AnalysisError, `${entry.id} threw ${error?.constructor?.name}, not AnalysisError`);
-        assert.equal(error.code, entry.error.code);
-        assert.equal(error.message, entry.error.message);
-        return true;
-      },
-    );
-  });
-  test(`TypeScript invalid input parity: ${entry.id}`, () => {
-    assert.throws(
-      () => analyzeSpeechTypeScript(entry.input),
-      (error) => {
-        assert.ok(error instanceof TypeScriptAnalysisError);
         assert.equal(error.code, entry.error.code);
         assert.equal(error.message, entry.error.message);
         return true;
