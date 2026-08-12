@@ -52,8 +52,9 @@ a student to answer in their own words. It never celebrates a “pass,” scolds
 ### Mark rules
 
 - Use the captain-supplied `src/assets/LOGO.png`; do not redraw or
-  auto-vectorise it per surface. The generated SVG remains historical draft
-  material, not a production brand asset.
+  auto-vectorise it per surface. The dashboard-only
+  `src/assets/LOGO-dashboard.png` changes only the canvas transparency and
+  preserves the supplied bird and white speech-bubble interior.
 - Preserve the full body. Do not crop the mark down to the head.
 - Preserve the supplied colours in the application and booth mark. Apparel is
   the deliberate exception: use the one-ink asset described below.
@@ -70,11 +71,12 @@ wordmark. Keep the hyphen: speaking and acting read as one connected idea.
 deep leaf on light landing surfaces—but the rest of the name stays black or
 white. Do not show a generic text-only product name where the lockup fits.
 Use `src/assets/LOGO & TAGLINE.png` only where the complete lockup has enough
-space to keep its wordmark and tagline legible; use `LOGO.png` for interface
-navigation, workflow markers, the booth header, and the favicon.
-Both supplied PNGs have an opaque white canvas. Treat that canvas as an
-intentional compact logo tile on coloured surfaces; never stretch it or try to
-remove it with a CSS filter.
+space to keep its wordmark and tagline legible. Use `LOGO-dashboard.png` for
+workspace navigation, workflow markers, and the workspace favicon; use
+`LOGO.png` for the public brief and booth.
+The two supplied PNGs remain untouched. The derived dashboard file has a
+transparent outer canvas and a white speech-bubble interior; the interface
+must not add a second background tile around it.
 
 ### Character render
 

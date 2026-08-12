@@ -59,6 +59,10 @@ test('static server exposes the product workspace but not research documents', a
   assert.equal(mascot.status, 200);
   assert.match(mascot.headers.get('content-type'), /image\/png/u);
 
+  const dashboardMark = await fetch(`${origin}/src/assets/LOGO-dashboard.png`);
+  assert.equal(dashboardMark.status, 200);
+  assert.match(dashboardMark.headers.get('content-type'), /image\/png/u);
+
   const taglineLockup = await fetch(`${origin}/src/assets/LOGO%20%26%20TAGLINE.png`);
   assert.equal(taglineLockup.status, 200);
   assert.match(taglineLockup.headers.get('content-type'), /image\/png/u);

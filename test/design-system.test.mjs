@@ -20,6 +20,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { inflateSync } from 'node:zlib';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
@@ -28,6 +29,7 @@ const TOKENS = read('src/tokens.css');
 const STYLES = read('src/styles.css');
 const APPAREL_MARK = read('src/assets/macaw-mark-white.svg');
 const PRODUCT_MARK = readFileSync(join(ROOT, 'src/assets/LOGO.png'));
+const DASHBOARD_MARK = readFileSync(join(ROOT, 'src/assets/LOGO-dashboard.png'));
 const TAGLINE_LOCKUP = readFileSync(join(ROOT, 'src/assets/LOGO & TAGLINE.png'));
 const INDEX = read('index.html');
 const BRIEF = read('brief.html');
@@ -39,6 +41,52 @@ function pngMetadata(buffer) {
     height: buffer.readUInt32BE(20),
     colourType: buffer[25],
   };
+}
+
+function rgbaPixel(buffer, x, y) {
+  const metadata = pngMetadata(buffer);
+  assert.equal(buffer[24], 8, 'dashboard PNG must remain 8-bit');
+  assert.equal(metadata.colourType, 6, 'dashboard PNG must remain RGBA');
+  assert.equal(buffer[28], 0, 'dashboard PNG must remain non-interlaced');
+
+  const idat = [];
+  for (let offset = 8; offset < buffer.length;) {
+    const length = buffer.readUInt32BE(offset);
+    const type = buffer.subarray(offset + 4, offset + 8).toString('ascii');
+    if (type === 'IDAT') idat.push(buffer.subarray(offset + 8, offset + 8 + length));
+    offset += length + 12;
+  }
+
+  const source = inflateSync(Buffer.concat(idat));
+  const stride = metadata.width * 4;
+  const decoded = Buffer.alloc(metadata.height * stride);
+  const paeth = (left, above, upperLeft) => {
+    const estimate = left + above - upperLeft;
+    const leftDistance = Math.abs(estimate - left);
+    const aboveDistance = Math.abs(estimate - above);
+    const upperLeftDistance = Math.abs(estimate - upperLeft);
+    return leftDistance <= aboveDistance && leftDistance <= upperLeftDistance
+      ? left
+      : aboveDistance <= upperLeftDistance ? above : upperLeft;
+  };
+
+  for (let row = 0; row < metadata.height; row += 1) {
+    const filter = source[row * (stride + 1)];
+    const sourceStart = row * (stride + 1) + 1;
+    const targetStart = row * stride;
+    for (let column = 0; column < stride; column += 1) {
+      const raw = source[sourceStart + column];
+      const left = column >= 4 ? decoded[targetStart + column - 4] : 0;
+      const above = row > 0 ? decoded[targetStart + column - stride] : 0;
+      const upperLeft = row > 0 && column >= 4 ? decoded[targetStart + column - stride - 4] : 0;
+      const predictor = [0, left, above, Math.floor((left + above) / 2), paeth(left, above, upperLeft)][filter];
+      assert.notEqual(predictor, undefined, `unsupported PNG filter ${filter}`);
+      decoded[targetStart + column] = (raw + predictor) & 0xff;
+    }
+  }
+
+  const pixel = y * stride + x * 4;
+  return [...decoded.subarray(pixel, pixel + 4)];
 }
 
 // Comments carry the reasoning, and the reasoning mentions the very literals
@@ -273,9 +321,14 @@ test('the captain-supplied speaking-bird palette remains exact', () => {
 
 test('the captain-supplied PNG marks remain the product source of truth', () => {
   assert.deepEqual(pngMetadata(PRODUCT_MARK), { width: 823, height: 630, colourType: 6 });
+  assert.deepEqual(pngMetadata(DASHBOARD_MARK), { width: 823, height: 630, colourType: 6 });
   assert.deepEqual(pngMetadata(TAGLINE_LOCKUP), { width: 1019, height: 1005, colourType: 6 });
   assert.ok(PRODUCT_MARK.length < 100_000, 'icon-only logo should stay below 100 KB');
+  assert.ok(DASHBOARD_MARK.length < 100_000, 'transparent dashboard logo should stay below 100 KB');
   assert.ok(TAGLINE_LOCKUP.length < 150_000, 'tagline lockup should stay below 150 KB');
+  assert.deepEqual(rgbaPixel(DASHBOARD_MARK, 0, 0), [0, 0, 0, 0], 'outer canvas must be transparent');
+  assert.deepEqual(rgbaPixel(DASHBOARD_MARK, 500, 400), [255, 255, 255, 255], 'speech-bubble interior must stay white');
+  assert.deepEqual(rgbaPixel(DASHBOARD_MARK, 250, 250), rgbaPixel(PRODUCT_MARK, 250, 250), 'bird artwork must match the supplied PNG');
 });
 
 test('the full-body dimensional mascot is local, visible, and motion-safe', () => {
@@ -500,18 +553,19 @@ test('dashboard home carries the approved character-led outlined material', () =
 test('the Talk-Active lockup is consistent across product and landing surfaces', () => {
   assert.equal((INDEX.match(/class="brand-wordmark"/gu) ?? []).length, 2);
   assert.equal((BRIEF.match(/class="brand-wordmark"/gu) ?? []).length, 3);
-  for (const html of [INDEX, BRIEF]) {
-    assert.match(html, /Talk-<(?:strong|span) class="brand-wordmark-accent">Active<\/(?:strong|span)>/u);
-    assert.match(html, /src\/assets\/LOGO\.png/u);
-    assert.match(html, /rel="icon" href="\/src\/assets\/LOGO\.png" type="image\/png"/u);
-  }
+  for (const html of [INDEX, BRIEF]) assert.match(html, /Talk-<(?:strong|span) class="brand-wordmark-accent">Active<\/(?:strong|span)>/u);
+  assert.match(INDEX, /src\/assets\/LOGO-dashboard\.png/u);
+  assert.match(INDEX, /rel="icon" href="\/src\/assets\/LOGO-dashboard\.png" type="image\/png"/u);
+  assert.match(BRIEF, /src\/assets\/LOGO\.png/u);
+  assert.match(BRIEF, /rel="icon" href="\/src\/assets\/LOGO\.png" type="image\/png"/u);
   assert.match(BRIEF, /src\/assets\/LOGO%20%26%20TAGLINE\.png/u);
 });
 
 test('workflow views keep the character system restrained and evidence-safe', () => {
   assert.equal((INDEX.match(/class="workflow-mark"/gu) ?? []).length, 3);
   assert.match(STYLES_CODE, /\.workflow-header\s*\{[^}]*background:\s*var\(--accent-sun-wash\);[^}]*border:\s*2px solid var\(--text-primary\);[^}]*box-shadow:\s*none;/su);
-  assert.match(STYLES_CODE, /\.workflow-mark\s*\{[^}]*border:\s*2px solid var\(--text-primary\);[^}]*box-shadow:\s*none;/su);
+  assert.match(STYLES_CODE, /\.workflow-mark\s*\{[^}]*object-fit:\s*contain;[^}]*box-shadow:\s*none;/su);
+  assert.doesNotMatch(STYLES_CODE, /\.workflow-mark\s*\{[^}]*(?:background|border):/su);
   for (const selector of ['setup-form', 'setup-rubric', 'capture-panel', 'rubric-editor-card', 'rubric-guide', 'progress-chart-card', 'history-card']) {
     assert.match(STYLES_CODE, new RegExp(`(?:\\.${selector}[^{}]*)\\{[^}]*border:\\s*2px solid var\\(--text-primary\\);`, 'su'));
   }

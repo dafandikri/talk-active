@@ -216,11 +216,7 @@ h3 { margin-bottom: 0; font-size: var(--step-2); line-height: var(--leading-snug
   width: 64px;
   height: 52px;
   flex: 0 0 auto;
-  padding: var(--space-1);
   object-fit: contain;
-  background: var(--surface);
-  border: 2px solid var(--text-primary);
-  border-radius: var(--radius-md);
   box-shadow: none;
 }
 .page-lede { max-width: var(--measure); margin: var(--space-4) 0 0; color: var(--text-muted); font-size: var(--step-1); }

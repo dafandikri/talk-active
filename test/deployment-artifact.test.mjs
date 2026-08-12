@@ -29,6 +29,7 @@ test('Vercel publishes only the explicit product runtime', (context) => {
   assert.equal(statSync(join(output, 'index.html')).isFile(), true);
   assert.equal(statSync(join(output, 'src/app.mjs')).isFile(), true);
   assert.equal(statSync(join(output, 'src/assets/LOGO.png')).isFile(), true);
+  assert.equal(statSync(join(output, 'src/assets/LOGO-dashboard.png')).isFile(), true);
   assert.equal(statSync(join(output, 'src/assets/LOGO & TAGLINE.png')).isFile(), true);
   assert.equal(files.some((file) => file.startsWith('docs/')), false);
   assert.equal(files.some((file) => file.startsWith('test/')), false);

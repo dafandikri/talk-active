@@ -25,6 +25,7 @@ export const PUBLIC_RUNTIME_FILES = Object.freeze([
   'src/landing.css',
   'src/booth.css',
   'src/assets/LOGO.png',
+  'src/assets/LOGO-dashboard.png',
   'src/assets/LOGO & TAGLINE.png',
   'src/assets/macaw-mascot-3d.webp',
   'src/assets/rehearsal-loop-arrow.svg',

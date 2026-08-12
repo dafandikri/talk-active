@@ -31,11 +31,13 @@ lists the missing cues; it never appears as a red failure or green success.
 ## Identity: a bird that speaks
 
 The mascot is a simplified full-body speaking bird in profile—face, wing,
-chest, and long tail visible—inside a black speech bubble. It is not a floating head,
+chest, and long tail visible—inside a speech bubble. It is not a floating head,
 assistant orb, emoji, or cartoon scorekeeper.
 
-Use `src/assets/macaw-mark.svg` as the source. The bird itself carries the
-supplied palette:
+Use the captain-supplied `src/assets/LOGO.png` as the source; never redraw or
+auto-vectorise it. Use `src/assets/LOGO-dashboard.png` in the workspace, where
+only the outer canvas is transparent and the speech-bubble interior stays
+white. The bird itself carries the supplied palette:
 
 - sky blue `#1B7EA6` — wing and tail;
 - deep leaf `#2F5923` and bright leaf `#3A731F` — crown and back;
@@ -49,9 +51,9 @@ never congratulates a pass, scolds a failure, or claims to understand a person.
 
 For large welcome and explanation surfaces, use
 `src/assets/macaw-mascot-3d.webp`: the full-body bird on a deep-leaf field,
-speaking from a black bubble with one wing gesturing forward. Animate only a
+speaking from a dark bubble with one wing gesturing forward. Animate only a
 slow greeting/breathing motion and stop it for `prefers-reduced-motion`. Keep the
-SVG mark for navigation, identity, print, and small states.
+supplied PNG artwork for navigation, identity, print, and small states.
 
 The Talk-Active logo lockup always pairs that mark with the hyphenated
 `Talk-Active` wordmark. Keep the wordmark primarily black or white; `Active`

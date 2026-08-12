@@ -207,8 +207,8 @@ async function run() {
     assert.equal(workspace.brandText, 'Talk-Active');
     assert.equal(workspace.brandLockups, 2);
     assert.equal(workspace.brandLogoLoaded, true);
-    assert.equal(workspace.brandLogoSource, '/src/assets/LOGO.png');
-    assert.equal(workspace.favicon, '/src/assets/LOGO.png');
+    assert.equal(workspace.brandLogoSource, '/src/assets/LOGO-dashboard.png');
+    assert.equal(workspace.favicon, '/src/assets/LOGO-dashboard.png');
     assert.equal(workspace.faviconType, 'image/png');
     assert.equal(workspace.homeHeaderBorder, '2px');
     assert.notEqual(workspace.homeHeaderShadow, 'none');

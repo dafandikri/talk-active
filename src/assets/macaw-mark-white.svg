@@ -3,8 +3,8 @@
   <desc id="desc">A white macaw perched inside a white speech-bubble outline, for dark surfaces and apparel.</desc>
 
   <defs>
-    <!-- One ink only. The silhouette matches macaw-mark.svg exactly; the
-         surface behind supplies every other colour. White reveals ink, black
+    <!-- One ink only for apparel. The surface behind supplies every other
+         colour. White reveals ink, black
          withholds it — so the eye stays open, the wing edge stays visible, and
          the parted beak still reads as a bird mid-sentence rather than a blob. -->
     <mask id="macaw-cutouts">
