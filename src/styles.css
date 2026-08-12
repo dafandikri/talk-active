@@ -83,14 +83,15 @@ h3 { margin-bottom: 0; font-size: var(--step-2); line-height: var(--leading-snug
 .brand-wordmark { display: inline-flex; align-items: baseline; white-space: nowrap; }
 .brand-wordmark-accent { color: var(--inverse-accent); font: inherit; }
 
-/* The mark: a speech-bubble corner on an otherwise round form. One asymmetric
-   corner is the whole idea — a voice, given a shape. It survives embroidery,
-   a 16px favicon, and a 2m booth banner without redrawing. */
+/* The captain-supplied raster mark is the finals source of truth. Keep its
+   native proportions; the generated vector draft distorted the macaw. */
 .brand-mark {
-  width: 36px;
+  width: 44px;
   height: 36px;
   display: block;
   flex: 0 0 auto;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
 }
 
 .main-nav { display: grid; gap: var(--space-1); margin-top: var(--space-7); }
@@ -212,9 +213,12 @@ h3 { margin-bottom: 0; font-size: var(--step-2); line-height: var(--leading-snug
 .workflow-header .overline { color: var(--accent-orange-strong); }
 .workflow-heading { display: flex; align-items: flex-start; gap: var(--space-4); min-width: 0; }
 .workflow-mark {
-  width: 52px;
+  width: 64px;
   height: 52px;
   flex: 0 0 auto;
+  padding: var(--space-1);
+  object-fit: contain;
+  background: var(--surface);
   border: 2px solid var(--text-primary);
   border-radius: var(--radius-md);
   box-shadow: none;
@@ -749,7 +753,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 #defenseAnswer { min-height: 250px; }
 .feedback-empty { min-height: 360px; display: grid; place-content: center; justify-items: center; text-align: center; }
 .mascot-guide {
-  width: 72px; height: 72px; display: block; margin-bottom: var(--space-4);
+  width: 88px; height: 72px; display: block; margin-bottom: var(--space-4); object-fit: contain;
 }
 .feedback-empty h3 { margin-bottom: var(--space-2); }
 .feedback-empty p { max-width: 34ch; margin: 0; color: var(--text-muted); font-size: var(--step-0); }
@@ -1010,7 +1014,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 var(--space-4); color: var(--text-on-inverse); background: var(--surface-inverse);
   }
-  .mobile-header .brand-mark { width: 32px; height: 32px; font-size: var(--step-1); }
+  .mobile-header .brand-mark { width: 40px; height: 32px; font-size: var(--step-1); }
   .mobile-header-actions { display: flex; gap: var(--space-2); }
   .icon-button { width: 34px; height: 34px; display: grid; place-items: center; color: var(--text-on-inverse); background: var(--brand); border: 0; border-radius: var(--radius-sm); font-size: var(--step-2); text-decoration: none; }
   .mobile-nav {
@@ -1104,7 +1108,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   .brief-print-summary { display: grid; gap: var(--space-2); }
   .brief-print-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding-bottom: var(--space-2); border-bottom: 1px solid var(--border-strong); font-weight: var(--weight-bold); }
   .brief-print-brand { display: flex; align-items: center; gap: var(--space-2); font-size: var(--step-2); }
-  .brief-print-brand img { width: 28px; height: 28px; }
+  .brief-print-brand img { width: 36px; height: 28px; object-fit: contain; border-radius: var(--radius-sm); }
   .brief-print-header > span { color: var(--text-muted); }
   .brief-print-intro { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, .65fr); column-gap: var(--space-5); padding: var(--space-4); color: var(--text-on-inverse); background: var(--surface-inverse); border-radius: var(--radius-md); }
   .brief-print-intro .overline { grid-column: 1 / -1; margin-bottom: var(--space-1); }

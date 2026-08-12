@@ -28,7 +28,8 @@ test('Vercel publishes only the explicit product runtime', (context) => {
   assert.ok(result.bytes < 1_000_000, `public artifact unexpectedly grew to ${result.bytes} bytes`);
   assert.equal(statSync(join(output, 'index.html')).isFile(), true);
   assert.equal(statSync(join(output, 'src/app.mjs')).isFile(), true);
-  assert.equal(statSync(join(output, 'src/assets/macaw-favicon.svg')).isFile(), true);
+  assert.equal(statSync(join(output, 'src/assets/LOGO.png')).isFile(), true);
+  assert.equal(statSync(join(output, 'src/assets/LOGO & TAGLINE.png')).isFile(), true);
   assert.equal(files.some((file) => file.startsWith('docs/')), false);
   assert.equal(files.some((file) => file.startsWith('test/')), false);
   assert.equal(files.some((file) => file.startsWith('scripts/')), false);
@@ -46,5 +47,5 @@ test('Vercel is configured to serve the allow-list build output', () => {
   assert.match(ignored, /^docs\/$/mu);
   assert.match(ignored, /^test\/$/mu);
   assert.match(ignored, /^AGENTS\.md$/mu);
-  assert.doesNotMatch(ignored, /^src\/assets\/macaw-\*\.svg$/mu);
+  assert.doesNotMatch(ignored, /^src\/assets\/LOGO(?: & TAGLINE)?\.png$/mu);
 });

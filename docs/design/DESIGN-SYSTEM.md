@@ -51,11 +51,13 @@ a student to answer in their own words. It never celebrates a “pass,” scolds
 
 ### Mark rules
 
-- Use `src/assets/macaw-mark.svg`; do not redraw it per surface.
+- Use the captain-supplied `src/assets/LOGO.png`; do not redraw or
+  auto-vectorise it per surface. The generated SVG remains historical draft
+  material, not a production brand asset.
 - Preserve the full body. Do not crop the mark down to the head.
 - Preserve the supplied colours in the application and booth mark. Apparel is
   the deliberate exception: use the one-ink asset described below.
-- Keep the black speech-bubble ground around the bird.
+- Keep the speech-bubble frame and listening dots around the bird.
 - At small sizes, remove supporting copy before shrinking the mark below 32px.
 - On apparel, use `src/assets/macaw-mark-white.svg`; never recolour the
   full-colour application asset by eye.
@@ -67,6 +69,12 @@ wordmark. Keep the hyphen: speaking and acting read as one connected idea.
 `Active` may take one bird-palette accent—yellow on the dark application shell,
 deep leaf on light landing surfaces—but the rest of the name stays black or
 white. Do not show a generic text-only product name where the lockup fits.
+Use `src/assets/LOGO & TAGLINE.png` only where the complete lockup has enough
+space to keep its wordmark and tagline legible; use `LOGO.png` for interface
+navigation, workflow markers, the booth header, and the favicon.
+Both supplied PNGs have an opaque white canvas. Treat that canvas as an
+intentional compact logo tile on coloured surfaces; never stretch it or try to
+remove it with a CSS filter.
 
 ### Character render
 

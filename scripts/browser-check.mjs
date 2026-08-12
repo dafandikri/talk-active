@@ -179,6 +179,10 @@ async function run() {
       coachPrompt: document.querySelector('#coachPrompt')?.textContent.trim(),
       brandText: document.querySelector('.brand-wordmark')?.textContent.trim(),
       brandLockups: document.querySelectorAll('.brand-wordmark').length,
+      brandLogoLoaded: Boolean(document.querySelector('.brand-mark')?.complete && document.querySelector('.brand-mark')?.naturalWidth),
+      brandLogoSource: document.querySelector('.brand-mark')?.getAttribute('src'),
+      favicon: document.querySelector('link[rel="icon"]')?.getAttribute('href'),
+      faviconType: document.querySelector('link[rel="icon"]')?.getAttribute('type'),
       homeHeaderBorder: getComputedStyle(document.querySelector('.home-header')).borderTopWidth,
       homeHeaderShadow: getComputedStyle(document.querySelector('.home-header')).boxShadow,
       focusShadow: getComputedStyle(document.querySelector('.focus-card')).boxShadow,
@@ -202,6 +206,10 @@ async function run() {
     assert.ok(workspace.coachPrompt.length > 20);
     assert.equal(workspace.brandText, 'Talk-Active');
     assert.equal(workspace.brandLockups, 2);
+    assert.equal(workspace.brandLogoLoaded, true);
+    assert.equal(workspace.brandLogoSource, '/src/assets/LOGO.png');
+    assert.equal(workspace.favicon, '/src/assets/LOGO.png');
+    assert.equal(workspace.faviconType, 'image/png');
     assert.equal(workspace.homeHeaderBorder, '2px');
     assert.notEqual(workspace.homeHeaderShadow, 'none');
     assert.notEqual(workspace.focusShadow, 'none');
@@ -235,10 +243,13 @@ async function run() {
       mascot: document.querySelector('.landing-mascot')?.getAttribute('alt'),
       mascotSource: document.querySelector('.landing-mascot')?.getAttribute('src'),
       brandText: document.querySelector('.brief-brand .brand-wordmark')?.textContent.trim(),
+      brandLogoLoaded: Boolean(document.querySelector('.brief-brand .brand-mark')?.complete && document.querySelector('.brief-brand .brand-mark')?.naturalWidth),
+      brandLogoSource: document.querySelector('.brief-brand .brand-mark')?.getAttribute('src'),
+      favicon: document.querySelector('link[rel="icon"]')?.getAttribute('href'),
       gapAsset: Boolean(document.querySelector('.landing-gap-asset')),
       loopArrowLoaded: Boolean(document.querySelector('.landing-loop-arrow')?.complete && document.querySelector('.landing-loop-arrow')?.naturalWidth),
       evidenceStamp: Boolean(document.querySelector('.landing-evidence-stamp')),
-      closingLogo: document.querySelector('.landing-closing-logo')?.textContent.trim(),
+      closingLogoLoaded: Boolean(document.querySelector('.landing-closing-logo img')?.complete && document.querySelector('.landing-closing-logo img')?.naturalWidth),
       problem: document.querySelector('#problemTitle')?.textContent,
       loopSteps: document.querySelectorAll('.brief-loop-grid > li').length,
       evidenceTrace: document.querySelector('.brief-evidence-card')?.getAttribute('aria-label'),
@@ -254,10 +265,13 @@ async function run() {
     assert.match(brief.mascot, /full-body 3D speaking bird/u);
     assert.equal(brief.mascotSource, '/src/assets/macaw-mascot-3d.webp');
     assert.equal(brief.brandText, 'Talk-Active');
+    assert.equal(brief.brandLogoLoaded, true);
+    assert.equal(brief.brandLogoSource, '/src/assets/LOGO.png');
+    assert.equal(brief.favicon, '/src/assets/LOGO.png');
     assert.equal(brief.gapAsset, true);
     assert.equal(brief.loopArrowLoaded, true);
     assert.equal(brief.evidenceStamp, true);
-    assert.equal(brief.closingLogo, 'Talk-Active');
+    assert.equal(brief.closingLogoLoaded, true);
     assert.match(brief.problem, /evidence implicit/u);
     assert.equal(brief.loopSteps, 6);
     assert.equal(brief.evidenceTrace, 'Illustrative evidence trace');
@@ -275,6 +289,9 @@ async function run() {
     const booth = await evaluate(cdp, `(() => ({
       title: document.querySelector('#boothTitle')?.textContent,
       loopSteps: document.querySelectorAll('.booth-loop > li').length,
+      brandLogoLoaded: Boolean(document.querySelector('.booth-brand img')?.complete && document.querySelector('.booth-brand img')?.naturalWidth),
+      brandLogoSource: document.querySelector('.booth-brand img')?.getAttribute('src'),
+      favicon: document.querySelector('link[rel="icon"]')?.getAttribute('href'),
       qrLoaded: Boolean(document.querySelector('.booth-qr-card img')?.complete && document.querySelector('.booth-qr-card img')?.naturalWidth),
       officialLogoLoaded: Boolean(document.querySelector('.booth-event-logo img')?.complete && document.querySelector('.booth-event-logo img')?.naturalWidth),
       boundary: document.querySelector('.booth-footer')?.textContent,
@@ -288,6 +305,9 @@ async function run() {
     assert.match(booth.title, /Bring the rubric/u);
     assert.match(booth.title, /judge will challenge/u);
     assert.equal(booth.loopSteps, 4);
+    assert.equal(booth.brandLogoLoaded, true);
+    assert.equal(booth.brandLogoSource, '/src/assets/LOGO.png');
+    assert.equal(booth.favicon, '/src/assets/LOGO.png');
     assert.equal(booth.qrLoaded, true);
     assert.equal(booth.officialLogoLoaded, true);
     assert.match(booth.boundary, /not confidence or speaking ability/iu);

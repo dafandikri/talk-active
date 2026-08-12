@@ -26,8 +26,9 @@
 }
 
 .brief-brand .brand-mark {
-  width: 40px;
+  width: 50px;
   height: 40px;
+  object-fit: contain;
 }
 
 .brief-brand .brand-wordmark-accent,
@@ -414,7 +415,7 @@
   font-weight: var(--weight-heavy);
   transform: rotate(1deg);
 }
-.landing-gap-voice img { width: 64px; height: 64px; flex: 0 0 auto; }
+.landing-gap-voice img { width: 84px; height: 64px; flex: 0 0 auto; object-fit: contain; border-radius: var(--radius-sm); }
 
 .landing-loop {
   position: relative;
@@ -496,7 +497,7 @@
   transform: rotate(-4deg);
 }
 
-.landing-loop-guide img { width: 120px; }
+.landing-loop-guide img { width: 120px; height: auto; border-radius: var(--radius-sm); }
 .landing-loop-guide p { margin: 0; font-size: var(--step-2); font-weight: var(--weight-heavy); }
 
 .landing-evidence {
@@ -548,7 +549,7 @@
   transform: rotate(-1deg);
 }
 
-.landing-evidence-stamp img { width: 44px; height: 44px; flex: 0 0 auto; }
+.landing-evidence-stamp img { width: 58px; height: 44px; flex: 0 0 auto; object-fit: contain; border-radius: var(--radius-sm); }
 .landing-evidence-stamp strong { color: var(--evidence-strong); }
 
 .landing-evidence .brief-evidence-card {
@@ -637,8 +638,8 @@
 }
 
 .landing-closing-logo img {
-  width: 84px;
-  height: 84px;
+  width: clamp(150px, 13vw, 190px);
+  height: auto;
   animation: landing-mascot-bob 3.2s var(--ease) infinite;
 }
 
@@ -649,7 +650,7 @@
   color: var(--text-primary);
   font-size: var(--step-1);
 }
-.brief-footer-brand .brand-mark { width: 32px; height: 32px; }
+.brief-footer-brand .brand-mark { width: 40px; height: 32px; }
 
 @keyframes landing-mascot-bob {
   0%, 100% { transform: translateY(0) rotate(-2deg); }
@@ -676,7 +677,7 @@
     padding: var(--space-3) var(--space-4);
   }
 
-  .brief-brand .brand-mark { width: 38px; height: 38px; }
+  .brief-brand .brand-mark { width: 46px; height: 36px; }
   .brief-brand { padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1); }
   .brief-topbar-cta { min-height: 44px; padding-inline: var(--space-3); }
   .brief-shell { padding: var(--space-4) var(--space-4) var(--space-7); }

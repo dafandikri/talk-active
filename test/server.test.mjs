@@ -55,17 +55,13 @@ test('static server exposes the product workspace but not research documents', a
     message: 'Paste the scoring matrix first.',
   });
 
-  const mascot = await fetch(`${origin}/src/assets/macaw-mark.svg`);
+  const mascot = await fetch(`${origin}/src/assets/LOGO.png`);
   assert.equal(mascot.status, 200);
-  assert.match(mascot.headers.get('content-type'), /image\/svg\+xml/u);
+  assert.match(mascot.headers.get('content-type'), /image\/png/u);
 
-  const apparelMascot = await fetch(`${origin}/src/assets/macaw-mark-white.svg`);
-  assert.equal(apparelMascot.status, 200);
-  assert.match(apparelMascot.headers.get('content-type'), /image\/svg\+xml/u);
-
-  const favicon = await fetch(`${origin}/src/assets/macaw-favicon.svg`);
-  assert.equal(favicon.status, 200);
-  assert.match(favicon.headers.get('content-type'), /image\/svg\+xml/u);
+  const taglineLockup = await fetch(`${origin}/src/assets/LOGO%20%26%20TAGLINE.png`);
+  assert.equal(taglineLockup.status, 200);
+  assert.match(taglineLockup.headers.get('content-type'), /image\/png/u);
 
   const characterMascot = await fetch(`${origin}/src/assets/macaw-mascot-3d.webp`);
   assert.equal(characterMascot.status, 200);

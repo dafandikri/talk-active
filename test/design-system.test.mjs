@@ -27,9 +27,19 @@ const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 const TOKENS = read('src/tokens.css');
 const STYLES = read('src/styles.css');
 const APPAREL_MARK = read('src/assets/macaw-mark-white.svg');
-const PRODUCT_MARK = read('src/assets/macaw-mark.svg');
+const PRODUCT_MARK = readFileSync(join(ROOT, 'src/assets/LOGO.png'));
+const TAGLINE_LOCKUP = readFileSync(join(ROOT, 'src/assets/LOGO & TAGLINE.png'));
 const INDEX = read('index.html');
 const BRIEF = read('brief.html');
+
+function pngMetadata(buffer) {
+  assert.equal(buffer.subarray(1, 4).toString('ascii'), 'PNG', 'asset must be a PNG');
+  return {
+    width: buffer.readUInt32BE(16),
+    height: buffer.readUInt32BE(20),
+    colourType: buffer[25],
+  };
+}
 
 // Comments carry the reasoning, and the reasoning mentions the very literals
 // these tests ban. Strip them before linting so documentation is not a defect.
@@ -261,12 +271,11 @@ test('the captain-supplied speaking-bird palette remains exact', () => {
   }
 });
 
-test('the product mark is a speaking macaw with the complete palette', () => {
-  assert.match(PRODUCT_MARK, /blue and gold macaw/iu);
-  for (const colour of ['#101312', '#1b7ea6', '#145f7e', '#2f5923', '#3a731f', '#f2b90c', '#bf6b04', '#fffef9']) {
-    assert.match(PRODUCT_MARK, new RegExp(colour, 'iu'), `product mark is missing ${colour}`);
-  }
-  assert.match(PRODUCT_MARK, /hooked macaw beak, parted/iu);
+test('the captain-supplied PNG marks remain the product source of truth', () => {
+  assert.deepEqual(pngMetadata(PRODUCT_MARK), { width: 823, height: 630, colourType: 6 });
+  assert.deepEqual(pngMetadata(TAGLINE_LOCKUP), { width: 1019, height: 1005, colourType: 6 });
+  assert.ok(PRODUCT_MARK.length < 100_000, 'icon-only logo should stay below 100 KB');
+  assert.ok(TAGLINE_LOCKUP.length < 150_000, 'tagline lockup should stay below 150 KB');
 });
 
 test('the full-body dimensional mascot is local, visible, and motion-safe', () => {
@@ -490,12 +499,13 @@ test('dashboard home carries the approved character-led outlined material', () =
 
 test('the Talk-Active lockup is consistent across product and landing surfaces', () => {
   assert.equal((INDEX.match(/class="brand-wordmark"/gu) ?? []).length, 2);
-  assert.ok((BRIEF.match(/class="brand-wordmark"/gu) ?? []).length >= 4);
+  assert.equal((BRIEF.match(/class="brand-wordmark"/gu) ?? []).length, 3);
   for (const html of [INDEX, BRIEF]) {
     assert.match(html, /Talk-<(?:strong|span) class="brand-wordmark-accent">Active<\/(?:strong|span)>/u);
-    assert.match(html, /src\/assets\/macaw-mark\.svg/u);
-    assert.match(html, /rel="icon" href="\/src\/assets\/macaw-favicon\.svg"/u);
+    assert.match(html, /src\/assets\/LOGO\.png/u);
+    assert.match(html, /rel="icon" href="\/src\/assets\/LOGO\.png" type="image\/png"/u);
   }
+  assert.match(BRIEF, /src\/assets\/LOGO%20%26%20TAGLINE\.png/u);
 });
 
 test('workflow views keep the character system restrained and evidence-safe', () => {

@@ -48,7 +48,7 @@ body { margin: 0; min-width: 320px; min-height: 100%; }
   letter-spacing: -0.04em;
 }
 
-.booth-brand img { width: clamp(40px, 4vw, 62px); height: auto; }
+.booth-brand img { width: clamp(54px, 5vw, 78px); height: auto; object-fit: contain; border-radius: 6px; }
 .booth-brand strong { color: var(--accent-sun); }
 
 .booth-event { align-items: center; gap: 20px; }
