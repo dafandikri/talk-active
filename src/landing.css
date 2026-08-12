@@ -55,7 +55,8 @@
 }
 
 .landing-hero {
-  min-height: 620px;
+  /* No min-height. The hero is already taller than any floor worth setting,
+     so the floor only ever pushed the call to action further down. */
   grid-template-columns: minmax(0, 1.05fr) minmax(390px, .95fr);
   align-items: center;
   padding: clamp(2rem, 4.5vw, 3.25rem);
@@ -91,8 +92,12 @@
 .landing-eyebrow span { color: var(--accent-sun); }
 
 .landing-hero h1 {
-  max-width: 14ch;
-  font-size: clamp(2.875rem, 5vw, 4.8rem);
+  /* 14ch forced this 68-character headline onto five lines and pushed the
+     call to action off a 720px projector. A wider measure and a smaller top
+     end fit it in four lines without making it any less the loudest thing on
+     the page. scripts/browser-check.mjs pins the result. */
+  max-width: 17ch;
+  font-size: clamp(2.375rem, 3.9vw, 3.5rem);
 }
 
 .landing-hero-copy > p:not(.landing-eyebrow, .landing-honesty-note) {
@@ -102,7 +107,7 @@
   font-size: var(--step-2);
 }
 
-.landing-hero .brief-actions { margin-top: var(--space-6); }
+.landing-hero .brief-actions { margin-top: var(--space-5); }
 
 .landing-primary-cta {
   min-height: 54px;

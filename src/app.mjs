@@ -7,6 +7,7 @@ import {
   evaluateDefense,
   parseRubric,
 } from './analyzer.mjs';
+import { analysisStages } from './analysis-progress.mjs';
 
 const STORAGE_KEY = 'talkactive.workspace.v1';
 // Kept out of the workspace blob: it is a property of this device's microphone
@@ -15,6 +16,10 @@ const DICTATION_LANGUAGE_KEY = 'talkactive.dictation.language';
 
 const initialWorkspace = {
   version: 1,
+  // A display name, not an identity. null means "never asked", '' means
+  // "asked, chose guest", and a string is a name. The distinction is what lets
+  // the booth handover prompt appear exactly once per visitor.
+  rehearser: null,
   activeProjectId: 'project-talk-active',
   projects: [
     {
@@ -90,6 +95,10 @@ const state = {
   practiceProjectId: null,
   analysis: null,
   analysisRequestId: 0,
+  analysisStartedAt: 0,
+  analysisCriteriaCount: 0,
+  analysisTicker: null,
+  analysisSpoken: '',
   defense: null,
   recognition: null,
   recordingStartedAt: null,
@@ -206,6 +215,17 @@ const elements = {
   closeResetDialog: $('#closeResetDialog'),
   cancelReset: $('#cancelReset'),
   confirmReset: $('#confirmReset'),
+  analysisProgress: $('#analysisProgress'),
+  analysisAnnounce: $('#analysisAnnounce'),
+  rehearserChip: $('#rehearserChip'),
+  rehearserInitials: $('#rehearserInitials'),
+  rehearserName: $('#rehearserName'),
+  rehearserHint: $('#rehearserHint'),
+  rehearserDialog: $('#rehearserDialog'),
+  rehearserInput: $('#rehearserInput'),
+  closeRehearserDialog: $('#closeRehearserDialog'),
+  continueAsGuest: $('#continueAsGuest'),
+  saveRehearser: $('#saveRehearser'),
   toast: $('#toast'),
   toastCopy: $('#toastCopy'),
 };
@@ -645,12 +665,84 @@ async function upgradeWithSemantics(payload) {
   }
 }
 
-function setAnalysisLoading(isLoading) {
+function renderAnalysisStages(stages) {
+  // INV-5: every string here is ours, but the list is rebuilt through the DOM
+  // rather than markup so it stays consistent with the rest of the interface.
+  elements.analysisProgress.replaceChildren(...stages.map((stage) => {
+    const item = document.createElement('li');
+    item.className = `analysis-stage is-${stage.state}`;
+    item.dataset.stage = stage.id;
+
+    const icon = document.createElement('span');
+    icon.className = 'analysis-stage-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = { done: '✓', active: '◐', skipped: '–' }[stage.state] ?? '·';
+
+    const body = document.createElement('span');
+    const label = document.createElement('strong');
+    label.textContent = stage.label;
+    const detail = document.createElement('small');
+    detail.textContent = stage.detail;
+    body.append(label, detail);
+
+    item.append(icon, body);
+    return item;
+  }));
+}
+
+function paintAnalysisProgress(outcome = null) {
+  const stages = analysisStages({
+    criteriaCount: state.analysisCriteriaCount,
+    elapsedMs: Date.now() - state.analysisStartedAt,
+    outcome,
+  });
+  renderAnalysisStages(stages);
+
+  // Announce the stage the user is waiting on, but only when it changes —
+  // a per-second counter in a live region is unusable with a screen reader.
+  const spoken = stages.map((stage) => `${stage.label}.`).join(' ');
+  if (spoken !== state.analysisSpoken) {
+    state.analysisSpoken = spoken;
+    elements.analysisAnnounce.textContent = spoken;
+  }
+}
+
+/**
+ * @param {boolean} isLoading
+ * @param {{criteriaCount?: number, outcome?: 'semantic'|'deterministic'|null}} options
+ *   `outcome` leaves the finished stages on screen, so a user who returns via
+ *   "Revise transcript" can still see whether the last review fell back.
+ *   Omitting it clears the panel outright, which is what a reset wants.
+ */
+function setAnalysisLoading(isLoading, { criteriaCount = 0, outcome = null } = {}) {
   elements.analyzeAttempt.disabled = isLoading;
   elements.analyzeAttempt.setAttribute('aria-busy', String(isLoading));
   elements.analyzeSpinner.hidden = !isLoading;
   elements.analyzeArrow.hidden = isLoading;
   elements.analyzeLabel.textContent = isLoading ? 'Mapping evidence…' : 'Review this attempt';
+
+  clearInterval(state.analysisTicker);
+  state.analysisTicker = null;
+
+  if (isLoading) {
+    state.analysisStartedAt = Date.now();
+    state.analysisCriteriaCount = criteriaCount;
+    state.analysisSpoken = '';
+    elements.analysisProgress.hidden = false;
+    paintAnalysisProgress();
+    state.analysisTicker = setInterval(paintAnalysisProgress, 1000);
+    return;
+  }
+
+  if (outcome) {
+    paintAnalysisProgress(outcome);
+    return;
+  }
+
+  elements.analysisProgress.hidden = true;
+  elements.analysisProgress.replaceChildren();
+  elements.analysisAnnounce.textContent = '';
+  state.analysisSpoken = '';
 }
 
 async function analyzeAttempt() {
@@ -683,11 +775,11 @@ async function analyzeAttempt() {
     return;
   }
 
-  setAnalysisLoading(true);
+  setAnalysisLoading(true, { criteriaCount: analysis.criteria.length });
   const requestId = ++state.analysisRequestId;
   const semantic = await upgradeWithSemantics(payload);
   if (requestId !== state.analysisRequestId) return;
-  setAnalysisLoading(false);
+  setAnalysisLoading(false, { outcome: semantic ? 'semantic' : 'deterministic' });
 
   state.analysis = semantic ?? analysis;
   elements.reviewMode.textContent = MODE_LABEL[semantic ? 'semantic' : 'deterministic'];
@@ -937,6 +1029,7 @@ function renderAll() {
   renderSetup();
   renderRubricEditor();
   renderProgress();
+  renderRehearser();
 }
 
 function setRoute(route) {
@@ -979,6 +1072,53 @@ function closeResetDialog() {
   if (elements.resetDialog.open) elements.resetDialog.close();
 }
 
+// ---------------------------------------------------------------------------
+//  Who is rehearsing.
+//
+//  This is a label on a workspace, not an account: no server, no credential,
+//  no session. It earns its place at the booth, where one laptop is handed
+//  between visitors and the previous visitor's name on the screen is simply
+//  wrong. INV-2 is why none of the copy borrows the vocabulary of an account:
+//  test/invariants.test.mjs fails the build if it does.
+// ---------------------------------------------------------------------------
+const GUEST_LABEL = 'Guest';
+
+function rehearserName() {
+  return String(state.workspace.rehearser ?? '').trim();
+}
+
+function renderRehearser() {
+  const name = rehearserName();
+  // INV-5: user-supplied text, so textContent only.
+  elements.rehearserName.textContent = name || GUEST_LABEL;
+  elements.rehearserInitials.textContent = name ? initials(name) : 'G';
+  // "Stored on this device" already sits directly above, so this line earns
+  // its space by saying what the chip does rather than repeating that.
+  elements.rehearserHint.textContent = name ? 'Change name' : 'Add your name';
+  elements.rehearserChip.setAttribute(
+    'aria-label',
+    name ? `Rehearsing as ${name}. Change the name on this workspace.` : 'Rehearsing as a guest. Put your name on this workspace.',
+  );
+}
+
+function openRehearserDialog() {
+  elements.rehearserInput.value = rehearserName();
+  if (!elements.rehearserDialog.open) elements.rehearserDialog.showModal();
+  elements.rehearserInput.focus();
+  elements.rehearserInput.select();
+}
+
+function closeRehearserDialog() {
+  if (elements.rehearserDialog.open) elements.rehearserDialog.close();
+}
+
+function setRehearser(name) {
+  state.workspace.rehearser = String(name ?? '').trim().slice(0, 40);
+  persist();
+  renderRehearser();
+  closeRehearserDialog();
+}
+
 function resetWorkspace() {
   if (state.recordingStartedAt && state.recognition) state.recognition.stop();
   state.analysisRequestId += 1;
@@ -1002,6 +1142,10 @@ function resetWorkspace() {
   showPracticeStage('setup');
   setRoute('home');
   showToast('Demo workspace reset');
+  // Pressing reset *is* the booth handover, so this is the one moment where
+  // asking for a name is help rather than friction. A visitor who arrives by
+  // scanning the QR is never gated: they get the product first.
+  openRehearserDialog();
 }
 
 function createProject(event) {
@@ -1164,6 +1308,15 @@ elements.resetButtons.forEach((button) => button.addEventListener('click', openR
 elements.closeResetDialog.addEventListener('click', closeResetDialog);
 elements.cancelReset.addEventListener('click', closeResetDialog);
 elements.confirmReset.addEventListener('click', resetWorkspace);
+elements.rehearserChip.addEventListener('click', openRehearserDialog);
+elements.closeRehearserDialog.addEventListener('click', closeRehearserDialog);
+elements.continueAsGuest.addEventListener('click', () => setRehearser(''));
+elements.saveRehearser.addEventListener('click', () => setRehearser(elements.rehearserInput.value));
+elements.rehearserInput.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter') return;
+  event.preventDefault();
+  setRehearser(elements.rehearserInput.value);
+});
 
 state.practiceProjectId = state.workspace.activeProjectId;
 persist();

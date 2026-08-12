@@ -133,6 +133,51 @@ test('INV-2 the product never overclaims what the analyzer does', () => {
   }
 });
 
+// A name label held in localStorage is not an account, and the interface must
+// not borrow the vocabulary of one. "Sign in" invites the judge's follow-up
+// question — "so where are my credentials stored?" — that the build cannot
+// answer. This is INV-2 applied to identity rather than to analysis.
+const AUTHENTICATION_CLAIMS = [
+  /\bsign[-\s]?in(?:g)?\b/iu,
+  /\bsign[-\s]?up\b/iu,
+  /\blog[-\s]?in\b/iu,
+  /\bcreate an account\b/iu,
+  /\byour account\b/iu,
+  /\bpassword\b/iu,
+];
+
+test('INV-2 the product never implies an account system it does not have', () => {
+  for (const relative of PRODUCT_SURFACES) {
+    const source = read(relative);
+    if (!source) continue;
+    for (const [number, line] of source.split(/\r?\n/u).entries()) {
+      for (const pattern of AUTHENTICATION_CLAIMS) {
+        assert.ok(
+          !pattern.test(line),
+          `${relative}:${number + 1} implies authentication (${pattern}); `
+          + 'the display name is a local label on this device, not an account.',
+        );
+      }
+    }
+  }
+});
+
+// A workspace that greets every booth visitor by one teammate's name is
+// telling them something false about whose device they are holding.
+test('INV-2 the workspace does not ship a hardcoded personal identity', () => {
+  const markup = read('index.html');
+  const chip = /<div class="profile-chip">([\s\S]*?)<\/div>\s*<\/div>/u.exec(markup)?.[1] ?? '';
+  assert.ok(
+    !/>\s*(?:Dafa|DF)\s*</u.test(chip),
+    'index.html hardcodes a personal name into the profile chip; render it from workspace state instead.',
+  );
+  assert.match(
+    markup,
+    /id="rehearserName"/u,
+    'the profile chip needs an element the interface can fill with the current rehearser.',
+  );
+});
+
 // ---------------------------------------------------------------------------
 // INV-3  Every verdict cites the evidence behind it.
 //        This is the product's differentiator. If a verdict can reach a user

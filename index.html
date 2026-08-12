@@ -52,11 +52,11 @@
             <span aria-hidden="true">↺</span><span>Reset demo workspace</span>
           </button>
           <div class="privacy-chip"><span aria-hidden="true">●</span> Stored on this device</div>
-          <div class="profile-chip">
-            <span class="avatar" aria-hidden="true">DF</span>
-            <span><strong>Dafa</strong><small>Personal workspace</small></span>
+          <button class="profile-chip" id="rehearserChip" type="button" aria-haspopup="dialog">
+            <span class="avatar" id="rehearserInitials" aria-hidden="true">G</span>
+            <span><strong id="rehearserName">Guest</strong><small id="rehearserHint">Add your name</small></span>
             <span aria-hidden="true">•••</span>
-          </div>
+          </button>
         </div>
       </aside>
 
@@ -252,6 +252,11 @@
                   <span id="analyzeLabel">Review this attempt</span>
                   <span id="analyzeArrow" aria-hidden="true">→</span>
                 </button>
+                <!-- The list itself is not a live region: its seconds counter
+                     ticks once a second and would talk over everything else.
+                     #analysisAnnounce speaks only when a stage changes. -->
+                <ol class="analysis-progress" id="analysisProgress" hidden></ol>
+                <p class="sr-only" id="analysisAnnounce" role="status"></p>
               </div>
               <aside class="session-sidebar">
                 <section class="surface session-goal">
@@ -444,6 +449,25 @@
         <div class="dialog-actions">
           <button class="button button-secondary" id="cancelReset" type="button">Cancel</button>
           <button class="button button-danger" id="confirmReset" type="button">Reset workspace</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- A name label, not an account. It exists so a shared booth laptop stops
+         greeting every visitor by the previous visitor's name. Nothing leaves
+         the device and the kiosk reset clears it. -->
+    <dialog id="rehearserDialog" class="project-dialog rehearser-dialog" aria-labelledby="rehearserDialogTitle">
+      <form method="dialog">
+        <div class="dialog-header">
+          <div><p class="overline">Who is rehearsing?</p><h2 id="rehearserDialogTitle">Put your name on this workspace.</h2></div>
+          <button class="dialog-close" id="closeRehearserDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <p>Talk-Active labels your attempts so a shared laptop does not mix them up with someone else's. The name stays in this browser, and the demo reset clears it.</p>
+        <label for="rehearserInput">Your name</label>
+        <input id="rehearserInput" name="rehearserInput" maxlength="40" autocomplete="off" placeholder="e.g. Sari Wulandari">
+        <div class="dialog-actions">
+          <button class="button button-secondary" id="continueAsGuest" type="button">Continue as guest</button>
+          <button class="button button-primary" id="saveRehearser" type="button">Use this name</button>
         </div>
       </form>
     </dialog>
