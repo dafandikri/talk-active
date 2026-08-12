@@ -31,7 +31,7 @@ import type { NextConfig } from 'next';
 // ============================================================================
 const CONTENT_SECURITY_POLICY = [
   `default-src 'self'`,
-  `script-src 'self' 'unsafe-inline'`,
+  `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'`,
   `style-src 'self' 'unsafe-inline'`,
   `img-src 'self' blob: data:`,
   `font-src 'self'`,
@@ -55,7 +55,7 @@ const nextConfig: NextConfig = {
           { key: 'Content-Security-Policy', value: CONTENT_SECURITY_POLICY },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'no-referrer' },
-          { key: 'Permissions-Policy', value: 'camera=(), geolocation=(), payment=()' },
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=(), payment=()' },
         ],
       },
     ];

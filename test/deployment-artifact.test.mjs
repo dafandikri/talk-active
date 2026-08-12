@@ -11,7 +11,9 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 function filesBelow(directory, root = directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
-    return entry.isDirectory() ? filesBelow(path, root) : [relative(root, path)];
+    return entry.isDirectory()
+      ? filesBelow(path, root)
+      : [relative(root, path).split('\\').join('/')];
   });
 }
 

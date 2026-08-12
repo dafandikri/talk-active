@@ -95,6 +95,28 @@ async function freePort() {
   return port;
 }
 
+function waitForExit(child, timeoutMs = 5_000) {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const finish = (exited) => {
+      clearTimeout(timer);
+      child.off('exit', onExit);
+      resolve(exited);
+    };
+    const onExit = () => finish(true);
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    child.once('exit', onExit);
+  });
+}
+
+async function stopBrowser(browser) {
+  if (browser.exitCode !== null || browser.signalCode !== null) return;
+  browser.kill('SIGTERM');
+  if (await waitForExit(browser)) return;
+  browser.kill('SIGKILL');
+  await waitForExit(browser, 2_000);
+}
+
 async function run() {
   const browserPath = findBrowser();
   if (!browserPath) {
@@ -178,7 +200,7 @@ async function run() {
     ].join('\n') + '\n');
   } finally {
     cdp?.close();
-    browser.kill('SIGTERM');
+    await stopBrowser(browser);
     await new Promise((resolve) => server.close(resolve));
     rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
     rmSync(staging, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });

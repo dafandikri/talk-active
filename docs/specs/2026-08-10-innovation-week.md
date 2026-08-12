@@ -69,12 +69,16 @@ of the product worthy of it.**
 3. **Demo resilience** — public access, kiosk reset, mobile, zero console errors, no external hangs.
 4. **Interface polish** — the screens judges and visitors actually see.
 5. **Pitch + Q&A** — 7-minute script, live demo choreography, drilled answers.
+6. **Experimental multimodal rehearsal (captain-approved branch, 12 Aug)** — opt-in browser
+   dictation plus on-device MediaPipe face/pose landmarks and Web Audio observations. Results
+   keep rubric substance, vocal signals, and visual signals separately inspectable; raw frames
+   and audio are not persisted. The manual transcript path remains the demo-safe fallback.
 
 ### Out — decided, not deferred by accident
 
-Accounts and auth · cloud sync · audio recording and transcription · body-language or facial
-analysis · streaks or gamification · institutional dashboards · any numeric confidence or
-ability score · payment.
+Accounts and auth · cloud sync · stored audio/video · identity recognition · emotion,
+personality, confidence, health, gaze, or hiring inference · candidate ranking · streaks or
+gamification · institutional dashboards · payment.
 
 > Adding scope during a four-day sprint is how demos break. INV-6 is in force. Any addition
 > to this list requires the lead's sign-off and a note in this file.
@@ -90,8 +94,10 @@ ability score · payment.
 | **AD-3** | **Every AI call is wrapped**: `try semantic → catch deterministic`, with a visible mode badge. | INV-8. A dropped connection degrades the demo instead of ending it. |
 | **AD-4** | The model **must return the transcript span** justifying each verdict; a verdict without a span is rejected server-side. | INV-3. This is the differentiator; it cannot be left to prompt politeness. |
 | **AD-5** | Responses are **cached by hash** of (transcript + rubric). | Cost, rate limits, and instant replay of the stage demo. |
-| **AD-6** | **No new runtime dependencies in the client.** Server may use the AI SDK. | The zero-dependency client is part of the feasibility story. |
+| **AD-6** | The client adds one pinned vision dependency, `@mediapipe/tasks-vision@1.0.1`; its WASM and model assets are vendored same-origin. | One reviewed dependency buys the visible camera feature while avoiding a CDN/model-download failure on stage. |
 | **AD-7** | Feature flag `SEMANTIC_ANALYSIS` defaults **on locally, on in production, off if the key is absent**. | Absent key must never crash — it silently degrades. |
+| **AD-8** | Multimodal rehearsal is optional and fail-open. MediaPipe/WASM/model assets are same-origin; browser speech recognition may use the browser vendor's speech service. | The stage path survives denied permissions, unsupported dictation, or failed landmark tracking without losing typed rubric analysis. |
+| **AD-9** | Composite rehearsal grades use a disclosed 50% substance / 25% vocal / 25% visual presentation weighting. Every component exposes observations and missing-measurement coverage. | A demo-friendly summary must not conceal what was actually measured or turn landmarks into emotion/personality claims. |
 
 ### Data flow (target)
 

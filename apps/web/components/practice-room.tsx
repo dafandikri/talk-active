@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import logo from '../../../src/assets/brand/talk-active-logo.svg';
 import {
@@ -38,6 +38,13 @@ import {
 } from '@/lib/evidence-confirmations';
 import { parseSavedSessions, PRODUCTION_SESSIONS_KEY } from '@/lib/progress';
 import { readRubricSourceType, RUBRIC_STORAGE_KEY } from '@/lib/rubric-storage';
+import {
+  MultimodalReview,
+  MultimodalStudio,
+  refreshMultimodalTranscript,
+  type MultimodalAttemptResult,
+  type MultimodalStudioHandle,
+} from '@/components/multimodal-studio';
 
 type Stage = 'setup' | 'attempt' | 'review' | 'defend';
 
@@ -98,6 +105,8 @@ export function PracticeRoom() {
   const [confirmationBusy, setConfirmationBusy] = useState<Record<string, boolean>>({});
   const [confirmationNotes, setConfirmationNotes] = useState<Record<string, string>>({});
   const [reviewId, setReviewId] = useState('');
+  const [multimodalResult, setMultimodalResult] = useState<MultimodalAttemptResult | null>(null);
+  const studioRef = useRef<MultimodalStudioHandle>(null);
   const rubric = useMemo(() => parseRubric(rubricText), [rubricText]);
 
   useEffect(() => {
@@ -149,7 +158,16 @@ export function PracticeRoom() {
     setReviewId(crypto.randomUUID());
     setQuestionSourceFilename(null);
     try {
-      const localResult = analyzeSpeech({ transcript, rubricText, durationSeconds: duration });
+      const captured = await studioRef.current?.stop();
+      const analysisTranscript = transcript.trim() || captured?.transcript || '';
+      const analysisDuration = captured?.durationSeconds ?? duration;
+      if (captured) {
+        const refreshedCapture = refreshMultimodalTranscript(captured, analysisTranscript);
+        setTranscript(analysisTranscript);
+        setDuration(Math.max(1, Math.round(captured.durationSeconds)));
+        setMultimodalResult(refreshedCapture);
+      }
+      const localResult = analyzeSpeech({ transcript: analysisTranscript, rubricText, durationSeconds: analysisDuration });
       const localReusedCitations = detectReusedCitations(localResult.criteria.map((criterion) => ({
         criterionId: criterion.id,
         citedSpan: criterion.excerpt || null,
@@ -167,10 +185,10 @@ export function PracticeRoom() {
           const context = await ensureRemoteContext();
           const created = await requestContract('/api/attempts', CreateAttemptResponseSchema, jsonRequest('POST', {
             projectId: context.projectId,
-            mode: 'typed',
-            transcript,
-            transcriptSource: 'typed',
-            durationSeconds: duration,
+            mode: captured ? 'dictated' : 'typed',
+            transcript: analysisTranscript,
+            transcriptSource: captured ? 'web-speech' : 'typed',
+            durationSeconds: analysisDuration,
           }));
           const evidence = await requestContract(
             `/api/attempts/${created.attempt.id}/evidence`,
@@ -503,9 +521,10 @@ export function PracticeRoom() {
       {stage === 'attempt' && <section className="practice-stage is-visible">
         <div className="attempt-layout">
           <div className="surface capture-panel">
-            <div className="capture-header"><div><p className="overline">Current attempt</p><h2>Talk-Active · RISTEK Finals</h2></div><div className="timer">typed</div></div>
-            <div className="capture-tabs" role="tablist" aria-label="Input method"><button className="is-active" type="button" role="tab" aria-selected="true">Transcript</button><button type="button" role="tab" aria-selected="false" disabled><span className="record-dot" />Dictation follows after browser parity</button></div>
+            <div className="capture-header"><div><p className="overline">Current attempt</p><h2>Talk-Active · RISTEK Finals</h2></div><div className="timer">studio beta</div></div>
+            <div className="capture-tabs capture-layer-chips" aria-label="Capture layers"><span className="is-active">Camera + voice</span><span className="is-active"><i className="record-dot" />Live dictation</span></div>
             <label className="sr-only" htmlFor="attemptTranscript">Practice transcript</label>
+            <MultimodalStudio ref={studioRef} transcript={transcript} onTranscriptChange={setTranscript} onResult={setMultimodalResult} />
             <textarea id="attemptTranscript" rows={15} maxLength={12_000} value={transcript} onChange={(event) => setTranscript(event.target.value)} />
             {sourceDocumentsAvailable && <section className="production-source-attachment" aria-labelledby="sourceAttachmentTitle">
               <div><strong id="sourceAttachmentTitle">Ground the judge question in your material</strong><p>Optional: attach up to three UTF-8 text, Markdown, or JSON files, 40 KB each. Files stay in private project storage.</p></div>
@@ -546,7 +565,8 @@ export function PracticeRoom() {
             </article>;
           })}</div>
         </section>
-        <section className="surface delivery-section"><div className="section-title-row"><div><p className="overline">Delivery notes</p><h2>Supporting context</h2></div></div><p className="delivery-boundary">Word-pattern counts from this transcript. This does not change the rubric evidence above.</p><div className="delivery-metrics"><div className="delivery-metric"><strong>{analysis.delivery.wordsPerMinute}</strong><span>words per minute</span></div><div className="delivery-metric"><strong>{analysis.delivery.wordCount}</strong><span>words spoken</span></div><div className="delivery-metric"><strong>{analysis.delivery.fillerCount}</strong><span>potential fillers</span></div></div></section>
+        {multimodalResult && <MultimodalReview result={multimodalResult} substanceScore={analysis.evidenceScore} />}
+        {!multimodalResult && <section className="surface delivery-section"><div className="section-title-row"><div><p className="overline">Delivery notes</p><h2>Supporting context</h2></div></div><p className="delivery-boundary">Word-pattern counts from this transcript. This does not change the rubric evidence above.</p><div className="delivery-metrics"><div className="delivery-metric"><strong>{analysis.delivery.wordsPerMinute}</strong><span>words per minute</span></div><div className="delivery-metric"><strong>{analysis.delivery.wordCount}</strong><span>words spoken</span></div><div className="delivery-metric"><strong>{analysis.delivery.fillerCount}</strong><span>potential fillers</span></div></div></section>}
         <div className="review-actions"><button className="button button-secondary" type="button" onClick={() => setStage('attempt')}>Revise transcript</button><button className="button button-secondary" type="button" onClick={saveSession}>Save without Q&amp;A</button></div>
       </section>}
 
