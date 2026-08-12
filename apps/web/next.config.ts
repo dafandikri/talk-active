@@ -29,9 +29,13 @@ import type { NextConfig } from 'next';
 //  Revisit when the nonce/prerender conflict is worth paying for. Tracked as
 //  C-1 in docs/specs/2026-08-12-production-backlog.md.
 // ============================================================================
+const SCRIPT_SOURCE = process.env.NODE_ENV === 'development'
+  ? `script-src 'self' 'unsafe-inline' 'unsafe-eval'`
+  : `script-src 'self' 'unsafe-inline'`;
+
 const CONTENT_SECURITY_POLICY = [
   `default-src 'self'`,
-  `script-src 'self' 'unsafe-inline'`,
+  SCRIPT_SOURCE,
   `style-src 'self' 'unsafe-inline'`,
   `img-src 'self' blob: data:`,
   `font-src 'self'`,
@@ -44,6 +48,9 @@ const CONTENT_SECURITY_POLICY = [
 ].join('; ');
 
 const nextConfig: NextConfig = {
+  // The repository's documented dev origin is 127.0.0.1. Allowing that exact
+  // host keeps Turbopack/HMR functional without widening production CORS.
+  allowedDevOrigins: ['127.0.0.1'],
   cacheComponents: true,
   poweredByHeader: false,
   reactStrictMode: true,

@@ -50,7 +50,7 @@ export default function WorkspaceHomePage() {
       </div>
       <section className="surface recent-section" aria-labelledby="recentTitle">
         <div className="section-title-row"><div><p className="overline">Practice log</p><h2 id="recentTitle">Recent sessions</h2></div><Link className="text-button" href="/progress">View all</Link></div>
-        <p className="empty-list">No production sessions saved yet. Your working vanilla history remains untouched during migration.</p>
+        <p className="empty-list">No rehearsals saved yet. Complete one practice attempt and its traceable evidence will appear here.</p>
       </section>
     </section>
   );

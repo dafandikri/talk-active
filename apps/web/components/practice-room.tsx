@@ -27,6 +27,7 @@ import {
   QuestionResponseSchema,
   SourceDocumentDeleteResponseSchema,
   SourceDocumentUploadResponseSchema,
+  StatelessAnalysisResponseSchema,
   type RubricSource,
   type Criterion,
   type ReusedCitation,
@@ -82,6 +83,7 @@ export function PracticeRoom() {
   const [busy, setBusy] = useState(false);
   const [persistence, setPersistence] = useState<'local' | 'neon'>('local');
   const [sourceDocumentsAvailable, setSourceDocumentsAvailable] = useState(false);
+  const [statelessSemanticAvailable, setStatelessSemanticAvailable] = useState(false);
   const [sourceDocuments, setSourceDocuments] = useState<SourceDocument[]>([]);
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [sourceBusy, setSourceBusy] = useState(false);
@@ -108,10 +110,14 @@ export function PracticeRoom() {
       .then((capabilities) => {
         setPersistence(capabilities.persistence);
         setSourceDocumentsAvailable(capabilities.sourceDocuments);
+        setStatelessSemanticAvailable(
+          capabilities.semantic.evidence || capabilities.semantic.question,
+        );
       })
       .catch(() => {
         setPersistence('local');
         setSourceDocumentsAvailable(false);
+        setStatelessSemanticAvailable(false);
       });
   }, []);
 
@@ -158,10 +164,36 @@ export function PracticeRoom() {
         localResult.criteria.map((criterion) => [criterion.id, 'deterministic' as const]),
       );
       if (persistence === 'local') {
-        setAnalysis(localResult);
-        setCriterionEngines(localEngines);
-        setReusedCitations(localReusedCitations);
-        setEngineNote('Evidence mapped by deterministic cue matching on this device.');
+        if (statelessSemanticAvailable) {
+          try {
+            const response = await requestContract(
+              '/api/analyze',
+              StatelessAnalysisResponseSchema,
+              jsonRequest('POST', { transcript, rubricText, durationSeconds: duration }),
+            );
+            setAnalysis(response.analysis);
+            setCriterionEngines(Object.fromEntries(
+              response.criterionEngines.map((item) => [item.criterionId, item.engine]),
+            ));
+            setReusedCitations(response.reusedCitations);
+            const semanticCount = response.criterionEngines.filter(
+              (item) => item.engine === 'semantic',
+            ).length;
+            const deterministicCount = response.criterionEngines.length - semanticCount;
+            const cacheNote = response.cached ? ' This grounded result came from the 24-hour replay cache.' : '';
+            setEngineNote(`${semanticCount} of ${response.criterionEngines.length} criteria used semantic mapping; ${deterministicCount} used deterministic fallback. The judge question used ${response.questionEngine} generation. Every displayed citation passed the exact-span check.${cacheNote}`);
+          } catch (semanticError) {
+            setAnalysis(localResult);
+            setCriterionEngines(localEngines);
+            setReusedCitations(localReusedCitations);
+            setEngineNote(`0 of ${localResult.criteria.length} criteria used semantic mapping. The hosted review was unavailable, so this visible review uses deterministic cue matching on this device. ${semanticError instanceof Error ? semanticError.message : ''}`.trim());
+          }
+        } else {
+          setAnalysis(localResult);
+          setCriterionEngines(localEngines);
+          setReusedCitations(localReusedCitations);
+          setEngineNote(`0 of ${localResult.criteria.length} criteria used semantic mapping. All ${localResult.criteria.length} used deterministic cue matching on this device.`);
+        }
       } else {
         try {
           const context = await ensureRemoteContext();
@@ -200,7 +232,9 @@ export function PracticeRoom() {
               excerpt: verdict.citedSpan ?? '',
             };
           });
-          const weakest = [...mappedCriteria].sort((left, right) => left.score - right.score)[0];
+          const weakest = mappedCriteria.find(
+            (criterion) => criterion.id === question.question.targetCriterionId,
+          );
           if (!weakest) throw new Error('The persisted review contained no criteria.');
           setAnalysis({
             ...localResult,
@@ -216,14 +250,14 @@ export function PracticeRoom() {
           ));
           setReusedCitations(evidence.reusedCitations);
           setRemoteAttemptId(created.attempt.id);
-          setEngineNote(evidence.degraded
-            ? 'The hosted review was saved, with one or more criteria explicitly evaluated by deterministic fallback.'
-            : 'The hosted review was evaluated semantically and every citation was grounded before display.');
+          const semanticCount = evidence.verdicts.filter((verdict) => verdict.engine === 'semantic').length;
+          const deterministicCount = evidence.verdicts.length - semanticCount;
+          setEngineNote(`${semanticCount} of ${evidence.verdicts.length} criteria used semantic mapping; ${deterministicCount} used deterministic fallback. Every displayed citation passed the exact-span check.`);
         } catch (remoteError) {
           setAnalysis(localResult);
           setCriterionEngines(localEngines);
           setReusedCitations(localReusedCitations);
-          setEngineNote(`Hosted persistence was unavailable. This visible review uses deterministic cue matching locally; it was not synced. ${remoteError instanceof Error ? remoteError.message : ''}`.trim());
+          setEngineNote(`0 of ${localResult.criteria.length} criteria used semantic mapping. Hosted persistence was unavailable, so this visible review uses deterministic cue matching locally and was not synced. ${remoteError instanceof Error ? remoteError.message : ''}`.trim());
         }
       }
       setError('');
@@ -511,19 +545,19 @@ export function PracticeRoom() {
               <div><strong id="sourceAttachmentTitle">Ground the judge question in your material</strong><p>Optional: attach up to three UTF-8 text, Markdown, or JSON files, 40 KB each. Files stay in private project storage.</p></div>
               <div className="production-source-controls"><label className="button button-secondary" htmlFor="practiceSourceFile">Choose source</label><input key={sourceDocuments.length} id="practiceSourceFile" type="file" accept=".txt,.md,.markdown,.json,text/plain,text/markdown,application/json" onChange={(event) => setSourceFile(event.target.files?.[0] ?? null)} /><span>{sourceFile?.name ?? 'No file chosen'}</span><button className="button button-secondary" type="button" disabled={!sourceFile || sourceBusy || sourceDocuments.length >= 3} onClick={() => void uploadSourceDocument()}>{sourceBusy ? 'Saving…' : 'Attach privately'}</button></div>
               {sourceDocuments.length > 0 && <ul className="production-source-list">{sourceDocuments.map((document) => <li key={document.id}><span><strong>{document.filename}</strong><small>{Math.ceil(document.sizeBytes / 1000)} KB · private</small></span><button className="text-button" type="button" disabled={sourceBusy} onClick={() => void deleteSourceDocument(document)}>Remove</button></li>)}</ul>}
-              <p className="production-field-note">When semantic question generation is configured, attached text is sent with the weakest criterion under zero-data-retention routing. Otherwise, Talk-Active selects an exact source sentence deterministically.</p>
+              <p className="production-field-note">When semantic question generation is configured, the weakest criterion and attached text are processed by the configured model provider. Otherwise, Talk-Active selects an exact source sentence deterministically.</p>
               {sourceStatus && <p className="rubric-import-status" role="status">{sourceStatus}</p>}
             </section>}
             <div className="capture-footer"><div className="duration-control"><label htmlFor="attemptDuration">Duration</label><input id="attemptDuration" type="number" min="1" max="3600" value={duration} onChange={(event) => setDuration(Number(event.target.value))} /><span>seconds</span></div><span className="save-state"><span aria-hidden="true">●</span> Local guest draft</span></div>
             {error && <p className="form-error" role="alert">{error}</p>}
             <button className="button button-primary button-full" type="button" disabled={busy} aria-busy={busy} onClick={() => void runAnalysis()}>{busy ? 'Reviewing each criterion…' : 'Review this attempt'} <span aria-hidden="true">→</span></button>
           </div>
-          <aside className="session-sidebar"><section className="surface session-goal"><p className="overline">Session goal</p><h3>Make every important claim defensible.</h3><p>Complete the attempt naturally. The review isolates only the next weakness worth fixing.</p></section><section className="surface privacy-card"><span className="privacy-icon" aria-hidden="true">⌾</span><div><strong>{persistence === 'local' ? 'Your work stays local in this iteration' : 'Project sync is active on this deployment'}</strong><p>{persistence === 'local' ? 'Text session history is stored in this browser. Raw audio is never saved.' : 'Attempts and private source files are saved to the configured project services. Raw audio is never saved.'}</p></div></section></aside>
+          <aside className="session-sidebar"><section className="surface session-goal"><p className="overline">Session goal</p><h3>Make every important claim defensible.</h3><p>Complete the attempt naturally. The review isolates only the next weakness worth fixing.</p></section><section className="surface privacy-card"><span className="privacy-icon" aria-hidden="true">⌾</span><div><strong>{persistence === 'local' ? 'Session history stays in this browser' : 'Project sync is active on this deployment'}</strong><p>{persistence === 'local' ? (statelessSemanticAvailable ? 'Semantic review sends transcript and rubric text to the configured model provider. Grounded review results may be cached for up to 24 hours. Raw audio is never saved.' : 'Semantic review is off, so this attempt is checked on-device. Raw audio is never saved.') : 'Attempts and private source files are saved to the configured project services. Raw audio is never saved.'}</p></div></section></aside>
         </div>
       </section>}
 
       {stage === 'review' && analysis && <section className="practice-stage is-visible">
-        <div className="review-hero"><div><p className="overline overline-light">Attempt review</p><h2>One claim needs your attention before the judges find it.</h2><p>This result measures explicit rubric evidence in this transcript—not confidence or speaking ability.</p><p className="analysis-mode">{engineNote}</p></div><div className="coverage-gauge" style={{ '--gauge': `${analysis.evidenceScore * 3.6}deg` } as React.CSSProperties}><strong>{analysis.evidenceScore}%</strong><span>rubric evidence</span></div></div>
+        <div className="review-hero"><div><p className="overline overline-light">Attempt review</p><h2>One claim needs your attention before the judges find it.</h2><p>This result measures explicit rubric evidence in this transcript—not confidence or speaking ability.</p><p className="evidence-analysis-mode"><strong>Analysis provenance</strong><span>{engineNote}</span></p></div><div className="coverage-gauge" style={{ '--gauge': `${analysis.evidenceScore * 3.6}deg` } as React.CSSProperties}><strong>{analysis.evidenceScore}%</strong><span>rubric evidence</span></div></div>
         <div className="review-grid">
           <section className="surface weakness-card"><div className="weakness-heading"><span className="attention-icon" aria-hidden="true">!</span><div><p className="overline">Focus next</p><h3>{analysis.weakest.label}</h3></div></div><p>{analysis.drill}</p><div className="missing-cues"><span>Still implicit</span><div><SignalChips signals={analysis.weakest.missingSignals.slice(0, 5)} empty="No declared cues missing" /></div></div></section>
           <section className="surface judge-preview"><p className="overline">Likely judge question</p><blockquote>{analysis.judgeQuestion}</blockquote>{questionSourceFilename && <p className="question-source-evidence">Grounded in your private source: <strong>{questionSourceFilename}</strong></p>}<button className="button button-primary button-full" type="button" onClick={() => setStage('defend')}>Practise my answer <span aria-hidden="true">→</span></button></section>

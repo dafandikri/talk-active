@@ -132,6 +132,100 @@ test('review visibly flags one citation reused across criteria', async ({ page }
   await expectVisibleControlsHitTest(page);
 });
 
+test('local guest workspace uses stateless semantic review when the capability is available', async ({ page }) => {
+  const transcript = 'Many Indonesian students prepare important presentations alone and only receive feedback after the result is final. Talk-Active lets a student use the actual evaluation rubric while practicing a pitch. It maps each claim in the transcript to a criterion, points out what is still unsupported, and asks a judge-style follow-up question about the weakest claim. The student then retries one focused section and sees whether the evidence improved. The current implementation uses local transcript analysis, so no recording is stored.';
+  const rows = [
+    {
+      id: 'problem-clarity', label: 'Problem clarity',
+      requirementText: 'problem, students, evidence, urgency',
+      signals: ['problem', 'students', 'evidence', 'urgency'],
+      excerpt: 'Many Indonesian students prepare important presentations alone and only receive feedback after the result is final.',
+      missingSignals: ['urgency'],
+    },
+    {
+      id: 'solution-fit', label: 'Solution fit',
+      requirementText: 'rubric, feedback, retry, improvement',
+      signals: ['rubric', 'feedback', 'retry', 'improvement'],
+      excerpt: 'Talk-Active lets a student use the actual evaluation rubric while practicing a pitch.',
+      missingSignals: ['measured improvement'],
+    },
+    {
+      id: 'differentiation', label: 'Differentiation',
+      requirementText: 'competitors, unique logic, traceable',
+      signals: ['competitors', 'unique', 'logic', 'traceable'],
+      excerpt: 'It maps each claim in the transcript to a criterion, points out what is still unsupported, and asks a judge-style follow-up question about the weakest claim.',
+      missingSignals: ['competitor comparison'],
+    },
+    {
+      id: 'feasibility-and-trust', label: 'Feasibility and trust',
+      requirementText: 'prototype, architecture, privacy, limitations',
+      signals: ['prototype', 'architecture', 'privacy', 'limitations'],
+      excerpt: 'The current implementation uses local transcript analysis, so no recording is stored.',
+      missingSignals: ['architecture'],
+    },
+  ].map((row) => ({
+    ...row,
+    score: 50,
+    status: 'partial',
+    matchedSignals: [],
+  }));
+  let analyzeCalls = 0;
+
+  await page.route('**/api/**', async (route) => {
+    const request = route.request();
+    const pathname = new URL(request.url()).pathname;
+    const respond = (body: unknown) => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(body),
+    });
+    if (pathname === '/api/capabilities') return respond({
+      contractVersion: 1,
+      persistence: 'local',
+      accounts: false,
+      sourceDocuments: false,
+      semantic: { rubric: false, evidence: true, question: true, defense: false },
+    });
+    if (pathname === '/api/analyze' && request.method() === 'POST') {
+      analyzeCalls += 1;
+      const input = request.postDataJSON();
+      expect(input.transcript).toBe(transcript);
+      return respond({
+        contractVersion: 1,
+        analysis: {
+          evidenceScore: 50,
+          coveredCount: 0,
+          criterionCount: 4,
+          criteria: rows,
+          weakest: rows[0],
+          judgeQuestion: 'What direct evidence proves this student problem is urgent now?',
+          drill: 'Retry only “Problem clarity” in 30 seconds. Use claim → evidence → why it matters.',
+          delivery: {
+            wordCount: 76, durationSeconds: 90, wordsPerMinute: 51, pace: 'deliberate',
+            fillerCount: 0, fillers: [],
+          },
+        },
+        mode: 'semantic',
+        criterionEngines: rows.map((row) => ({ criterionId: row.id, engine: 'semantic' })),
+        reusedCitations: [],
+        questionEngine: 'semantic',
+        cached: false,
+      });
+    }
+    return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+  });
+
+  await page.goto('/practice');
+  await page.getByRole('button', { name: /Begin this attempt/i }).click();
+  await expect(page.getByText(/Semantic review sends transcript and rubric text/u)).toBeVisible();
+  await page.getByRole('button', { name: /Review this attempt/i }).click();
+  await expect(page.getByText(/4 of 4 criteria used semantic mapping/u)).toBeVisible();
+  await expect(page.getByText(/judge question used semantic generation/u)).toBeVisible();
+  await expect(page.locator('.evidence-provenance')).toHaveCount(4);
+  await expect(page.locator('.evidence-provenance').first()).toContainText('Mapped semantically');
+  expect(analyzeCalls).toBe(1);
+});
+
 test('private source upload grounds the saved judge question with visible provenance', async ({ page }) => {
   const createdAt = '2026-08-12T08:00:00.000Z';
   const projectId = 'project-source-grounding';

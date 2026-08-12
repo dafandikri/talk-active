@@ -36,6 +36,7 @@ const TAGLINE_LOCKUP = readFileSync(join(ROOT, 'src/assets/LOGO & TAGLINE.png'))
 // React surfaces that replaced them, so the markup-level assertions below keep
 // checking the same product decisions rather than being quietly dropped.
 const readAll = (relatives) => relatives.map((relative) => read(relative)).join('\n');
+const WORKSPACE_FRAME = read('apps/web/components/workspace-frame.tsx');
 const INDEX = readAll([
   'apps/web/components/workspace-frame.tsx',
   'apps/web/components/practice-room.tsx',
@@ -579,8 +580,13 @@ test('the Talk-Active lockup is consistent across product and landing surfaces',
   assert.match(BRIEF, /brand\/talk-active-logo\.svg/u, 'the landing must draw the mark from the committed brand asset');
   assert.match(INDEX, /Talk-<(?:strong|span) className="brand-wordmark-accent">Active<\/(?:strong|span)>/u,
     'the accent must stay on "Active" so the lockup reads identically on every surface');
-  // Every surface draws the mark from the committed brand asset, never a copy.
+  // Light workflow headers use the vector lockup; the dark sidebar must use
+  // the supplied RGBA dashboard mark whose speech-bubble interior is white.
   assert.match(INDEX, /brand\/talk-active-logo\.svg/u);
+  assert.match(WORKSPACE_FRAME, /assets\/LOGO-dashboard\.png/u,
+    'the dark workspace shell must use the dashboard mark with its opaque white interior');
+  assert.doesNotMatch(WORKSPACE_FRAME, /brand\/talk-active-logo\.svg/u,
+    'the transparent vector mark makes the speech-bubble interior disappear on the dark sidebar');
 });
 
 test('workflow views keep the character system restrained and evidence-safe', () => {

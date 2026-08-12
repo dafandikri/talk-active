@@ -4,15 +4,25 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 
-import logo from '../../../src/assets/brand/talk-active-logo.svg';
+import logo from '../../../src/assets/LOGO-dashboard.png';
 import { initialsFor, readGuestIdentity } from '@/lib/guest-identity';
 
 const navigation = [
-  { href: '/workspace', icon: '⌂', label: 'Home' },
-  { href: '/practice', icon: '▶', label: 'Practice' },
-  { href: '/rubric', icon: '▦', label: 'Rubric' },
-  { href: '/progress', icon: '↗', label: 'Progress' },
+  { href: '/workspace', icon: 'home', label: 'Home' },
+  { href: '/practice', icon: 'practice', label: 'Practice' },
+  { href: '/rubric', icon: 'rubric', label: 'Rubric' },
+  { href: '/progress', icon: 'progress', label: 'Progress' },
 ] as const;
+
+type NavigationIconName = typeof navigation[number]['icon'] | 'guide';
+
+function NavigationIcon({ name }: Readonly<{ name: NavigationIconName }>) {
+  if (name === 'home') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-7 9 7" /><path d="M5 10v10h14V10M9 20v-6h6v6" /></svg>;
+  if (name === 'practice') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7Z" /></svg>;
+  if (name === 'rubric') return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h8M8 16h5" /></svg>;
+  if (name === 'progress') return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16M7 15l4-4 3 2 5-6" /></svg>;
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.8 9a2.3 2.3 0 0 1 4.4 1c0 1.7-2.2 2-2.2 3.5M12 17h.01" /></svg>;
+}
 
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || (href !== '/workspace' && pathname.startsWith(`${href}/`));
@@ -36,11 +46,11 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
         <nav className="main-nav">
           {navigation.map((item) => (
             <Link className={`nav-item${isActive(pathname, item.href) ? ' is-active' : ''}`} href={item.href} key={item.href}>
-              <span className="nav-icon" aria-hidden="true">{item.icon}</span><span>{item.label}</span>
+              <span className="nav-icon"><NavigationIcon name={item.icon} /></span><span>{item.label}</span>
             </Link>
           ))}
           <Link className="nav-item" href="/">
-            <span className="nav-icon" aria-hidden="true">◎</span><span>How it works</span>
+            <span className="nav-icon"><NavigationIcon name="guide" /></span><span>How it works</span>
           </Link>
         </nav>
         <div className="sidebar-projects">
@@ -78,7 +88,7 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
       <nav className="mobile-nav" aria-label="Mobile navigation">
         {navigation.map((item) => (
           <Link className={isActive(pathname, item.href) ? 'is-active' : ''} href={item.href} key={item.href}>
-            <span aria-hidden="true">{item.icon}</span>{item.label}
+            <span className="nav-icon"><NavigationIcon name={item.icon} /></span>{item.label}
           </Link>
         ))}
       </nav>

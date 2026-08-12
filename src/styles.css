@@ -120,7 +120,8 @@ h3 { margin-bottom: 0; font-size: var(--step-2); line-height: var(--leading-snug
   color: var(--surface-inverse); background: var(--text-on-inverse);
   border-left-color: var(--accent-sun);
 }
-.nav-icon { width: 20px; color: inherit; font-size: var(--step-2); text-align: center; }
+.nav-icon { width: 20px; height: 20px; display: inline-grid; place-items: center; flex: 0 0 auto; color: inherit; }
+.nav-icon svg { width: 100%; height: 100%; display: block; fill: none; stroke: currentcolor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
 .sidebar-projects { margin-top: var(--space-6); }
 .sidebar-label-row {
@@ -551,7 +552,8 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 /* Which engine answered is a boundary, and INV-4 says boundaries are stated.
    It is a provenance note, not a badge of quality, so it stays quiet and is
    never coloured green — that would read as "passed". */
-.analysis-mode { margin-top: var(--space-2); }
+.evidence-analysis-mode { display: grid; gap: var(--space-1); max-width: var(--measure); margin-top: var(--space-4); padding: var(--space-3) var(--space-4); color: var(--text-on-inverse); background: var(--inverse-raised); border-left: 3px solid var(--evidence-on-inverse); border-radius: var(--radius-sm); font-size: var(--step-0); }
+.evidence-analysis-mode strong { color: var(--evidence-on-inverse); font-size: var(--step-0); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
 
 /* Coverage is deliberately SMALL and deliberately labelled. INV-4: it is not a
    confidence or ability score, and a large ring is how it starts looking like
