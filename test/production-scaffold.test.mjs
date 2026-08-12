@@ -7,12 +7,51 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relative) => readFileSync(join(ROOT, relative), 'utf8');
 
-test('M-1 leaves the deployed vanilla build path unchanged until cutover', () => {
+// Cut over on 12 August. This guard used to assert the opposite — that
+// vercel.json still pointed at the vanilla build — and it was right to until
+// the decision was actually made. It now guards the destination instead.
+test('M-13 production is deployed from the Next.js app', () => {
   assert.ok(existsSync(join(ROOT, 'apps/web/app/layout.tsx')));
-  assert.equal(JSON.parse(read('package.json')).scripts.build, 'node scripts/build-public.mjs');
-  assert.equal(JSON.parse(read('vercel.json')).outputDirectory, 'public');
+  const vercel = JSON.parse(read('vercel.json'));
+  assert.equal(vercel.framework, 'nextjs');
+  assert.equal(vercel.outputDirectory, 'apps/web/.next');
+  assert.match(vercel.buildCommand, /@talk-active\/web build/u);
   assert.match(read('apps/web/package.json'), /"next": "16\.3\.0"/u);
   assert.match(read('apps/web/package.json'), /next build --turbopack/u);
+});
+
+// The vanilla deployment carried these headers in vercel.json. Moving the
+// build moved their home to next.config.ts, and a header that quietly stops
+// being sent is the failure nobody notices — so it is asserted rather than
+// trusted.
+test('M-13 the security headers survived the move to next.config.ts', () => {
+  const config = read('apps/web/next.config.ts');
+  for (const directive of [
+    "default-src 'self'",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ]) {
+    assert.ok(config.includes(directive), `Content-Security-Policy lost ${directive}`);
+  }
+  for (const header of ['X-Content-Type-Options', 'Referrer-Policy', 'Permissions-Policy']) {
+    assert.ok(config.includes(header), `${header} is no longer sent`);
+  }
+
+  // script-src is deliberately weaker than the vanilla build's, because a
+  // per-request nonce cannot exist on a statically prerendered page. INV-4
+  // says a boundary is stated, not hidden: if someone tightens or further
+  // loosens this, they have to edit the reasoning next to it.
+  assert.ok(
+    config.includes("script-src 'self' 'unsafe-inline'"),
+    'script-src changed without the accompanying justification being revisited',
+  );
+  assert.match(
+    config,
+    /statically prerendered|prerender/iu,
+    'the reason script-src carries unsafe-inline must stay next to the policy',
+  );
 });
 
 test('P0-1 exposes one schema contract to both UI and route handlers', () => {

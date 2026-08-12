@@ -97,16 +97,18 @@ test('every file the shipped pages actually reference is in the build manifest',
   );
 });
 
-test('Vercel is configured to serve the allow-list build output', () => {
-  const packageJson = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+test('Vercel builds and serves the Next.js application', () => {
   const vercel = JSON.parse(readFileSync(join(ROOT, 'vercel.json'), 'utf8'));
   const ignored = readFileSync(join(ROOT, '.vercelignore'), 'utf8');
 
-  assert.equal(packageJson.scripts.build, 'node scripts/build-public.mjs');
-  assert.equal(vercel.buildCommand, 'pnpm build');
-  assert.equal(vercel.outputDirectory, 'public');
+  assert.equal(vercel.framework, 'nextjs');
+  assert.match(vercel.buildCommand, /@talk-active\/web build/u);
+  assert.equal(vercel.outputDirectory, 'apps/web/.next');
   assert.match(ignored, /^docs\/$/mu);
   assert.match(ignored, /^test\/$/mu);
   assert.match(ignored, /^AGENTS\.md$/mu);
+  // The Next app imports these from src/assets, so excluding them would break
+  // the build rather than merely shrink it.
   assert.doesNotMatch(ignored, /^src\/assets\/LOGO(?: & TAGLINE)?\.png$/mu);
+  assert.doesNotMatch(ignored, /^src\/assets\/?$/mu);
 });
