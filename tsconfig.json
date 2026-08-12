@@ -1,0 +1,38 @@
+{
+  "//": [
+    "TypeScript arrives before the rewrite, not with it.",
+    "",
+    "checkJs type-checks the existing .mjs in place. Nothing is compiled and",
+    "nothing is emitted — the browser keeps loading the same modules it always",
+    "did, and typescript stays a devDependency, so the product's zero",
+    "runtime dependencies are untouched.",
+    "",
+    "The payoff is that every JSDoc type written from here transfers to the",
+    "Next.js port unchanged, and type errors surface now rather than during a",
+    "migration when everything else is also moving.",
+    "",
+    "strict is on from the start. Turning it on later never happens."
+  ],
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true
+  },
+  "include": ["src/**/*.mjs", "api/**/*.mjs"],
+  "exclude": ["node_modules", "public", "output", "tmp"]
+}

@@ -19,6 +19,7 @@
 // test suite compares them directly.
 export const FALLBACK_AFTER_MS = 22_000;
 
+/** @param {number} count @returns {string} */
 function criteriaPhrase(count) {
   const total = Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
   return `${total} ${total === 1 ? 'criterion' : 'criteria'}`;
@@ -26,8 +27,9 @@ function criteriaPhrase(count) {
 
 // A gateway model id is "vendor/model". The vendor is the part worth showing:
 // it is what the reader can act on when one provider is having a bad day.
+/** @param {string|null|undefined} model @returns {string|null} */
 function vendorOf(model) {
-  const vendor = String(model ?? '').split('/')[0].trim();
+  const vendor = String(model ?? '').split('/')[0]?.trim() ?? '';
   return vendor && vendor !== 'undefined' ? vendor : null;
 }
 
@@ -36,6 +38,7 @@ function vendorOf(model) {
 // dropped rather than shown, because "HTTP 503 upstream_connect_error" tells
 // a student nothing and reads as a broken product rather than a working
 // fallback. Never invent a reason that was not reported.
+/** @type {ReadonlyArray<readonly [RegExp, string]>} */
 const FALLBACK_REASONS = [
   [/no quoted span/iu, 'The model could not point to a sentence in your transcript, so its answer was rejected.'],
   [/budget exhausted|timed out|timeout/iu, 'The language model did not answer in time.'],
@@ -43,11 +46,23 @@ const FALLBACK_REASONS = [
   [/rubric could not be parsed/iu, 'The rubric could not be read as criteria.'],
 ];
 
+/**
+ * @param {string|null|undefined} reason
+ * @returns {string} a leading-space sentence, or '' when the reason is unknown
+ */
 function explain(reason) {
-  const match = FALLBACK_REASONS.find(([pattern]) => pattern.test(String(reason ?? '')));
+  const text = String(reason ?? '');
+  const match = FALLBACK_REASONS.find(([pattern]) => pattern.test(text));
   return match ? ` ${match[1]}` : '';
 }
 
+/**
+ * @param {number} elapsedMs
+ * @param {'semantic'|'deterministic'|null} outcome
+ * @param {string|null} model
+ * @param {string|null} reason
+ * @returns {{id: string, state: 'done'|'active'|'skipped', label: string, detail: string}}
+ */
 function semanticStage(elapsedMs, outcome, model, reason) {
   if (outcome === 'semantic') {
     const vendor = vendorOf(model);
