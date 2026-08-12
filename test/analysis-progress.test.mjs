@@ -54,6 +54,30 @@ test('a fallback says so plainly instead of quietly downgrading', () => {
   assert.match(second.detail, /cue-matched result/iu);
 });
 
+test('a semantic answer names the provider that actually answered', () => {
+  const [, second] = analysisStages({
+    criteriaCount: 4, elapsedMs: 9000, outcome: 'semantic', model: 'anthropic/claude-sonnet-4.6',
+  });
+  assert.match(second.detail, /anthropic/iu, 'the response carries the model that answered; say so');
+});
+
+test('a known fallback reason is explained in the user’s terms', () => {
+  const [, second] = analysisStages({
+    criteriaCount: 4, elapsedMs: 22000, outcome: 'deterministic',
+    reason: 'no quoted span could be found in the transcript',
+  });
+  assert.match(second.detail, /could not point to a sentence/iu);
+});
+
+test('an unrecognised failure is not dumped at the user verbatim', () => {
+  const [, second] = analysisStages({
+    criteriaCount: 4, elapsedMs: 22000, outcome: 'deterministic',
+    reason: 'HTTP 503 upstream_connect_error {"trace":"abc123"}',
+  });
+  assert.doesNotMatch(second.detail, /503|trace|abc123/u, 'raw transport errors are not user-facing copy');
+  assert.match(second.detail, /cue-matched result/iu, 'but the user still learns which engine answered');
+});
+
 test('no stage invents per-criterion progress the interface cannot observe', () => {
   for (const elapsed of [0, 3000, 12000, 21000]) {
     for (const stage of analysisStages({ criteriaCount: 4, elapsedMs: elapsed })) {

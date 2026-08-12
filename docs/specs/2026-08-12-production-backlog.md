@@ -112,6 +112,89 @@ The design is settled. These are the things that make it *work well* rather than
 
 ---
 
+## Phase 6 — The two features asked for on 12 August
+
+Both are designed here rather than left as one-liners, because both turned out to have a
+dependency or a trade-off that is not obvious from the request.
+
+### 6.1 Claude/GPT-style progressive reveal (S-1 … S-3)
+
+**This is blocked on M-5, and that is the most useful thing to know about it.**
+
+`src/semantic.mjs:355` sends **one batched call covering every criterion** and walks the model
+chain sequentially. The whole payload arrives at once. There is nothing to stream, because
+nothing finishes before anything else.
+
+Revealing criteria one at a time out of a payload that already arrived complete would be
+theatre — a progress animation over a finished result. That is precisely the class of thing
+INV-2 exists to stop, and a judge who opens the network tab sees a single response.
+
+So the honest sequence is:
+
+| ID | Item | Size | Depends on |
+|---|---|---|---|
+| **S-1** | **M-5 first**: one call per criterion, issued in parallel. | L | — |
+| **S-2** | `/api/analyze` becomes **SSE**. One event per criterion, emitted the moment that criterion's verdict clears `spanIsGrounded`. Plus a terminal event carrying delivery metrics and the weakest-criterion pick. | M | S-1 |
+| **S-3** | Review screen renders the criteria list immediately from the deterministic pass, then **upgrades each row in place** as its semantic event lands. The existing two-stage panel becomes the header of that list. | M | S-2 |
+
+Why this is *better* than a token stream, not merely a substitute: Claude streams tokens
+because prose is linear. Our unit of progress is not a token — it is a **grounded verdict**,
+the thing the product actually promises. Watching evidence attach to criteria one by one shows
+the differentiator working. Watching tokens would show a model talking.
+
+SSE needs no special runtime. Streaming works on the default Node runtime on Vercel Functions;
+`runtime = 'edge'` is not required and should not be used.
+
+**Interim, buildable today (S-0, size S):** the client cannot narrate vendor progress
+*during* the call — `onAttempt` fires server-side inside `analyzeWithSemantics` and nothing
+reaches the browser until the single response lands. What the response *does* carry is `model`
+and `degradedReason`. So the finished stage can name which vendor answered, and on a fallback
+say **why** ("every provider timed out" / "no quoted span could be found in your transcript")
+instead of a generic line. That turns the fallback from an apology into an explanation, and it
+is the whole honest improvement available before S-1.
+
+### 6.2 Real speech-to-text (T-1 … T-4)
+
+The target architecture chose the browser Web Speech API and gave a strong reason: it **never
+hands the application an audio buffer**, so "raw audio is not persisted" is structurally
+impossible to violate rather than a policy someone has to remember.
+
+Moving to a Whisper-class model is the right call for a production product with Indonesian and
+code-mixed speech — Web Speech accuracy on mixed ID/EN is the weakest link in the capture path,
+and it is Chrome-dependent. **But the trade must be stated, because it is a real downgrade in
+the strength of the privacy claim**, from a structural guarantee to a policy:
+
+> Before: we cannot store your audio.
+> After: we do not store your audio.
+
+Both are true. Only the first is unfalsifiable. INV-4 says disclose the boundary, so the copy
+changes with the architecture — this is not a detail to leave to whoever writes the settings
+page.
+
+| ID | Item | Size | Notes |
+|---|---|---|---|
+| **T-1** | `MediaRecorder` capture → `POST /api/transcribe` → Whisper-class model → timestamped transcript. **The audio buffer lives only for the duration of the request.** Never written to Blob, never written to Postgres. | L | Enforce with a test that greps the handler for any persistence call, the same way the invariants are enforced today. |
+| **T-2** | **Keep Web Speech API as a selectable path**, not a fallback that only appears on failure. It is the offline path, the no-API-key path, and the choice for anyone who prefers audio never to leave the device. | M | The offline demo path stops working the day this becomes the only option. |
+| **T-3** | Model choice measured on **Indonesian and code-mixed ID/EN**, not on English WER. Groq `whisper-large-v3-turbo` is the leading candidate on cost and latency; verify against real recordings of the team before committing. | M | Same discipline as A-3: select on the property we need, not the published benchmark. |
+| **T-4** | Rewrite the privacy copy on the practice screen and the brief to match whichever path is active, and say which one is running. | S | INV-2 and INV-4. Non-negotiable and easy to forget. |
+
+### 6.3 The identity affordance
+
+The 12 August regression — a modal after kiosk reset made the whole workspace inert, including
+the sidebar "+" — is fixed. The remaining work is the real thing:
+
+| ID | Item | Size |
+|---|---|---|
+| **X-1** | Better Auth accounts, per M-11, with the guest path preserved as a first-class mode. | L |
+| **X-2** | Project CRUD: rename, archive, delete, reorder. Today a project can only be created. | M |
+| **X-3** | **Hit-test every control in the browser gate**, not just the ones a modal happens to sit over. `element.click()` fires on nodes no human can reach; `document.elementFromPoint` is what catches it. Already applied to the reset path — generalise it. | M |
+
+> **X-3 is the lesson of the 12 August bug and worth more than the bug.** A test suite that
+> drives the product in ways a user cannot will keep reporting green while the product is
+> unusable.
+
+---
+
 ## Deliberately not doing (and the condition that would change it)
 
 Saying no is the useful half. Each of these was considered.

@@ -637,8 +637,14 @@ function looksLikeAnalysis(value) {
     && typeof value.judgeQuestion === 'string';
 }
 
+/**
+ * @returns {Promise<{analysis: object|null, model?: string|null, reason?: string|null}>}
+ *   The reason survives even when the analysis does not. Without it the panel
+ *   can only say the fallback happened, never why, and "why" is the difference
+ *   between an explanation and an apology.
+ */
 async function upgradeWithSemantics(payload) {
-  if (!apiIsReachable()) return null;
+  if (!apiIsReachable()) return { analysis: null, reason: 'fetch unavailable' };
   const abort = new AbortController();
   // Must exceed DEFAULT_TOTAL_BUDGET_MS in src/semantic.mjs (22s). The server
   // may try three vendors in sequence; aborting sooner throws away a
@@ -652,14 +658,16 @@ async function upgradeWithSemantics(payload) {
       body: JSON.stringify(payload),
       signal: abort.signal,
     });
-    if (!response.ok) return null;
+    if (!response.ok) return { analysis: null, reason: `gateway responded ${response.status}` };
     const result = await response.json();
-    if (result.mode !== 'semantic' || !looksLikeAnalysis(result)) return null;
-    return result;
+    if (result.mode !== 'semantic' || !looksLikeAnalysis(result)) {
+      return { analysis: null, reason: result?.degradedReason ?? 'semantic analysis unavailable' };
+    }
+    return { analysis: result, model: result.model ?? null };
   } catch {
     // Offline, blocked, slow, or malformed: the deterministic result already
     // computed below is a complete answer, so degrade quietly rather than fail.
-    return null;
+    return { analysis: null, reason: 'the language model timed out' };
   } finally {
     clearTimeout(timer);
   }
@@ -690,11 +698,13 @@ function renderAnalysisStages(stages) {
   }));
 }
 
-function paintAnalysisProgress(outcome = null) {
+function paintAnalysisProgress(outcome = null, model = null, reason = null) {
   const stages = analysisStages({
     criteriaCount: state.analysisCriteriaCount,
     elapsedMs: Date.now() - state.analysisStartedAt,
     outcome,
+    model,
+    reason,
   });
   renderAnalysisStages(stages);
 
@@ -714,7 +724,7 @@ function paintAnalysisProgress(outcome = null) {
  *   "Revise transcript" can still see whether the last review fell back.
  *   Omitting it clears the panel outright, which is what a reset wants.
  */
-function setAnalysisLoading(isLoading, { criteriaCount = 0, outcome = null } = {}) {
+function setAnalysisLoading(isLoading, { criteriaCount = 0, outcome = null, model = null, reason = null } = {}) {
   elements.analyzeAttempt.disabled = isLoading;
   elements.analyzeAttempt.setAttribute('aria-busy', String(isLoading));
   elements.analyzeSpinner.hidden = !isLoading;
@@ -735,7 +745,7 @@ function setAnalysisLoading(isLoading, { criteriaCount = 0, outcome = null } = {
   }
 
   if (outcome) {
-    paintAnalysisProgress(outcome);
+    paintAnalysisProgress(outcome, model, reason);
     return;
   }
 
@@ -777,9 +787,14 @@ async function analyzeAttempt() {
 
   setAnalysisLoading(true, { criteriaCount: analysis.criteria.length });
   const requestId = ++state.analysisRequestId;
-  const semantic = await upgradeWithSemantics(payload);
+  const upgrade = await upgradeWithSemantics(payload);
   if (requestId !== state.analysisRequestId) return;
-  setAnalysisLoading(false, { outcome: semantic ? 'semantic' : 'deterministic' });
+  const semantic = upgrade.analysis;
+  setAnalysisLoading(false, {
+    outcome: semantic ? 'semantic' : 'deterministic',
+    model: upgrade.model ?? null,
+    reason: upgrade.reason ?? null,
+  });
 
   state.analysis = semantic ?? analysis;
   elements.reviewMode.textContent = MODE_LABEL[semantic ? 'semantic' : 'deterministic'];

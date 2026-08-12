@@ -24,13 +24,40 @@ function criteriaPhrase(count) {
   return `${total} ${total === 1 ? 'criterion' : 'criteria'}`;
 }
 
-function semanticStage(elapsedMs, outcome) {
+// A gateway model id is "vendor/model". The vendor is the part worth showing:
+// it is what the reader can act on when one provider is having a bad day.
+function vendorOf(model) {
+  const vendor = String(model ?? '').split('/')[0].trim();
+  return vendor && vendor !== 'undefined' ? vendor : null;
+}
+
+// Reasons arrive from src/semantic.mjs and range from meaningful to raw
+// transport noise. Known ones are translated; anything unrecognised is
+// dropped rather than shown, because "HTTP 503 upstream_connect_error" tells
+// a student nothing and reads as a broken product rather than a working
+// fallback. Never invent a reason that was not reported.
+const FALLBACK_REASONS = [
+  [/no quoted span/iu, 'The model could not point to a sentence in your transcript, so its answer was rejected.'],
+  [/budget exhausted|timed out|timeout/iu, 'The language model did not answer in time.'],
+  [/no gateway credentials|fetch unavailable/iu, 'No language model is configured, so this ran entirely on your device.'],
+  [/rubric could not be parsed/iu, 'The rubric could not be read as criteria.'],
+];
+
+function explain(reason) {
+  const match = FALLBACK_REASONS.find(([pattern]) => pattern.test(String(reason ?? '')));
+  return match ? ` ${match[1]}` : '';
+}
+
+function semanticStage(elapsedMs, outcome, model, reason) {
   if (outcome === 'semantic') {
+    const vendor = vendorOf(model);
     return {
       id: 'semantic',
       state: 'done',
       label: 'Evidence quoted from your words',
-      detail: 'Every quote was checked against your transcript before it was shown.',
+      detail: vendor
+        ? `Answered by ${vendor}. Every quote was checked against your transcript before it was shown.`
+        : 'Every quote was checked against your transcript before it was shown.',
     };
   }
   if (outcome === 'deterministic') {
@@ -38,7 +65,7 @@ function semanticStage(elapsedMs, outcome) {
       id: 'semantic',
       state: 'skipped',
       label: 'No language-model answer this time',
-      detail: 'Showing the cue-matched result instead. Nothing is missing from the review.',
+      detail: `Showing the cue-matched result instead.${explain(reason)} Nothing is missing from the review.`,
     };
   }
   return {
@@ -52,10 +79,11 @@ function semanticStage(elapsedMs, outcome) {
 /**
  * The stages to display for one review, newest state first to last.
  *
- * @param {{criteriaCount: number, elapsedMs?: number, outcome?: 'semantic'|'deterministic'|null}} input
+ * @param {{criteriaCount: number, elapsedMs?: number, outcome?: 'semantic'|'deterministic'|null,
+ *          model?: string|null, reason?: string|null}} input
  * @returns {Array<{id: string, state: 'done'|'active'|'skipped', label: string, detail: string}>}
  */
-export function analysisStages({ criteriaCount, elapsedMs = 0, outcome = null }) {
+export function analysisStages({ criteriaCount, elapsedMs = 0, outcome = null, model = null, reason = null }) {
   return [
     {
       id: 'deterministic',
@@ -63,6 +91,6 @@ export function analysisStages({ criteriaCount, elapsedMs = 0, outcome = null })
       label: 'Cue matching complete',
       detail: `${criteriaPhrase(criteriaCount)} checked on this device.`,
     },
-    semanticStage(elapsedMs, outcome),
+    semanticStage(elapsedMs, outcome, model, reason),
   ];
 }
