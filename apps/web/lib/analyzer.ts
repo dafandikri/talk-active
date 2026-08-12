@@ -1,8 +1,35 @@
+// Words that cannot carry evidence on their own. Two jobs: they are dropped
+// when we derive signals from a bare label, and they decide which missing cue
+// is worth building a question around. They are never removed from a signal the
+// author wrote — the rubric is the user's, and "unlike" is a cue if they say so.
 const STOP_WORDS = new Set<string>([
   'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'how', 'in',
   'is', 'it', 'of', 'on', 'or', 'that', 'the', 'their', 'this', 'to', 'with',
+  // One common English determiner is deliberately missing from this list.
+  // production-scaffold.test.mjs greps this file for the bare TypeScript escape
+  // hatch, and a string literal would look identical to that guard.
+  'about', 'after', 'again', 'all', 'also', 'because', 'been', 'before',
+  'being', 'between', 'both', 'but', 'can', 'could', 'did', 'do', 'does',
+  'each', 'else', 'even', 'ever', 'every', 'few', 'get', 'had', 'has', 'have',
+  'here', 'his', 'however', 'if', 'instead', 'into', 'its', 'just', 'less',
+  'like', 'made', 'make', 'many', 'may', 'might', 'more', 'most', 'much',
+  'must', 'not', 'now', 'off', 'once', 'one', 'only', 'other', 'others', 'our',
+  'out', 'over', 'own', 'per', 'rather', 'same', 'shall', 'she', 'should',
+  'since', 'so', 'some', 'such', 'than', 'then', 'there', 'these', 'they',
+  'those', 'though', 'through', 'thus', 'too', 'under', 'unlike', 'until',
+  'upon', 'very', 'was', 'were', 'what', 'when', 'where', 'whether', 'which',
+  'while', 'who', 'whom', 'why', 'will', 'within', 'without', 'would', 'you',
+  'your',
   'agar', 'atau', 'bagi', 'dan', 'dari', 'dengan', 'di', 'ini', 'itu', 'ke',
   'pada', 'untuk', 'yang',
+  'adalah', 'akan', 'anda', 'antara', 'apa', 'apabila', 'atas', 'bagaimana',
+  'bahwa', 'banyak', 'beberapa', 'bila', 'bisa', 'boleh', 'dalam', 'dapat',
+  'demi', 'hanya', 'harus', 'jadi', 'jika', 'juga', 'kalau', 'kami', 'karena',
+  'kepada', 'kita', 'lagi', 'lain', 'lebih', 'maka', 'masih', 'mereka',
+  'namun', 'oleh', 'pula', 'saat', 'saja', 'sangat', 'saya', 'sebagai',
+  'sebuah', 'sedang', 'sehingga', 'selain', 'semua', 'seperti', 'serta',
+  'setelah', 'sudah', 'supaya', 'tanpa', 'tapi', 'telah', 'tentang',
+  'terhadap', 'tersebut', 'tidak', 'walaupun', 'yaitu',
 ]);
 
 const FILLERS: ReadonlyArray<Readonly<{ label: string; pattern: RegExp }>> = [
@@ -141,10 +168,19 @@ export function parseRubric(rubricText: unknown): RubricCriterion[] {
     const separator = line.indexOf('|');
     const label = (separator >= 0 ? line.slice(0, separator) : line).trim();
     const requirementText = (separator >= 0 ? line.slice(separator + 1) : line).trim();
-    const explicitSignals = requirementText
-      .split(',')
-      .flatMap((part) => tokenize(part))
-      .filter((token) => token.length > 2 && !STOP_WORDS.has(token));
+    // The comma is the separator this syntax advertises, so a cue the author
+    // wrote as two words stays two words. Tokenising across it turned
+    // "existing tools" into two cues and "tidak seperti" into "tidak" and
+    // "seperti", which inflated the denominator every score divides by.
+    // Only a line that actually used the separator has author-written cues.
+    // Without one, requirementText is just the label again, and the cues below
+    // are ours to derive rather than the author's to keep.
+    const explicitSignals = separator >= 0
+      ? requirementText
+        .split(/[,;]/u)
+        .map((part) => tokenize(part).join(' '))
+        .filter((phrase) => phrase.length > 2)
+      : [];
     const fallbackSignals = tokenize(label)
       .filter((token) => token.length > 2 && !STOP_WORDS.has(token));
 
@@ -174,20 +210,76 @@ function splitSentences(transcript: string): string[] {
   return sentences.length > 0 ? sentences : [transcript.trim()];
 }
 
+/** A cue is present only when every word in it is. Half of "existing tools" is not the cue. */
+function signalIsPresent(signal: string, tokenSet: Set<string>): boolean {
+  const words = signal.split(' ').filter(Boolean);
+  return words.length > 0 && words.every((word) => tokenSet.has(word));
+}
+
+function contentWordsOf(signal: string): string[] {
+  return signal
+    .split(' ')
+    .filter((word) => word.length > 2 && !STOP_WORDS.has(word));
+}
+
+// How well a cue can anchor a question. Cues carrying more content words win;
+// length breaks the tie toward the more specific one. A cue that is all
+// function words scores below every cue that is not, which is what keeps
+// "tidak seperti" from becoming the thing we ask a student to evidence.
+function cueInformativeness(signal: string): number {
+  return contentWordsOf(signal).length * 1_000 + signal.length;
+}
+
+/**
+ * The missing cue worth building a question around. A cue with no content word
+ * is skipped rather than ranked, because ranking cannot rescue a set of one:
+ * when "instead" is the only gap, the question belongs on the span instead.
+ * Ties keep rubric order, so the choice stays deterministic.
+ */
+function mostInformativeCue(signals: readonly string[]): string | undefined {
+  let best: string | undefined;
+  let bestScore = -1;
+  for (const signal of signals) {
+    if (contentWordsOf(signal).length === 0) continue;
+    const score = cueInformativeness(signal);
+    if (score > bestScore) {
+      best = signal;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+/** Among equally weak criteria, the one whose gap a student can act on. */
+function cueActionability(criterion: EvidenceCriterion): number {
+  const cue = mostInformativeCue(criterion.missingSignals);
+  return cue ? cueInformativeness(cue) : 0;
+}
+
+const MAX_QUOTED_SPAN_CHARS = 140;
+
+/** A span is quoted because it is the evidence, but it still has to fit in a question. */
+function elideSpan(span: string): string {
+  if (span.length <= MAX_QUOTED_SPAN_CHARS) return span;
+  const cut = span.slice(0, MAX_QUOTED_SPAN_CHARS);
+  const lastBreak = cut.lastIndexOf(' ');
+  return `${(lastBreak > 0 ? cut.slice(0, lastBreak) : cut).trimEnd()}…`;
+}
+
 function evidenceForCriterion(
   criterion: RubricCriterion,
   transcriptTokens: string[],
   sentences: string[],
 ): EvidenceCriterion {
   const tokenSet = new Set(transcriptTokens);
-  const matchedSignals = criterion.signals.filter((signal) => tokenSet.has(signal));
-  const missingSignals = criterion.signals.filter((signal) => !tokenSet.has(signal));
+  const matchedSignals = criterion.signals.filter((signal) => signalIsPresent(signal, tokenSet));
+  const missingSignals = criterion.signals.filter((signal) => !signalIsPresent(signal, tokenSet));
   const denominator = Math.max(criterion.signals.length, 1);
   const coverage = matchedSignals.length / denominator;
 
   const rankedSentences = sentences.map((sentence) => {
     const sentenceSet = new Set(tokenize(sentence));
-    const hits = matchedSignals.filter((signal) => sentenceSet.has(signal)).length;
+    const hits = matchedSignals.filter((signal) => signalIsPresent(signal, sentenceSet)).length;
     return { sentence, hits };
   }).sort((left, right) => right.hits - left.hits);
 
@@ -208,12 +300,12 @@ function evidenceForCriterion(
 }
 
 export function makeJudgeQuestion(criterion: EvidenceCriterion): string {
-  const missing = criterion.missingSignals[0];
+  const missing = mostInformativeCue(criterion.missingSignals);
   if (missing) {
     return `What explicit evidence can you add for “${missing}” to satisfy “${criterion.label}”?`;
   }
   if (criterion.excerpt.trim()) {
-    return `What evidence supports this statement from your rehearsal: “${criterion.excerpt}”?`;
+    return `What evidence supports this statement from your rehearsal: “${elideSpan(criterion.excerpt.trim())}”?`;
   }
   return `What explicit evidence would satisfy “${criterion.label}”?`;
 }
@@ -264,7 +356,13 @@ export function analyzeSpeech({
   const criteria = rubric.map((criterion) => (
     evidenceForCriterion(criterion, transcriptTokens, sentences)
   ));
-  const weakest = [...criteria].sort((left, right) => left.score - right.score)[0];
+  // Equal coverage does not mean equally useful to coach. When two criteria are
+  // just as weak, the one naming a cue the student can actually add is the one
+  // worth the next question; rubric order is an arbitrary way to settle that.
+  const weakest = [...criteria].sort((left, right) => (
+    left.score - right.score
+    || cueActionability(right) - cueActionability(left)
+  ))[0];
   if (!weakest) {
     throw new AnalysisError('empty_rubric', 'Add at least one rubric criterion.');
   }

@@ -64,8 +64,7 @@
             "signals": [
               "unlike",
               "competitor",
-              "existing",
-              "tools",
+              "existing tools",
               "instead"
             ],
             "score": 0,
@@ -74,8 +73,7 @@
             "missingSignals": [
               "unlike",
               "competitor",
-              "existing",
-              "tools",
+              "existing tools",
               "instead"
             ],
             "excerpt": ""
@@ -110,8 +108,7 @@
           "signals": [
             "unlike",
             "competitor",
-            "existing",
-            "tools",
+            "existing tools",
             "instead"
           ],
           "score": 0,
@@ -120,14 +117,13 @@
           "missingSignals": [
             "unlike",
             "competitor",
-            "existing",
-            "tools",
+            "existing tools",
             "instead"
           ],
           "excerpt": ""
         },
-        "judgeQuestion": "Existing speaking coaches already support Indonesian practice and feedback. What unique product logic would make a student choose Talk-Active? Evidence still missing: unlike and competitor.",
-        "drill": "Retry only “Differentiation” in 30 seconds. Use claim → evidence → why it matters. Evidence to add: unlike; competitor; existing.",
+        "judgeQuestion": "What explicit evidence can you add for “existing tools” to satisfy “Differentiation”?",
+        "drill": "Retry only “Differentiation” in 30 seconds. Use claim → evidence → why it matters. Evidence to add: unlike; competitor; existing tools.",
         "delivery": {
           "wordCount": 83,
           "durationSeconds": 90,
@@ -200,8 +196,7 @@
             "signals": [
               "unlike",
               "competitor",
-              "existing",
-              "tools",
+              "existing tools",
               "instead"
             ],
             "score": 100,
@@ -209,8 +204,7 @@
             "matchedSignals": [
               "unlike",
               "competitor",
-              "existing",
-              "tools",
+              "existing tools",
               "instead"
             ],
             "missingSignals": [],
@@ -259,7 +253,7 @@
           "missingSignals": [],
           "excerpt": "The problem is that students rehearse alone and the evidence shows urgency: eight in ten report no feedback before the real evaluation."
         },
-        "judgeQuestion": "What direct evidence proves this problem is urgent for your specific users?",
+        "judgeQuestion": "What evidence supports this statement from your rehearsal: “The problem is that students rehearse alone and the evidence shows urgency: eight in ten report no feedback before the real evaluation.”?",
         "drill": "Retry only “Problem clarity” in 30 seconds. Use claim → evidence → why it matters.",
         "delivery": {
           "wordCount": 71,
@@ -333,8 +327,7 @@
             "signals": [
               "unlike",
               "competitor",
-              "existing",
-              "tools",
+              "existing tools",
               "instead"
             ],
             "score": 0,
@@ -343,8 +336,7 @@
             "missingSignals": [
               "unlike",
               "competitor",
-              "existing",
-              "tools",
+              "existing tools",
               "instead"
             ],
             "excerpt": ""
@@ -372,28 +364,28 @@
           }
         ],
         "weakest": {
-          "id": "problem-clarity",
-          "label": "Problem clarity",
-          "requirementText": "problem, students, evidence, urgency",
+          "id": "differentiation",
+          "label": "Differentiation",
+          "requirementText": "unlike, competitor, existing tools, instead",
           "signals": [
-            "problem",
-            "students",
-            "evidence",
-            "urgency"
+            "unlike",
+            "competitor",
+            "existing tools",
+            "instead"
           ],
           "score": 0,
           "status": "missing",
           "matchedSignals": [],
           "missingSignals": [
-            "problem",
-            "students",
-            "evidence",
-            "urgency"
+            "unlike",
+            "competitor",
+            "existing tools",
+            "instead"
           ],
           "excerpt": ""
         },
-        "judgeQuestion": "What direct evidence proves this problem is urgent for your specific users? Evidence still missing: problem and students.",
-        "drill": "Retry only “Problem clarity” in 30 seconds. Use claim → evidence → why it matters. Evidence to add: problem; students; evidence.",
+        "judgeQuestion": "What explicit evidence can you add for “existing tools” to satisfy “Differentiation”?",
+        "drill": "Retry only “Differentiation” in 30 seconds. Use claim → evidence → why it matters. Evidence to add: unlike; competitor; existing tools.",
         "delivery": {
           "wordCount": 72,
           "durationSeconds": 60,
@@ -465,21 +457,17 @@
             "label": "Diferensiasi",
             "requirementText": "tidak seperti, pesaing, alat lain",
             "signals": [
-              "tidak",
-              "seperti",
+              "tidak seperti",
               "pesaing",
-              "alat",
-              "lain"
+              "alat lain"
             ],
             "score": 0,
             "status": "missing",
             "matchedSignals": [],
             "missingSignals": [
-              "tidak",
-              "seperti",
+              "tidak seperti",
               "pesaing",
-              "alat",
-              "lain"
+              "alat lain"
             ],
             "excerpt": ""
           },
@@ -511,26 +499,22 @@
           "label": "Diferensiasi",
           "requirementText": "tidak seperti, pesaing, alat lain",
           "signals": [
-            "tidak",
-            "seperti",
+            "tidak seperti",
             "pesaing",
-            "alat",
-            "lain"
+            "alat lain"
           ],
           "score": 0,
           "status": "missing",
           "matchedSignals": [],
           "missingSignals": [
-            "tidak",
-            "seperti",
+            "tidak seperti",
             "pesaing",
-            "alat",
-            "lain"
+            "alat lain"
           ],
           "excerpt": ""
         },
-        "judgeQuestion": "Your weakest area is “Diferensiasi.” What concrete claim and evidence would convince a skeptical judge? Evidence still missing: tidak and seperti.",
-        "drill": "Retry only “Diferensiasi” in 30 seconds. Use claim → evidence → why it matters. Evidence to add: tidak; seperti; pesaing.",
+        "judgeQuestion": "What explicit evidence can you add for “alat lain” to satisfy “Diferensiasi”?",
+        "drill": "Retry only “Diferensiasi” in 30 seconds. Use claim → evidence → why it matters. Evidence to add: tidak seperti; pesaing; alat lain.",
         "delivery": {
           "wordCount": 41,
           "durationSeconds": 55,
@@ -550,7 +534,7 @@
         "durationSeconds": 50
       },
       "output": {
-        "evidenceScore": 81,
+        "evidenceScore": 79,
         "coveredCount": 4,
         "criterionCount": 4,
         "criteria": [
@@ -603,16 +587,14 @@
             "requirementText": "unlike, existing tools, pesaing",
             "signals": [
               "unlike",
-              "existing",
-              "tools",
+              "existing tools",
               "pesaing"
             ],
-            "score": 75,
+            "score": 67,
             "status": "covered",
             "matchedSignals": [
               "unlike",
-              "existing",
-              "tools"
+              "existing tools"
             ],
             "missingSignals": [
               "pesaing"
@@ -643,29 +625,27 @@
           }
         ],
         "weakest": {
-          "id": "problem-clarity",
-          "label": "Problem clarity",
-          "requirementText": "problem, mahasiswa, evidence, urgency",
+          "id": "differentiation",
+          "label": "Differentiation",
+          "requirementText": "unlike, existing tools, pesaing",
           "signals": [
-            "problem",
-            "mahasiswa",
-            "evidence",
-            "urgency"
+            "unlike",
+            "existing tools",
+            "pesaing"
           ],
-          "score": 75,
+          "score": 67,
           "status": "covered",
           "matchedSignals": [
-            "problem",
-            "mahasiswa",
-            "evidence"
+            "unlike",
+            "existing tools"
           ],
           "missingSignals": [
-            "urgency"
+            "pesaing"
           ],
-          "excerpt": "Jadi the problem is mahasiswa latihan sendirian, dan evidence-nya cukup jelas dari survey kami."
+          "excerpt": "Unlike existing tools yang cuma ngukur delivery, kami mulai dari rubrik."
         },
-        "judgeQuestion": "What direct evidence proves this problem is urgent for your specific users? Evidence still missing: urgency.",
-        "drill": "Retry only “Problem clarity” in 30 seconds. Use claim → evidence → why it matters. Evidence to add: urgency.",
+        "judgeQuestion": "What explicit evidence can you add for “pesaing” to satisfy “Differentiation”?",
+        "drill": "Retry only “Differentiation” in 30 seconds. Use claim → evidence → why it matters. Evidence to add: pesaing.",
         "delivery": {
           "wordCount": 46,
           "durationSeconds": 50,
@@ -755,7 +735,7 @@
           ],
           "excerpt": "Our solution um maps each claim to a criterion in the transcript, so, like, you know exactly what is missing basically."
         },
-        "judgeQuestion": "Walk me through one user attempt from input to measurable improvement. Where does the product create value that a generic chatbot cannot? Evidence still missing: rubric.",
+        "judgeQuestion": "What explicit evidence can you add for “rubric” to satisfy “Solution fit”?",
         "drill": "Retry only “Solution fit” in 30 seconds. Use claim → evidence → why it matters. Evidence to add: rubric.",
         "delivery": {
           "wordCount": 46,
@@ -839,8 +819,7 @@
             "signals": [
               "unlike",
               "competitor",
-              "existing",
-              "tools",
+              "existing tools",
               "instead"
             ],
             "score": 100,
@@ -848,8 +827,7 @@
             "matchedSignals": [
               "unlike",
               "competitor",
-              "existing",
-              "tools",
+              "existing tools",
               "instead"
             ],
             "missingSignals": [],
@@ -899,7 +877,7 @@
           ],
           "excerpt": "The problem is urgent and students everywhere face it daily with clear evidence behind every part of the claim we are making here today."
         },
-        "judgeQuestion": "What direct evidence proves this problem is urgent for your specific users? Evidence still missing: urgency.",
+        "judgeQuestion": "What explicit evidence can you add for “urgency” to satisfy “Problem clarity”?",
         "drill": "Retry only “Problem clarity” in 30 seconds. Use claim → evidence → why it matters. Evidence to add: urgency.",
         "delivery": {
           "wordCount": 69,
@@ -990,7 +968,7 @@
           ],
           "excerpt": "Our solution maps each claim to a criterion."
         },
-        "judgeQuestion": "Walk me through one user attempt from input to measurable improvement. Where does the product create value that a generic chatbot cannot? Evidence still missing: rubric and transcript.",
+        "judgeQuestion": "What explicit evidence can you add for “transcript” to satisfy “Solution fit”?",
         "drill": "Retry only “Solution fit” in 30 seconds. Use claim → evidence → why it matters. Evidence to add: rubric; transcript.",
         "delivery": {
           "wordCount": 24,
@@ -1058,7 +1036,7 @@
           "missingSignals": [],
           "excerpt": "The problem is that students rehearse alone and the evidence for the urgency of this is strong across every campus we visited this year."
         },
-        "judgeQuestion": "What direct evidence proves this problem is urgent for your specific users?",
+        "judgeQuestion": "What evidence supports this statement from your rehearsal: “The problem is that students rehearse alone and the evidence for the urgency of this is strong across every campus we visited this year.”?",
         "drill": "Retry only “Problem clarity” in 30 seconds. Use claim → evidence → why it matters.",
         "delivery": {
           "wordCount": 24,
@@ -1079,7 +1057,7 @@
         "durationSeconds": 100
       },
       "output": {
-        "evidenceScore": 88,
+        "evidenceScore": 87,
         "coveredCount": 7,
         "criterionCount": 7,
         "criteria": [
@@ -1132,16 +1110,14 @@
             "requirementText": "unlike, existing tools, instead",
             "signals": [
               "unlike",
-              "existing",
-              "tools",
+              "existing tools",
               "instead"
             ],
-            "score": 75,
+            "score": 67,
             "status": "covered",
             "matchedSignals": [
               "unlike",
-              "existing",
-              "tools"
+              "existing tools"
             ],
             "missingSignals": [
               "instead"
@@ -1246,7 +1222,7 @@
           ],
           "excerpt": "The team has shipped before and the market in Indonesia is large."
         },
-        "judgeQuestion": "Your weakest area is “Team.” What concrete claim and evidence would convince a skeptical judge? Evidence still missing: experience.",
+        "judgeQuestion": "What explicit evidence can you add for “experience” to satisfy “Team”?",
         "drill": "Retry only “Team” in 30 seconds. Use claim → evidence → why it matters. Evidence to add: experience.",
         "delivery": {
           "wordCount": 57,
@@ -1323,7 +1299,7 @@
           "missingSignals": [],
           "excerpt": "The rubric is the centre of the product: the rubric defines the criterion, and the criterion drives the question the rubric implies."
         },
-        "judgeQuestion": "Your weakest area is “Rubric grounding.” What concrete claim and evidence would convince a skeptical judge?",
+        "judgeQuestion": "What evidence supports this statement from your rehearsal: “The rubric is the centre of the product: the rubric defines the criterion, and the criterion drives the question the rubric implies.”?",
         "drill": "Retry only “Rubric grounding” in 30 seconds. Use claim → evidence → why it matters.",
         "delivery": {
           "wordCount": 22,
@@ -1414,7 +1390,7 @@
           ],
           "excerpt": "Our solution maps each claim to a criterion in the transcript."
         },
-        "judgeQuestion": "Walk me through one user attempt from input to measurable improvement. Where does the product create value that a generic chatbot cannot? Evidence still missing: rubric.",
+        "judgeQuestion": "What explicit evidence can you add for “rubric” to satisfy “Solution fit”?",
         "drill": "Retry only “Solution fit” in 30 seconds. Use claim → evidence → why it matters. Evidence to add: rubric.",
         "delivery": {
           "wordCount": 30,
