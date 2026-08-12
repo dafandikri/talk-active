@@ -1,0 +1,79 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  buildRubricPrompt,
+  parseRubricWithSemantics,
+} from '../apps/web/lib/ai/rubric-parser.ts';
+
+const SOURCE = `Problem Identification — 15%
+Technical Execution — 30%
+Pitching and Q&A Response — 20%`;
+
+test('M-6 returns traceable, confirmation-ready criteria', async () => {
+  const result = await parseRubricWithSemantics(SOURCE, {
+    model: 'test/strong-tier',
+    generate: async () => ({
+      output: {
+        criteria: [
+          {
+            name: 'Problem Identification — 15%',
+            description: 'Problem framing and urgency.',
+            requiredEvidence: ['problem', 'urgency'],
+            sourceExcerpt: 'Problem Identification — 15%',
+          },
+          {
+            name: 'Technical Execution — 30%',
+            description: 'Working implementation and data flow.',
+            requiredEvidence: ['implementation', 'data flow'],
+            sourceExcerpt: 'Technical Execution — 30%',
+          },
+        ],
+      },
+      modelId: 'test/parser',
+    }),
+  });
+
+  assert.equal(result.mode, 'semantic');
+  assert.equal(result.requiresConfirmation, true);
+  assert.equal(result.criteria.length, 2);
+  assert.equal(result.criteria[1].sourceExcerpt, 'Technical Execution — 30%');
+});
+
+test('M-6 retries an invented source excerpt, then accepts a grounded correction', async () => {
+  const requests = [];
+  const result = await parseRubricWithSemantics(SOURCE, {
+    model: 'test/strong-tier',
+    generate: async (request) => {
+      requests.push(request);
+      return requests.length === 1
+        ? {
+            output: { criteria: [{ name: 'Market', description: '', requiredEvidence: [], sourceExcerpt: 'Market Size — 40%' }] },
+            modelId: 'test/parser',
+          }
+        : {
+            output: { criteria: [{ name: 'Problem Identification — 15%', description: '', requiredEvidence: ['problem'], sourceExcerpt: 'Problem Identification — 15%' }] },
+            modelId: 'test/parser',
+          };
+    },
+  });
+
+  assert.equal(requests.length, 2);
+  assert.match(requests[1].correction, /Market Size/u);
+  assert.equal(result.mode, 'semantic');
+});
+
+test('M-6 falls back deterministically and still requires confirmation', async () => {
+  const result = await parseRubricWithSemantics(SOURCE, {
+    model: 'test/strong-tier',
+    generate: async () => { throw new Error('provider unavailable'); },
+  });
+  assert.equal(result.mode, 'deterministic');
+  assert.equal(result.criteria.length, 3);
+  assert.equal(result.requiresConfirmation, true);
+});
+
+test('M-6 prompt explicitly forbids invented criteria', () => {
+  assert.match(buildRubricPrompt(SOURCE, null), /Never add/u);
+  assert.match(buildRubricPrompt(SOURCE, null), /exact, contiguous quote/u);
+});

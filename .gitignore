@@ -4,6 +4,12 @@ coverage/
 /public/
 /.tmp-public-*/
 /tmp/
+/.next/
+/apps/web/.next/
+/apps/web/tsconfig.tsbuildinfo
+playwright-report/
+test-results/
+.codex-qa/
 
 # Local source captures are preserved outside Git; the searchable transcription
 # and its enforced requirements live in docs/TECHNICAL-MEETING-2026.md.

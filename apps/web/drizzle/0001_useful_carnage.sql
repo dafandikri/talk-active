@@ -1,0 +1,2 @@
+ALTER TABLE "evidence_verdicts" DROP CONSTRAINT "evidence_verdicts_supported_has_span";--> statement-breakpoint
+ALTER TABLE "evidence_verdicts" ADD CONSTRAINT "evidence_verdicts_supported_or_partial_has_span" CHECK ("evidence_verdicts"."verdict" = 'unsupported' or char_length(trim("evidence_verdicts"."cited_span")) > 0);

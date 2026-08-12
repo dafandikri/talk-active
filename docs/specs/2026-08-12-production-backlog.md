@@ -41,7 +41,7 @@ dependency-free, which is the whole reason this is affordable.
 | **M-2** | Drizzle schema + first migration against Neon. Tables per target arch §5. | M | Migrations checked in. `engine` column on `evidence_verdicts` — that's what keeps the mode badge honest. |
 | **M-3** | Port `analyzer.mjs` → `lib/analyzer.ts`. Tests port with it. | M | P0-3 fixtures reproduce exactly. |
 | **M-4** | Port `spanIsGrounded` → `lib/grounding.ts` **with the Unicode normalisation fix** (smart quotes, en/em dashes, collapsed whitespace). | S | Currently discards correct verdicts when the model returns a typographic quote. Known defect. |
-| **M-5** | `lib/ai/evidence-judge.ts` — AI SDK v6, `Output.object()`, one criterion per call, parallel. | L | Gateway `models[]` for availability; app-level retry for grounding failure. Both. |
+| **M-5** | `lib/ai/evidence-judge.ts` — AI SDK v7, `Output.object()`, one criterion per call, parallel. | L | Gateway `models[]` for availability; app-level retry for grounding failure. Both. |
 | **M-6** | `lib/ai/rubric-parser.ts` — paste a scoring matrix, get criteria. Student confirms before save. | M | Already exists as `rubric-import.mjs`; port and widen. |
 | **M-7** | `lib/ai/question-generator.ts` — hardest question from the weakest criterion. | M | |
 | **M-8** | `lib/ai/defense-judge.ts` — EvidenceJudge reused, scoped to one criterion. | S | Same row shape, `stage: 'defense'`. |
@@ -78,8 +78,8 @@ The design is settled. These are the things that make it *work well* rather than
 | **A-3** | **Model bake-off on verbatim reproduction, not benchmarks.** Small tier is selected on whether it quotes exactly. | M | A model that paraphrases while quoting fails grounding every call and silently degrades to deterministic. |
 | **A-4** | **Prompt-cache the transcript.** Same transcript, N criteria — cache reads are ~10% of write cost. | M | Turns per-criterion isolation from expensive into cheap. This is what makes the design affordable. |
 | **A-5** | **Confirmations as an eval set.** When a student says "no, that's not sufficient", store it. Never training data — an evaluation set. | M | Free, honest, and it compounds. Regression suite from real disagreements. |
-| **A-6** | **Source-document grounding for the question.** `source_documents` is in the schema. Condition the adversarial question on the student's own materials. | L | Turns a good question into one only *their* judge would ask. Strongest unbuilt differentiator. |
-| **A-7** | Rate limiting on AI endpoints, per user and per IP. | S | One attempt fans out to N calls. One script spends real money fast. |
+| **A-6** | **Source-document grounding for the question.** Condition the adversarial question on the student's own materials. | L | **Built 12 Aug:** private UTF-8 text/Markdown/JSON sources, exact-quote validation, deterministic fallback, visible provenance, export, and hard-delete cleanup. |
+| **A-7** | Rate limiting on AI endpoints, per user and per IP. | S | **Built 12 Aug:** per-route Upstash token buckets, weighted evidence requests, HMAC-pseudonymized identities, typed `429`/`Retry-After`, and fail-closed model availability. |
 
 ---
 
@@ -87,14 +87,14 @@ The design is settled. These are the things that make it *work well* rather than
 
 | ID | Item | Size | Why |
 |---|---|---|---|
-| **F-1** | **Make the cited quote the largest thing on the review screen.** `--step-evidence` exists for exactly this. | S | It is the entire differentiator and currently reads as body text next to a percentage. |
-| **F-2** | **One dominant action per screen.** Dashboard has two competing CTAs today. | M | Measured: the resume action sits below the fold at 720p. |
-| **F-3** | **Attempt diff.** Side by side: what changed on this criterion between attempt N and N+1. | L | The product's promise is improvement. Right now you can't *see* improvement. |
+| **F-1** | **Make the cited quote the largest thing on the review screen.** `--step-evidence` exists for exactly this. | S | **Built:** production citations use the evidence type step, voice face, and a one-column map; the design gate enforces that the quote outranks the page title. |
+| **F-2** | **One dominant action per screen.** Dashboard has two competing CTAs today. | M | **Built 12 Aug:** the dashboard content has one practice CTA, with rubric review secondary; Playwright proves the practice action remains above the fold at 1280×720. |
+| **F-3** | **Attempt diff.** Side by side: what changed on this criterion between attempt N and N+1. | L | **Built 12 Aug:** adjacent, same-project attempts retain both exact quotes or explicit gaps; the UI labels only evidence-coverage movement and never confidence or ability. |
 | **F-4** | **Recurring-weakness view.** `AVG(coverage_score) GROUP BY criterion_id`, worst first. | M | Schema already supports it. "You have gone into three rehearsals without evidence for Differentiation" is the sentence that makes someone come back. |
 | **F-5** | **Shareable read-only evidence report** for a supervisor or mentor. | M | Real behaviour — students already screenshot and send. Give them a link. |
 | **F-6** | Pipeline progress panel — port from the vanilla build. | S | Already built and tested. Don't lose it. |
 | **F-7** | Full keyboard path + screen-reader pass on the whole loop. | M | Not decoration. It's a product for students, some of whom need it. |
-| **F-8** | Social preview tags, custom 404, `robots.txt`, canonical. | S | Cheap. Their absence is what "unfinished" looks like. |
+| **F-8** | Social preview tags, custom 404, `robots.txt`, canonical. | S | **Built 12 Aug:** static and Next runtimes ship canonical/preview metadata, same-origin imagery, robots rules, and branded 404 responses; focused HTTP and Playwright checks cover both paths. |
 | **F-9** | Rubric library: skripsi defense, beasiswa interview, PKM, hackathon pitch, job interview. | M | Biggest cold-start reducer available. A blank rubric editor is where people quit. |
 
 ---
@@ -223,6 +223,6 @@ Ranked by value per unit of effort, ignoring the migration itself:
 5. **A-4** prompt caching — makes the per-criterion design cheap instead of expensive
 6. **F-9** rubric library — a blank editor is where people quit
 
-**A-6** (source-document grounding) is the highest-ceiling item on this page and the one that
-would be hardest for anyone to copy. It is also **L** and depends on the migration landing
-first, which is why it isn't in the six.
+**A-6** (source-document grounding) was the highest-ceiling item on this page and has now
+landed after the migration. Its current boundary is explicit: at most three private UTF-8
+text, Markdown, or JSON files per project, 40 KB each; PDF and DOCX extraction are not claimed.

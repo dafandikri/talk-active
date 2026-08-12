@@ -18,6 +18,8 @@ export const PUBLIC_RUNTIME_FILES = Object.freeze([
   'index.html',
   'brief.html',
   'booth.html',
+  '404.html',
+  'robots.txt',
   'src/app.mjs',
   'src/analyzer.mjs',
   'src/analysis-progress.mjs',

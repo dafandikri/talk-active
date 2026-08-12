@@ -27,6 +27,7 @@ const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
 
 const TOKENS = read('src/tokens.css');
 const STYLES = read('src/styles.css');
+const NEXT_SHELL_STYLES = read('apps/web/app/shell.css');
 const APPAREL_MARK = read('src/assets/macaw-mark-white.svg');
 const PRODUCT_MARK = readFileSync(join(ROOT, 'src/assets/LOGO.png'));
 const DASHBOARD_MARK = readFileSync(join(ROOT, 'src/assets/LOGO-dashboard.png'));
@@ -93,6 +94,7 @@ function rgbaPixel(buffer, x, y) {
 // these tests ban. Strip them before linting so documentation is not a defect.
 const stripComments = (css) => css.replace(/\/\*[\s\S]*?\*\//gu, '');
 const STYLES_CODE = stripComments(STYLES);
+const COMPONENT_STYLES_CODE = `${STYLES_CODE}\n${stripComments(NEXT_SHELL_STYLES)}`;
 const TOKENS_CODE = stripComments(TOKENS);
 
 // Report the offending line, not the whole file. A gate that dumps 500 lines at
@@ -162,8 +164,8 @@ function contrast(a, b) {
 // ---------------------------------------------------------------------------
 //  1. The scale is the only source of type size.
 // ---------------------------------------------------------------------------
-test('every font-size in styles.css comes from the type scale', () => {
-  const offenders = linesMatching(STYLES_CODE, /font-size\s*:/u).filter((entry) => {
+test('every component font-size comes from the type scale', () => {
+  const offenders = linesMatching(COMPONENT_STYLES_CODE, /font-size\s*:/u).filter((entry) => {
     const values = [...entry.line.matchAll(/font-size\s*:\s*([^;}]+)/gu)].map((m) => m[1].trim());
     // `font-size: 0` is a layout technique (collapsing a label to icon-only at
     // a breakpoint), not a type-scale choice.
@@ -208,20 +210,20 @@ test('the evidence step outranks the page title — evidence is the hero', () =>
 // ---------------------------------------------------------------------------
 //  2. Colour only enters through semantic tokens.
 // ---------------------------------------------------------------------------
-test('styles.css contains no raw colour literals', () => {
-  const offenders = linesMatching(STYLES_CODE, /#[0-9a-f]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(/iu);
+test('component styles contain no raw colour literals', () => {
+  const offenders = linesMatching(COMPONENT_STYLES_CODE, /#[0-9a-f]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(/iu);
   assert.equal(
     offenders.length, 0,
     report(offenders, 'Colour must come from a semantic token in tokens.css. Raw hex/rgba is how ~40 one-off colours accumulated.'),
   );
 });
 
-test('styles.css uses semantic tokens, never primitives', () => {
+test('component styles use semantic tokens, never primitives', () => {
   // A component asking for `--blue-600` knows too much. It should ask for
   // `--evidence` or `--accent-sky`, so the palette can move without touching components.
   // --step-* and --space-* are scales, not palettes: components are supposed to
   // reach for those directly. Colour ramps are the ones that must stay hidden.
-  const offenders = linesMatching(STYLES_CODE, /var\(\s*--(mono|blue|leaf|sun|orange)-|var\(\s*--paper\s*\)/u);
+  const offenders = linesMatching(COMPONENT_STYLES_CODE, /var\(\s*--(mono|blue|leaf|sun|orange)-|var\(\s*--paper\s*\)/u);
   assert.equal(
     offenders.length, 0,
     report(offenders, 'Components may not reference colour primitives (--mono-*, --blue-*, --leaf-*, --sun-*, --orange-*, --paper). Use a semantic role token so the palette can move without touching components.'),
@@ -229,7 +231,7 @@ test('styles.css uses semantic tokens, never primitives', () => {
 });
 
 test('spacing comes from the spacing scale', () => {
-  const offenders = linesMatching(STYLES_CODE, /(?:^|[;{\s])(?:padding|margin|gap|row-gap|column-gap)(?:-(?:top|right|bottom|left|inline|block))?\s*:/u)
+  const offenders = linesMatching(COMPONENT_STYLES_CODE, /(?:^|[;{\s])(?:padding|margin|gap|row-gap|column-gap)(?:-(?:top|right|bottom|left|inline|block))?\s*:/u)
     .filter((entry) => {
       const decls = [...entry.line.matchAll(/(?:padding|margin|gap|row-gap|column-gap)(?:-(?:top|right|bottom|left|inline|block))?\s*:\s*([^;}]+)/gu)];
       return decls.some(([, value]) => /\b\d*\.?\d+px\b/u.test(value));
@@ -252,7 +254,7 @@ test('the evidence colour is reserved for evidence', () => {
   // "primary button" then it means nothing, and the citation stops reading as
   // special the moment a visitor sees it twice on unrelated things.
   const offenders = [];
-  for (const block of STYLES_CODE.matchAll(/([^{}]+)\{([^{}]*)\}/gu)) {
+  for (const block of COMPONENT_STYLES_CODE.matchAll(/([^{}]+)\{([^{}]*)\}/gu)) {
     const [, selector, body] = block;
     if (!/var\(\s*--evidence/u.test(body)) continue;
     if (!EVIDENCE_CONTEXT.test(selector)) {
@@ -270,7 +272,7 @@ test('the voice typeface is reserved for the user\'s own words', () => {
   // stylesheet sprayed Georgia across stat numbers, avatars and icon circles,
   // which destroyed the signal.
   const offenders = [];
-  for (const block of STYLES_CODE.matchAll(/([^{}]+)\{([^{}]*)\}/gu)) {
+  for (const block of COMPONENT_STYLES_CODE.matchAll(/([^{}]+)\{([^{}]*)\}/gu)) {
     const [, selector, body] = block;
     if (!/var\(\s*--font-voice\s*\)/u.test(body)) continue;
     if (!EVIDENCE_CONTEXT.test(selector)) {
@@ -289,7 +291,7 @@ test('no verdict is coloured as a pass or a fail', () => {
   // silently reasserts the score we promised not to give. Absence of evidence
   // is neutral: it is the next thing to rehearse, not a mark.
   const offenders = [];
-  for (const block of STYLES_CODE.matchAll(/([^{}]+)\{([^{}]*)\}/gu)) {
+  for (const block of COMPONENT_STYLES_CODE.matchAll(/([^{}]+)\{([^{}]*)\}/gu)) {
     const [, selector, body] = block;
     if (!/var\(\s*--(danger|caution)/u.test(body)) continue;
     // A destructive control ("remove this criterion") is an ACTION, and red is
@@ -362,7 +364,7 @@ test('the apparel mark remains a one-ink warm-white speaking macaw', () => {
 
 test('green structure never colours a verdict or score', () => {
   const offenders = [];
-  for (const block of STYLES_CODE.matchAll(/([^{}]+)\{([^{}]*)\}/gu)) {
+  for (const block of COMPONENT_STYLES_CODE.matchAll(/([^{}]+)\{([^{}]*)\}/gu)) {
     const [, selector, body] = block;
     if (!/var\(\s*--(accent-leaf|brand)/u.test(body)) continue;
     if (/evidence|criterion-result|coverage|score|session-status|verdict/iu.test(selector)) {
@@ -410,7 +412,7 @@ test('every named typeface is a platform font or is shipped with @font-face', ()
 });
 
 test('font-family in components resolves to a role token', () => {
-  const offenders = linesMatching(STYLES_CODE, /font-family\s*:/u).filter((entry) => {
+  const offenders = linesMatching(COMPONENT_STYLES_CODE, /font-family\s*:/u).filter((entry) => {
     const values = [...entry.line.matchAll(/font-family\s*:\s*([^;}]+)/gu)].map((m) => m[1].trim());
     return values.some((value) => !/^(var\(--font-(ui|voice)\)|inherit)$/u.test(value));
   });
@@ -533,6 +535,21 @@ test('tokens.css is loaded before styles.css', () => {
   assert.ok(tokensAt !== -1, 'index.html must load src/tokens.css');
   assert.ok(stylesAt !== -1, 'index.html must load src/styles.css');
   assert.ok(tokensAt < stylesAt, 'tokens.css must be linked before styles.css or the cascade resolves tokens too late');
+});
+
+test('the Next.js shell imports the frozen visual system directly and in cascade order', () => {
+  const layout = read('apps/web/app/layout.tsx');
+  const tokensAt = layout.indexOf("src/tokens.css");
+  const stylesAt = layout.indexOf("src/styles.css");
+  const landingAt = layout.indexOf("src/landing.css");
+
+  assert.ok(tokensAt !== -1, 'the production shell must import the existing tokens.css');
+  assert.ok(stylesAt !== -1, 'the production shell must import the existing styles.css');
+  assert.ok(landingAt !== -1, 'the production shell must import the existing landing.css');
+  assert.ok(
+    tokensAt < stylesAt && stylesAt < landingAt,
+    'the production shell must preserve tokens → product → landing cascade order',
+  );
 });
 
 test('dashboard home carries the approved character-led outlined material', () => {

@@ -10,8 +10,9 @@
     "start": "node scripts/serve.mjs",
     "test": "node --test",
     "test:browser": "node scripts/browser-check.mjs",
+    "test:production:browser": "playwright test --config playwright.production.config.ts",
     "demo": "node scripts/demo-gate.mjs",
-    "check": "node --test && node scripts/browser-check.mjs && node scripts/demo-gate.mjs && node scripts/built-artifact-gate.mjs && node scripts/typecheck-ratchet.mjs && node scripts/project.mjs check && node scripts/finals-rubric.mjs check",
+    "check": "node --test && node scripts/browser-check.mjs && node scripts/demo-gate.mjs && node scripts/built-artifact-gate.mjs && node scripts/typecheck-ratchet.mjs && pnpm check:production && node scripts/project.mjs check && node scripts/finals-rubric.mjs check",
     "check:built": "node scripts/built-artifact-gate.mjs",
     "golden:capture": "node scripts/capture-golden.mjs",
     "check:proposal": "docs/proposal/build.sh",
@@ -22,12 +23,17 @@
     "take": "node scripts/take.mjs",
     "setup:hooks": "git config core.hooksPath .githooks && echo \"pre-push gate enabled\"",
     "design:preview": "node scripts/design-preview.mjs",
-    "typecheck": "node scripts/typecheck-ratchet.mjs"
+    "typecheck": "node scripts/typecheck-ratchet.mjs",
+    "dev:production": "pnpm --filter @talk-active/web dev",
+    "build:production": "pnpm --filter @talk-active/web build",
+    "typecheck:production": "pnpm --filter @talk-active/web typecheck",
+    "check:production": "pnpm typecheck:production && pnpm build:production && pnpm test:production:browser"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^26.2.0",
     "typescript": "^7.0.2"
   }

@@ -54,7 +54,9 @@ test('numbered landing sections use explanatory assets instead of empty decorati
 });
 
 test('public landing page stays local, truthful, and outside gamified speaking-coach scope', () => {
-  assert.doesNotMatch(brief, /https?:\/\//u, 'landing page must not depend on external resources');
+  assert.doesNotMatch(brief, /https?:\/\/(?!talk-active-id\.vercel\.app)/u, 'metadata must not name an external origin');
+  assert.doesNotMatch(brief, /<(?:img|script)[^>]+src="https?:\/\//iu, 'landing page must not load external media or scripts');
+  assert.doesNotMatch(brief, /<link[^>]+rel="(?:stylesheet|icon)"[^>]+href="https?:\/\//iu, 'landing page must not load external styles or icons');
   assert.doesNotMatch(brief, /<script\b/iu, 'landing page needs no runtime JavaScript');
   for (const forbidden of ['daily streak', 'pace score', 'tone score', 'confetti', 'social feed', 'share clips']) {
     assert.doesNotMatch(brief, new RegExp(forbidden, 'iu'), `out-of-scope promise leaked into landing page: ${forbidden}`);

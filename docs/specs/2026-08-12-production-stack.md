@@ -21,7 +21,7 @@ be built on as a product with real users, not what survives a four-day sprint.
 | Area | Was | Now | Why |
 |---|---|---|---|
 | Next.js | "App Router" | **16.3.0**, Cache Components on | 16.3 shipped 3 Aug 2026; `use cache` replaces route-segment config |
-| Structured output | "constrained decoding" | **`Output.object()` + Zod** (AI SDK v6) | v6 folded `generateObject` into `generateText`'s output mode |
+| Structured output | "constrained decoding" | **`Output.object()` + Zod** (AI SDK v7) | current structured output lives on `generateText`/`streamText` |
 | Provider failover | hand-rolled only | **hand-rolled *and* gateway** | they trigger on different failures; see §3 |
 | Auth | Clerk | **Better Auth** | Clerk has no Indonesian or regional data residency; see §2 |
 | ORM | Drizzle | Drizzle — **unchanged** | still the 2026 default for Next.js + Neon on Vercel |
@@ -53,10 +53,12 @@ we cannot claim adequacy Indonesia has not granted, and we cannot point to bindi
 instruments the regulator has not defined. Every account would rest on consent alone, for a
 transfer that buys the product nothing a local session table would not.
 
-Better Auth keeps sessions and identity in our own Postgres. Choosing a Neon region in
-Southeast Asia means the transfer question does not arise for identity data at all. The
-Auth.js team joined Better Auth in September 2025, so this is the maintained successor to the
-Next.js default rather than a fringe pick.
+Better Auth keeps sessions and identity in the Postgres deployment we choose rather than in
+an auth vendor's fixed US region. The chosen Neon region is Singapore (`ap-southeast-1`), so
+this is still a cross-border transfer from Indonesia and must use a lawful transfer mechanism
+and be disclosed at collection. The benefit is control and data minimisation, not a claim that
+the transfer disappears. The Auth.js team joined Better Auth in September 2025, so this is the
+maintained successor to the Next.js default rather than a fringe pick.
 
 **The honest cost.** Better Auth ships no drop-in UI, so sign-in and account screens are ours
 to build and to keep accessible. Clerk would have given us those free. We are trading a few
@@ -76,7 +78,7 @@ everything is in-region, and the privacy copy must not imply it.
 
 ---
 
-## 3. The AI layer, corrected for AI SDK v6
+## 3. The AI layer, corrected for AI SDK v7
 
 The design in [`2026-08-11-ai-layer.md`](2026-08-11-ai-layer.md) is unchanged. Only the
 transport is restated.
@@ -200,6 +202,15 @@ Vercel's built-in observability covers the transport; these are domain events an
 the AI endpoints. An attempt fans out to N model calls, so one script can spend real money
 quickly. Upstash Redis is already in the proposal's stack for this.
 
+**Implemented 12 August 2026.** Each paid route has its own Upstash token bucket. Evidence
+review is weighted at five tokens because it fans out; rubric parsing, question generation,
+defense judging, and a rejected-evidence re-judge cost one. Guests are limited by an
+HMAC-pseudonymized Vercel IP; signed-in users must pass both that IP bucket and a separately
+pseudonymized user bucket. Raw IPs and user IDs are never Redis keys. Missing credentials,
+an unassignable request identity, Redis failure, or the SDK's timeout-bypass result all return
+a typed `503` before model spend. An exhausted bucket returns `429` with `Retry-After`.
+Accepted evidence confirmations make no model call and consume no token.
+
 **5.3 The invariants have to survive the port.** This is the part most likely to be quietly
 dropped, and it is the reason the product scored the way it did.
 
@@ -220,10 +231,10 @@ dropped, and it is the reason the product scored the way it did.
 | Framework | Next.js 16.3, App Router, Cache Components | `use cache` over route-segment config |
 | Language | TypeScript, `strict` | no `any`; infer or define |
 | Styling | existing CSS custom properties, imported unchanged | not Tailwind — documented deviation |
-| Database | Postgres on Neon, Southeast Asia region | region is a compliance decision |
+| Database | Postgres on Neon, Singapore (`ap-southeast-1`) | chosen in §8; still cross-border from Indonesia |
 | ORM | Drizzle | schema in TS, migrations checked in |
 | Auth | Better Auth | §2; guest path preserved |
-| AI | AI SDK v6 via Vercel AI Gateway | `Output.object()`; `disallowPromptTraining` |
+| AI | AI SDK v7 via Vercel AI Gateway | `Output.object()`; `zeroDataRetention` routing |
 | Files | Vercel Blob (private) | source documents only |
 | Cache / limits | Upstash Redis | rate limiting, prompt cache keys |
 | STT | Web Speech API | never hands us an audio buffer — see target arch §6 |
@@ -253,16 +264,23 @@ Saying no is the more useful half of a stack document.
 
 ---
 
-## 8. Open questions this does not close
+## 8. Closed prerequisite and remaining open questions
 
-1. **Neon region.** Jakarta availability needs checking; Singapore (`ap-southeast-1`) is the
-   fallback and is still a cross-border transfer, merely a shorter one. Confirm before the
-   privacy copy is written, because the copy has to be true.
-2. **Better Auth sign-in UI** needs designing to match the frozen visual system. Not hard, but
+**P0-5 closed on 12 August 2026 — use Neon Singapore (`ap-southeast-1`).** Neon's official
+regional status inventory and latency dashboard list Singapore and Sydney as its Asia-Pacific
+database regions and do not list Jakarta. Singapore is the nearest supported choice and can
+be paired with Vercel `sin1`. This choice does **not** create Indonesian data residency: it is
+a cross-border transfer, so consent/disclosure and the applicable UU PDP transfer mechanism
+remain required. Re-check availability before provisioning production; a future Jakarta
+region would justify a migration, not a silent privacy-copy change.
+
+Remaining open questions:
+
+1. **Better Auth sign-in UI** needs designing to match the frozen visual system. Not hard, but
    it is real work Clerk would have absorbed, and it is not yet scoped.
-3. **Grounding rejection rate has never been measured.** §5.1 makes it observable; someone
+2. **Grounding rejection rate has never been measured.** §5.1 makes it observable; someone
    still has to look at the first week of data and decide what "normal" is.
-4. **Model IDs** in §3.1 are illustrative. Resolve against the live model list at build time.
+3. **Model IDs** in §3.1 are illustrative. Resolve against the live model list at build time.
 
 ---
 
@@ -274,3 +292,4 @@ Saying no is the more useful half of a stack document.
 - [UU PDP cross-border transfer requirements](https://www.makarim.com/news/personal-data-protection-law-cross-border-transfer-requirements) · [Indonesia cross-border data transfer](https://rouse.com/insights/news/2023/cross-border-data-transfer-indonesia)
 - [Let Me Speak Freely? — arXiv 2408.02442](https://arxiv.org/abs/2408.02442) · [JSONSchemaBench — arXiv 2501.10868](https://arxiv.org/abs/2501.10868)
 - [Drizzle vs Prisma 2026](https://www.turbostarter.dev/blog/drizzle-vs-prisma-typescript-orm-2026)
+- [Neon regional status inventory](https://neon.com/docs/introduction/status) · [Neon regional latency dashboard](https://neon.com/demos/regional-latency)

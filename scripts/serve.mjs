@@ -23,6 +23,7 @@ const MIME_TYPES = {
   '.mjs': 'text/javascript; charset=utf-8',
   '.png': 'image/png',
   '.svg': 'image/svg+xml; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8',
   '.webp': 'image/webp',
 };
 
@@ -48,6 +49,8 @@ function publicPath(urlValue) {
     normalized === 'index.html'
     || normalized === 'brief.html'
     || normalized === 'booth.html'
+    || normalized === '404.html'
+    || normalized === 'robots.txt'
     || normalized.startsWith('src/')
   ) return normalized;
   return null;
@@ -91,8 +94,11 @@ export function createServer(root = DEFAULT_ROOT) {
     }
 
     if (!relativePath) {
-      response.writeHead(404, responseHeaders('text/plain; charset=utf-8'));
-      response.end('Not found');
+      const notFoundPath = join(root, '404.html');
+      response.writeHead(404, responseHeaders('text/html; charset=utf-8'));
+      if (request.method === 'HEAD') response.end();
+      else if (existsSync(notFoundPath)) createReadStream(notFoundPath).pipe(response);
+      else response.end('Not found');
       return;
     }
 

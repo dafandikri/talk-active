@@ -14,7 +14,7 @@
 // ============================================================================
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -22,6 +22,23 @@ import { DEFAULT_RUBRIC, STARTER_DRAFT, analyzeSpeech } from '../src/analyzer.mj
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (rel) => (existsSync(join(ROOT, rel)) ? readFileSync(join(ROOT, rel), 'utf8') : null);
+
+function sourceFilesUnder(relative, extensions = new Set(['.ts', '.tsx'])) {
+  const start = join(ROOT, relative);
+  if (!existsSync(start)) return [];
+  const files = [];
+  const visit = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const absolute = join(directory, entry.name);
+      if (entry.isDirectory()) visit(absolute);
+      else if ([...extensions].some((extension) => entry.name.endsWith(extension))) {
+        files.push(absolute.slice(ROOT.length + 1));
+      }
+    }
+  };
+  visit(start);
+  return files.sort();
+}
 
 // LaTeX and HTML wrap freely, so phrase checks must ignore how the source is
 // line-broken. Collapsing whitespace keeps these tests about meaning, not layout.
@@ -34,7 +51,17 @@ function assertContains(text, pattern, message) {
 }
 
 // Files that make claims to a user or an evaluator.
-const PRODUCT_SURFACES = ['index.html', 'brief.html', 'src/app.mjs', 'src/analyzer.mjs'];
+const NEXT_PRODUCT_SURFACES = [
+  ...sourceFilesUnder('apps/web/app'),
+  ...sourceFilesUnder('apps/web/components'),
+];
+const PRODUCT_SURFACES = [
+  'index.html',
+  'brief.html',
+  'src/app.mjs',
+  'src/analyzer.mjs',
+  ...NEXT_PRODUCT_SURFACES,
+];
 const PROPOSAL_BODY = 'docs/proposal/body.tex';
 const PROPOSAL_REFS = 'docs/proposal/backmatter.tex';
 
@@ -133,10 +160,9 @@ test('INV-2 the product never overclaims what the analyzer does', () => {
   }
 });
 
-// A name label held in localStorage is not an account, and the interface must
-// not borrow the vocabulary of one. "Sign in" invites the judge's follow-up
-// question — "so where are my credentials stored?" — that the build cannot
-// answer. This is INV-2 applied to identity rather than to analysis.
+// The deployed vanilla product still has only a local display-name label and
+// must not borrow account vocabulary. The production build may use it only
+// while the real Better Auth handler and generated credential schema exist.
 const AUTHENTICATION_CLAIMS = [
   /\bsign[-\s]?in(?:g)?\b/iu,
   /\bsign[-\s]?up\b/iu,
@@ -146,8 +172,8 @@ const AUTHENTICATION_CLAIMS = [
   /\bpassword\b/iu,
 ];
 
-test('INV-2 the product never implies an account system it does not have', () => {
-  for (const relative of PRODUCT_SURFACES) {
+test('INV-2 account language appears only where the build has real authentication', () => {
+  for (const relative of ['index.html', 'brief.html', 'src/app.mjs', 'src/analyzer.mjs']) {
     const source = read(relative);
     if (!source) continue;
     for (const [number, line] of source.split(/\r?\n/u).entries()) {
@@ -155,11 +181,18 @@ test('INV-2 the product never implies an account system it does not have', () =>
         assert.ok(
           !pattern.test(line),
           `${relative}:${number + 1} implies authentication (${pattern}); `
-          + 'the display name is a local label on this device, not an account.',
+          + 'the deployed vanilla display name is a local label, not an account.',
         );
       }
     }
   }
+
+  const accountPanel = read('apps/web/components/account-panel.tsx');
+  const authRoute = read('apps/web/app/api/auth/[...all]/route.ts');
+  const authSchema = read('apps/web/lib/db/auth-schema.generated.ts');
+  assertContains(accountPanel, /authClient\.signIn\.email/u, 'production sign-in must call Better Auth');
+  assertContains(authRoute, /toNextJsHandler/u, 'production auth claims require a real Next.js handler');
+  assertContains(authSchema, /password: text\("password"\)/u, 'password auth requires generated credential storage');
 });
 
 // A workspace that greets every booth visitor by one teammate's name is
@@ -253,7 +286,7 @@ test('INV-4 the proposal states its honest boundary', () => {
 // ---------------------------------------------------------------------------
 
 test('INV-5 user-supplied content is never assigned as HTML', () => {
-  for (const relative of ['src/app.mjs']) {
+  for (const relative of ['src/app.mjs', ...NEXT_PRODUCT_SURFACES]) {
     const source = read(relative);
     if (!source) continue;
     const lines = source.split(/\r?\n/u);
@@ -266,6 +299,10 @@ test('INV-5 user-supplied content is never assigned as HTML', () => {
       assert.ok(
         !/insertAdjacentHTML|outerHTML\s*=/u.test(line),
         `${relative}:${number + 1} injects markup. Use textContent or createElement.`,
+      );
+      assert.ok(
+        !/dangerouslySetInnerHTML/u.test(line),
+        `${relative}:${number + 1} uses dangerouslySetInnerHTML. React text nodes already escape user content.`,
       );
     }
   }

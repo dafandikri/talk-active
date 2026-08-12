@@ -701,6 +701,11 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   border-color: var(--evidence-border);
   border-left-color: var(--evidence);
 }
+.evidence-item[data-evidence="reused"] {
+  background: var(--surface-sunken);
+  border-color: var(--border-strong);
+  border-left-color: var(--text-secondary);
+}
 
 .evidence-topline { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
 .evidence-topline strong { font-size: var(--step-0); letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--text-secondary); }
@@ -710,6 +715,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
    must not imply (INV-2). */
 .evidence-state { font-size: var(--step-0); font-weight: var(--weight-heavy); color: var(--absence); }
 .evidence-item[data-evidence="found"] .evidence-state { color: var(--evidence-strong); }
+.evidence-item[data-evidence="reused"] .evidence-state { color: var(--text-primary); }
 
 /* The hero. Bigger than the page title, in the voice serif, because these are
    the speaker's own words and not ours. */
@@ -735,6 +741,17 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 /* A fallback is an honest disclosure, not an error. It should read as a
    footnote, never as a warning that undermines the verdict beside it. */
 .evidence-provenance { margin-top: var(--space-2); color: var(--text-muted); font-size: var(--step-0); }
+.citation-reuse-note {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--step-0);
+  line-height: var(--leading-normal);
+}
+.citation-reuse-note strong { color: var(--text-primary); }
 
 .review-actions { display: flex; gap: var(--space-3); margin-top: var(--space-5); }
 

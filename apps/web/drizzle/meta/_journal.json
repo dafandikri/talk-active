@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1786517736646,
+      "tag": "0000_messy_silver_sable",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786518591323,
+      "tag": "0001_useful_carnage",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786519505295,
+      "tag": "0002_eager_reaper",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786520090725,
+      "tag": "0003_same_rocket_racer",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786523692707,
+      "tag": "0004_shocking_sasquatch",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786524559927,
+      "tag": "0005_early_raider",
+      "breakpoints": true
+    }
+  ]
+}

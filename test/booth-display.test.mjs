@@ -28,7 +28,9 @@ test('booth display contains official identity and a local production QR', () =>
 
 test('booth display is static, self-contained, and designed for a 16:9 screen', () => {
   assert.doesNotMatch(booth, /<script\b/iu);
-  assert.doesNotMatch(booth, /(?:src|href)="https?:\/\//iu);
+  assert.doesNotMatch(booth, /(?:src|href)="https?:\/\/(?!talk-active-id\.vercel\.app)/iu);
+  assert.doesNotMatch(booth, /<(?:img|script)[^>]+src="https?:\/\//iu);
+  assert.doesNotMatch(booth, /<link[^>]+rel="(?:stylesheet|icon)"[^>]+href="https?:\/\//iu);
   assert.match(styles, /height:\s*100vh/u);
   assert.match(styles, /overflow:\s*hidden/u);
   assert.match(styles, /@media \(max-aspect-ratio: 4 \/ 3\)/u);

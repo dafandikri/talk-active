@@ -28,6 +28,16 @@ test('static server exposes the product workspace but not research documents', a
   assert.match(booth.headers.get('content-type'), /text\/html/u);
   assert.match(await booth.text(), /Bring the rubric/u);
 
+  const robots = await fetch(`${origin}/robots.txt`);
+  assert.equal(robots.status, 200);
+  assert.match(robots.headers.get('content-type'), /text\/plain/u);
+  assert.match(await robots.text(), /User-agent: \*/u);
+
+  const notFound = await fetch(`${origin}/missing-route`);
+  assert.equal(notFound.status, 404);
+  assert.match(notFound.headers.get('content-type'), /text\/html/u);
+  assert.match(await notFound.text(), /This route is not part of the rehearsal workspace/u);
+
   const briefHead = await fetch(`${origin}/brief.html`, { method: 'HEAD' });
   assert.equal(briefHead.status, 200);
   assert.match(briefHead.headers.get('content-security-policy'), /default-src 'self'/u);
