@@ -1,7 +1,6 @@
 import {
   analyzeSpeech,
   makeDrill,
-  parseRubric,
 } from '../analyzer.ts';
 import {
   judgeEvidence,
@@ -44,14 +43,25 @@ export interface StatelessAnalysisOptions {
 }
 
 function contractCriteria(input: StatelessAnalysisRequest): Criterion[] {
-  return parseRubric(input.rubricText).map((criterion, displayOrder) => ({
+  return [...input.criteria]
+    .sort((left, right) => left.displayOrder - right.displayOrder)
+    .map((criterion) => ({
     id: criterion.id,
     rubricId: 'stateless-analysis',
-    name: criterion.label,
-    description: criterion.requirementText,
-    requiredEvidence: criterion.signals,
-    displayOrder,
+    name: criterion.name,
+    description: criterion.description,
+    requiredEvidence: criterion.requiredEvidence,
+    displayOrder: criterion.displayOrder,
   }));
+}
+
+function deterministicRubricText(criteria: Criterion[]): string {
+  return criteria.map((criterion) => {
+    const evidence = criterion.requiredEvidence.length > 0
+      ? criterion.requiredEvidence.join(', ')
+      : criterion.description.trim() || criterion.name;
+    return `${criterion.name} | ${evidence}`;
+  }).join('\n');
 }
 
 async function evidenceWithFallback(
@@ -92,12 +102,12 @@ export async function analyzeStatelessAttempt(
   input: StatelessAnalysisRequest,
   options: StatelessAnalysisOptions = {},
 ): Promise<StatelessAnalysisResponse> {
+  const criteria = contractCriteria(input);
   const local = analyzeSpeech({
     transcript: input.transcript,
-    rubricText: input.rubricText,
+    rubricText: deterministicRubricText(criteria),
     durationSeconds: input.durationSeconds,
   });
-  const criteria = contractCriteria(input);
   const judgments = await evidenceWithFallback(input, criteria, options);
   const byCriterion = new Map(judgments.map((judgment) => [judgment.criterionId, judgment]));
 

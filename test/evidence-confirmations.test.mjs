@@ -37,6 +37,16 @@ test('A-5 keeps local evaluation labels durable, validated, and one-per-review c
   assert.equal(saved.length, 1);
   assert.deepEqual(saved[0], CONFIRMATION);
   assert.deepEqual(parseLocalEvidenceConfirmations('[{"accepted":"no"}]'), []);
+  appendLocalEvidenceConfirmation(storage, {
+    ...CONFIRMATION,
+    id: 'confirmation-semantic',
+    reviewId: 'review-2',
+    judgedEngine: 'semantic',
+  });
+  assert.equal(
+    parseLocalEvidenceConfirmations(values.get(LOCAL_EVIDENCE_CONFIRMATIONS_KEY))[1].judgedEngine,
+    'semantic',
+  );
 });
 
 test('A-5 local rejection re-checks once without returning the rejected sentence', () => {

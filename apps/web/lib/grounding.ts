@@ -59,9 +59,16 @@ export function normaliseForGrounding(value: unknown): string {
   return normaliseWithOffsets(value).text;
 }
 
-export function findGroundedSpan(span: unknown, transcript: unknown): string | null {
+export function findGroundedSpan(
+  span: unknown,
+  transcript: unknown,
+  minimumChars = MIN_SPAN_CHARS,
+): string | null {
   const needle = normaliseForGrounding(span);
-  if (needle.length < MIN_SPAN_CHARS) return null;
+  if (!Number.isSafeInteger(minimumChars) || minimumChars < 1) {
+    throw new Error('minimumChars must be a positive integer.');
+  }
+  if (needle.length < minimumChars) return null;
 
   const source = String(transcript ?? '');
   const haystack = normaliseWithOffsets(source);

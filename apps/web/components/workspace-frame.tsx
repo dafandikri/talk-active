@@ -38,6 +38,7 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#workspace-main">Skip to workspace content</a>
       <aside className="sidebar" aria-label="Main navigation">
         <Link className="brand" href="/workspace" aria-label="Talk-Active home">
           <img className="brand-mark" src={logo.src} alt="" />
@@ -45,7 +46,7 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
         </Link>
         <nav className="main-nav">
           {navigation.map((item) => (
-            <Link className={`nav-item${isActive(pathname, item.href) ? ' is-active' : ''}`} href={item.href} key={item.href}>
+            <Link aria-current={isActive(pathname, item.href) ? 'page' : undefined} className={`nav-item${isActive(pathname, item.href) ? ' is-active' : ''}`} href={item.href} key={item.href}>
               <span className="nav-icon"><NavigationIcon name={item.icon} /></span><span>{item.label}</span>
             </Link>
           ))}
@@ -56,7 +57,7 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
         <div className="sidebar-projects">
           <div className="sidebar-label-row"><span>Project</span></div>
           <div className="sidebar-project-list">
-            <Link className="sidebar-project is-active" href="/workspace"><i /><span>Talk-Active · RISTEK Finals</span></Link>
+            <Link aria-current={pathname === '/workspace' ? 'page' : undefined} className="sidebar-project is-active" href="/workspace"><i /><span>Talk-Active · RISTEK Finals</span></Link>
           </div>
         </div>
         <div className="sidebar-bottom">
@@ -83,11 +84,11 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
         </Link>
       </header>
 
-      <main className="workspace">{children}</main>
+      <main className="workspace" id="workspace-main" tabIndex={-1}>{children}</main>
 
       <nav className="mobile-nav" aria-label="Mobile navigation">
         {navigation.map((item) => (
-          <Link className={isActive(pathname, item.href) ? 'is-active' : ''} href={item.href} key={item.href}>
+          <Link aria-current={isActive(pathname, item.href) ? 'page' : undefined} className={isActive(pathname, item.href) ? 'is-active' : ''} href={item.href} key={item.href}>
             <span className="nav-icon"><NavigationIcon name={item.icon} /></span>{item.label}
           </Link>
         ))}

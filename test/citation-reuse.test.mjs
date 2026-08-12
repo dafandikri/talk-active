@@ -50,7 +50,7 @@ test('A-2 does not flag one criterion twice or unrelated citations', () => {
 test('A-2 response contract keeps every reuse tied to returned verdicts', () => {
   const verdicts = [verdict('criterion-grounding'), verdict('criterion-fit')];
   const valid = EvidenceResponseSchema.safeParse({
-    contractVersion: 1,
+    contractVersion: 2,
     attemptId: 'attempt-1',
     verdicts,
     reusedCitations: detectReusedCitations(verdicts),
@@ -59,7 +59,7 @@ test('A-2 response contract keeps every reuse tied to returned verdicts', () => 
   assert.equal(valid.success, true);
 
   const unknownCriterion = EvidenceResponseSchema.safeParse({
-    contractVersion: 1,
+    contractVersion: 2,
     attemptId: 'attempt-1',
     verdicts,
     reusedCitations: [{ citedSpan: SPAN, criterionIds: ['criterion-grounding', 'criterion-unknown'] }],

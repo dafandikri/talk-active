@@ -11,10 +11,16 @@ import { analyzeStatelessAttempt } from '../apps/web/lib/services/stateless-anal
 
 const INPUT = {
   transcript: 'We interviewed students on three campuses. Our rubric gives them focused feedback.',
-  rubricText: [
-    'Problem clarity | interviewed, urgency',
-    'Solution fit | rubric, feedback, measurable improvement',
-  ].join('\n'),
+  criteria: [
+    {
+      id: 'problem-clarity', name: 'Problem clarity', description: 'Show urgency.',
+      requiredEvidence: ['interviewed', 'urgency'], displayOrder: 0,
+    },
+    {
+      id: 'solution-fit', name: 'Solution fit', description: 'Connect the mechanism to an outcome.',
+      requiredEvidence: ['rubric', 'feedback', 'measurable improvement'], displayOrder: 1,
+    },
+  ],
   durationSeconds: 60,
 };
 
@@ -81,6 +87,27 @@ test('A-3 a failed stateless model orchestration degrades to a valid determinist
   assert.equal(response.questionEngine, 'deterministic');
 });
 
+test('INV-3 deterministic coverage stays partial while any declared evidence is missing', async () => {
+  const result = await analyzeStatelessAttempt({
+    transcript: 'Our product explains the problem for students with evidence.',
+    durationSeconds: 60,
+    criteria: [{
+      id: 'problem',
+      name: 'Problem',
+      description: 'Explain the problem, students, evidence, and urgency.',
+      requiredEvidence: ['problem', 'students', 'evidence', 'urgency'],
+      displayOrder: 0,
+    }],
+  }, {
+    evidenceOptions: { model: '' },
+    questionOptions: { model: '' },
+  });
+
+  assert.equal(result.analysis.criteria[0].score, 50);
+  assert.equal(result.analysis.criteria[0].status, 'partial');
+  assert.deepEqual(result.analysis.criteria[0].missingSignals, ['urgency']);
+});
+
 test('A-5 analysis cache hashes transcript plus rubric and recomputes duration-only delivery', async () => {
   const values = new Map();
   const store = {
@@ -115,8 +142,61 @@ test('A-5 analysis cache hashes transcript plus rubric and recomputes duration-o
   );
   assert.notEqual(
     statelessAnalysisCacheKey(INPUT),
-    statelessAnalysisCacheKey({ ...INPUT, rubricText: 'Different | evidence' }),
+    statelessAnalysisCacheKey({
+      ...INPUT,
+      criteria: [{
+        id: 'different', name: 'Different', description: '',
+        requiredEvidence: ['evidence'], displayOrder: 0,
+      }],
+    }),
   );
+  assert.notEqual(
+    statelessAnalysisCacheKey(INPUT, { AI_EVIDENCE_MODEL: 'model-a' }),
+    statelessAnalysisCacheKey(INPUT, { AI_EVIDENCE_MODEL: 'model-b' }),
+  );
+});
+
+test('A-1 structured criteria reach the semantic judge without flattening phrases or descriptions', async () => {
+  const received = [];
+  await analyzeStatelessAttempt(INPUT, {
+    judge: async (_transcript, criteria) => {
+      received.push(...criteria);
+      return SEMANTIC_JUDGMENTS;
+    },
+    question: async () => ({
+      questionText: 'What direct evidence shows that the student problem is urgent right now?',
+      challengedClaim: 'urgency',
+      basis: 'missing-evidence',
+      sourceDocumentId: null,
+      engine: 'semantic',
+      model: 'test/question',
+      degradedReason: null,
+    }),
+  });
+  assert.equal(received[1].description, 'Connect the mechanism to an outcome.');
+  assert.deepEqual(received[1].requiredEvidence, ['rubric', 'feedback', 'measurable improvement']);
+});
+
+test('A-1 duplicate criterion names retain distinct typed ids and verdicts', async () => {
+  const input = {
+    ...INPUT,
+    criteria: [
+      { id: 'impact', name: 'Impact', description: 'Beneficiary', requiredEvidence: ['beneficiary'], displayOrder: 0 },
+      { id: 'impact-2', name: 'Impact', description: 'Measurement', requiredEvidence: ['measure'], displayOrder: 1 },
+    ],
+  };
+  const response = await analyzeStatelessAttempt(input, {
+    judge: async () => [
+      { ...SEMANTIC_JUDGMENTS[0], criterionId: 'impact' },
+      { ...SEMANTIC_JUDGMENTS[1], criterionId: 'impact-2' },
+    ],
+    question: async () => ({
+      questionText: 'Which beneficiary receives the first measurable outcome from this intervention?',
+      challengedClaim: 'beneficiary', basis: 'missing-evidence', sourceDocumentId: null,
+      engine: 'semantic', model: 'test/question', degradedReason: null,
+    }),
+  });
+  assert.deepEqual(response.analysis.criteria.map(({ id }) => id), ['impact', 'impact-2']);
 });
 
 test('A-5 deterministic fallbacks are not cached as semantic answers', async () => {

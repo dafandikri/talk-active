@@ -6,18 +6,24 @@ import {
   CapabilitiesResponseSchema,
   CONTRACT_VERSION,
 } from '@/lib/contracts';
+import { optionalUserId } from '@/lib/auth-session';
 
-export async function GET() {
+export async function GET(request: Request) {
   await connection();
   const semanticAvailable = aiRateLimitConfigured();
+  const databaseAvailable = Boolean(process.env.DATABASE_URL?.trim());
+  const accountsAvailable = Boolean(
+    databaseAvailable && process.env.BETTER_AUTH_SECRET?.trim(),
+  );
+  const userId = accountsAvailable ? await optionalUserId(request) : null;
   return NextResponse.json(CapabilitiesResponseSchema.parse({
     contractVersion: CONTRACT_VERSION,
-    persistence: process.env.DATABASE_URL?.trim() ? 'neon' : 'local',
-    accounts: Boolean(
-      process.env.DATABASE_URL?.trim() && process.env.BETTER_AUTH_SECRET?.trim(),
-    ),
+    // Neon is an account-only capability. An anonymous visitor has no stable,
+    // private SQL owner identity, so their rehearsal remains local/stateless.
+    persistence: databaseAvailable && userId ? 'neon' : 'local',
+    accounts: accountsAvailable,
     sourceDocuments: Boolean(
-      process.env.DATABASE_URL?.trim() && process.env.BLOB_READ_WRITE_TOKEN?.trim(),
+      databaseAvailable && userId && process.env.BLOB_READ_WRITE_TOKEN?.trim(),
     ),
     semantic: {
       rubric: semanticAvailable && Boolean(process.env.AI_RUBRIC_MODEL?.trim()),

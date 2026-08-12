@@ -18,7 +18,7 @@ export const LocalEvidenceConfirmationSchema = z.object({
   judgedCoverageScore: z.union([z.literal(0), z.literal(0.5), z.literal(1)]),
   judgedCitedSpan: z.string().max(12_000).nullable(),
   judgedMissingEvidence: z.array(z.string().trim().min(1).max(200)).max(40),
-  judgedEngine: z.literal('deterministic'),
+  judgedEngine: z.enum(['semantic', 'deterministic']),
   createdAt: z.string().datetime({ offset: true }),
   rejudgedAt: z.string().datetime({ offset: true }).nullable(),
 });

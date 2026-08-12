@@ -5,7 +5,9 @@ import {
   AI_RATE_LIMIT_ROUTE_COST,
   aiRateLimitConfigured,
   aiRouteUsesModel,
+  evidenceRateLimitCost,
   enforceAiRateLimit,
+  statelessAnalysisRateLimitCost,
 } from '../apps/web/lib/api/ai-rate-limit.ts';
 import { ApiProblem } from '../apps/web/lib/api/problem.ts';
 
@@ -68,7 +70,10 @@ test('A-7 checks pseudonymized IP and user buckets without storing either raw id
   assert.deepEqual(decision, { applied: true, identitiesChecked: 2 });
   assert.equal(backend.calls.length, 2);
   assert.deepEqual(backend.calls.map((call) => call.route), ['evidence', 'evidence']);
-  assert.deepEqual(backend.calls.map((call) => call.cost), [AI_RATE_LIMIT_ROUTE_COST.evidence, 5]);
+  assert.deepEqual(
+    backend.calls.map((call) => call.cost),
+    [AI_RATE_LIMIT_ROUTE_COST.evidence, AI_RATE_LIMIT_ROUTE_COST.evidence],
+  );
   assert.match(backend.calls[0].identifier, /^ip:[a-f0-9]{64}$/u);
   assert.match(backend.calls[1].identifier, /^user:[a-f0-9]{64}$/u);
   assert.doesNotMatch(JSON.stringify(backend.calls), /203\.0\.113\.42|student-123/u);
@@ -84,20 +89,54 @@ test('A-7 guests consume only the pseudonymized IP bucket', async () => {
   );
   assert.equal(decision.identitiesChecked, 1);
   assert.equal(backend.calls[0].route, 'question');
-  assert.equal(backend.calls[0].cost, 1);
+  assert.equal(backend.calls[0].cost, 2);
 });
 
-test('A-7 stateless analysis pays for evidence fan-out and one judge question', async () => {
+test('A-7 accepts the operator-attested Vercel Firewall boundary only on Vercel', async () => {
+  const environment = {
+    AI_EVIDENCE_MODEL: 'test/evidence',
+    AI_RATE_LIMIT_MODE: 'vercel-firewall',
+    VERCEL: '1',
+  };
+  assert.equal(aiRateLimitConfigured(environment), true);
+  assert.equal(aiRateLimitConfigured({ ...environment, VERCEL: '' }), false);
+
+  const decision = await enforceAiRateLimit(
+    new Request('https://talk-active.example/api/test', { method: 'POST' }),
+    'evidence',
+    null,
+    {
+      environment,
+      store: { limit: async () => { throw new Error('WAF mode must not call Redis'); } },
+    },
+  );
+  assert.deepEqual(decision, { applied: true, identitiesChecked: 1 });
+});
+
+test('A-7 stateless analysis reserves the maximum provider calls for its actual criterion count', async () => {
   const backend = recordingStore();
+  const cost = statelessAnalysisRateLimitCost(7, CONFIGURED_ENV);
   await enforceAiRateLimit(
     request(),
     'analysis',
     null,
-    { environment: CONFIGURED_ENV, store: backend.store },
+    { environment: CONFIGURED_ENV, store: backend.store, cost },
   );
   assert.equal(backend.calls[0].route, 'analysis');
-  assert.equal(backend.calls[0].cost, 6);
+  assert.equal(backend.calls[0].cost, 16);
+  assert.equal(statelessAnalysisRateLimitCost(20, CONFIGURED_ENV), 42);
+  assert.equal(
+    statelessAnalysisRateLimitCost(7, { AI_QUESTION_MODEL: 'test/question' }),
+    2,
+  );
   assert.equal(aiRouteUsesModel('analysis', CONFIGURED_ENV), true);
+});
+
+test('A-7 persistent evidence reserves two attempts per actual criterion, not the 20-row maximum', () => {
+  assert.equal(evidenceRateLimitCost(4, CONFIGURED_ENV), 8);
+  assert.equal(evidenceRateLimitCost(20, CONFIGURED_ENV), 40);
+  assert.equal(evidenceRateLimitCost(4, {}), 1);
+  assert.ok(evidenceRateLimitCost(4, CONFIGURED_ENV) * 2 <= 50);
 });
 
 test('A-7 rejects paid execution when configuration or a trustworthy IP is missing', async () => {
@@ -169,7 +208,7 @@ test('A-7 semantic capability requires all limiter credentials and maps defense 
   assert.equal(aiRateLimitConfigured(CONFIGURED_ENV), true);
   assert.equal(aiRateLimitConfigured({ ...CONFIGURED_ENV, AI_RATE_LIMIT_HASH_SECRET: '' }), false);
   assert.equal(aiRateLimitConfigured({ ...CONFIGURED_ENV, AI_RATE_LIMIT_HASH_SECRET: 'too-short' }), false);
-  assert.equal(aiRateLimitConfigured({ ...CONFIGURED_ENV, AI_RATE_LIMIT_MAX_TOKENS: '4' }), false);
+  assert.equal(aiRateLimitConfigured({ ...CONFIGURED_ENV, AI_RATE_LIMIT_MAX_TOKENS: '41' }), false);
   assert.equal(aiRouteUsesModel('defense', CONFIGURED_ENV), true);
   assert.equal(aiRouteUsesModel('rubric', CONFIGURED_ENV), false);
 });

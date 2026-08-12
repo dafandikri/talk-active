@@ -17,6 +17,7 @@ import {
   CONTRACT_VERSION,
   CreateAttemptResponseSchema,
   CreateProjectResponseSchema,
+  CurrentProjectResponseSchema,
   DefenseResponseSchema,
   EvidenceConfirmationResponseSchema,
   EvidenceResponseSchema,
@@ -85,6 +86,13 @@ export async function createOwnedProject(
   input: CreateProjectRequest,
   userId: string | null,
 ) {
+  if (!userId) {
+    throw new ApiProblem(
+      401,
+      'authentication_required',
+      'Sign in before saving a project to the synced workspace.',
+    );
+  }
   const [project] = await db.insert(projects).values({
     userId,
     title: input.title,
@@ -96,11 +104,71 @@ export async function createOwnedProject(
 }
 
 async function assertProjectAccess(db: Database, projectId: string, userId: string | null) {
+  if (!userId) {
+    throw new ApiProblem(
+      401,
+      'authentication_required',
+      'Sign in before accessing a synced project.',
+    );
+  }
   const [project] = await db.select({ id: projects.id, userId: projects.userId })
     .from(projects)
     .where(eq(projects.id, projectId))
     .limit(1);
   if (!project || project.userId !== userId) notFound('Project');
+}
+
+export async function getCurrentOwnedProject(
+  db: Database,
+  userId: string | null,
+) {
+  // Guest project rows historically used user_id = NULL. SQL NULL is not an
+  // owner identity: querying it would let one anonymous visitor discover
+  // another visitor's workspace. Guests therefore stay local/stateless until
+  // they explicitly create a synced account.
+  if (!userId) {
+    return CurrentProjectResponseSchema.parse({
+      contractVersion: CONTRACT_VERSION,
+      identity: 'guest',
+      current: null,
+    });
+  }
+
+  const [owned] = await db.select({ project: projects, rubric: rubrics })
+    .from(projects)
+    .innerJoin(rubrics, and(
+      eq(rubrics.projectId, projects.id),
+      sql`${rubrics.confirmedAt} is not null`,
+    ))
+    .where(eq(projects.userId, userId))
+    .orderBy(desc(projects.updatedAt), desc(projects.createdAt))
+    .limit(1);
+  if (!owned) {
+    return CurrentProjectResponseSchema.parse({
+      contractVersion: CONTRACT_VERSION,
+      identity: 'account',
+      current: null,
+    });
+  }
+
+  const { project, rubric } = owned;
+  const recoveredCriteria = await db.select().from(criteria)
+    .where(eq(criteria.rubricId, rubric.id))
+    .orderBy(asc(criteria.displayOrder));
+  const recoveredSources = await db.select().from(sourceDocuments)
+    .where(eq(sourceDocuments.projectId, project.id))
+    .orderBy(asc(sourceDocuments.uploadedAt));
+
+  return CurrentProjectResponseSchema.parse({
+    contractVersion: CONTRACT_VERSION,
+    identity: 'account',
+    current: {
+      project,
+      rubric,
+      criteria: recoveredCriteria,
+      sourceDocuments: recoveredSources,
+    },
+  });
 }
 
 export async function confirmProjectRubric(
@@ -306,6 +374,36 @@ export async function deleteProjectSourceDocument(
   });
 }
 
+export async function getAttemptCriterionCount(
+  db: Database,
+  attemptId: string,
+  userId: string | null,
+): Promise<number> {
+  const [attemptOwner] = await db.select({ projectId: attempts.projectId }).from(attempts)
+    .where(eq(attempts.id, attemptId))
+    .limit(1);
+  if (!attemptOwner) notFound('Attempt');
+  await assertProjectAccess(db, attemptOwner.projectId, userId);
+
+  const [row] = await db.select({
+    criterionCount: sql<number>`count(${criteria.id})`,
+  }).from(rubrics)
+    .innerJoin(criteria, eq(criteria.rubricId, rubrics.id))
+    .where(and(
+      eq(rubrics.projectId, attemptOwner.projectId),
+      sql`${rubrics.confirmedAt} is not null`,
+    ));
+  const criterionCount = Number(row?.criterionCount ?? 0);
+  if (!Number.isSafeInteger(criterionCount) || criterionCount < 1 || criterionCount > 20) {
+    throw new ApiProblem(
+      409,
+      'criteria_required',
+      'This attempt has no valid confirmed rubric criteria to evaluate.',
+    );
+  }
+  return criterionCount;
+}
+
 export async function evaluateAttemptEvidence(
   db: Database,
   attemptId: string,
@@ -427,6 +525,7 @@ export async function confirmAttemptEvidence(
       const [verdict] = await tx.update(evidenceVerdicts).set({
           verdict: 'supported',
           coverageScore: 1,
+          missingEvidence: [],
           studentOverridden: context.verdict.verdict !== 'supported',
           studentOverrideVerdict: context.verdict.verdict !== 'supported' ? 'supported' : null,
         }).where(eq(evidenceVerdicts.id, context.verdict.id)).returning();

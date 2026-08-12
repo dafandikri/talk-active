@@ -69,12 +69,16 @@ of the product worthy of it.**
 3. **Demo resilience** — public access, kiosk reset, mobile, zero console errors, no external hangs.
 4. **Interface polish** — the screens judges and visitors actually see.
 5. **Pitch + Q&A** — 7-minute script, live demo choreography, drilled answers.
+6. **Experimental multimodal rehearsal (lead-approved integration, 13 Aug)** — opt-in browser
+   dictation plus on-device MediaPipe face/pose landmarks and Web Audio observations. Results
+   keep rubric substance, vocal signals, and visual signals separately inspectable; raw frames
+   and audio are not persisted. The manual transcript path remains the demo-safe fallback.
 
 ### Out — decided, not deferred by accident
 
-Accounts and auth · cloud sync · audio recording and transcription · body-language or facial
-analysis · streaks or gamification · institutional dashboards · any numeric confidence or
-ability score · payment.
+Accounts and auth · cloud sync · stored audio/video · identity recognition · emotion,
+personality, confidence, health, gaze, or hiring inference · candidate ranking · streaks or
+gamification · institutional dashboards · payment.
 
 > Adding scope during a four-day sprint is how demos break. INV-6 is in force. Any addition
 > to this list requires the lead's sign-off and a note in this file.
@@ -86,12 +90,14 @@ ability score · payment.
 | # | Decision | Rationale |
 |---|---|---|
 | **AD-1** | Semantic analysis runs in a **Vercel Function** (`/api/analyze`), never in the browser. | The API key must never reach the client. Also lets us cache and rate-limit. |
-| **AD-2** | The analyzer keeps its **pure function boundary**. The server returns the same shape `analyzeSpeech` returns. | The UI does not learn a second data model. Fallback becomes a one-line swap. |
+| **AD-2** | Rubric criteria remain a **versioned typed contract** from import through evidence review. The deterministic analyzer receives a derived compatibility string only at its boundary. | Descriptions, multi-word evidence phrases, stable IDs, and source order must survive semantic judging without lossy prompt reconstruction. |
 | **AD-3** | **Every AI call is wrapped**: `try semantic → catch deterministic`, with a visible mode badge. | INV-8. A dropped connection degrades the demo instead of ending it. |
 | **AD-4** | The model **must return the transcript span** justifying each verdict; a verdict without a span is rejected server-side. | INV-3. This is the differentiator; it cannot be left to prompt politeness. |
-| **AD-5** | Responses are **cached by hash** of (transcript + rubric). | Cost, rate limits, and instant replay of the stage demo. |
-| **AD-6** | **No new runtime dependencies in the client.** Server may use the AI SDK. | The zero-dependency client is part of the feasibility story. |
-| **AD-7** | Feature flag `SEMANTIC_ANALYSIS` defaults **on locally, on in production, off if the key is absent**. | Absent key must never crash — it silently degrades. |
+| **AD-5** | Fully semantic responses are cached by a versioned hash of transcript, typed criteria, prompts, and configured models; duration-only delivery observations are recomputed. Deterministic fallbacks are not cached as semantic answers. | Cost, rate limits, and instant replay without stale results after a prompt, model, rubric-description, or evidence-phrase change. |
+| **AD-6** | The client adds one pinned vision dependency, `@mediapipe/tasks-vision@1.0.1`; its WASM and model assets are vendored same-origin. | One reviewed dependency buys the visible camera feature while avoiding a CDN/model-download failure on stage. |
+| **AD-7** | Semantic capability is exposed only when a model and an enforced paid-route boundary are configured. Every response names semantic or deterministic provenance. | A missing key, model, or rate-limit boundary must never spend unexpectedly or masquerade as semantic analysis. |
+| **AD-8** | Multimodal rehearsal is optional and fail-open. MediaPipe/WASM/model assets are same-origin; browser speech recognition may use the browser vendor's speech service. | The stage path survives denied permissions, unsupported dictation, or failed landmark tracking without losing typed rubric analysis. |
+| **AD-9** | Multimodal results remain raw, separately labelled observations with explicit missing-measurement coverage. They never change rubric verdicts and are never combined into a rehearsal, confidence, or ability score. | Landmarks and acoustic samples are supporting rehearsal context, not a defensible measure of student quality. |
 
 ### Data flow (target)
 
@@ -241,7 +247,10 @@ days. Use what is already under the code:
 | Risk | Likelihood | Impact | Mitigation | Owner |
 |---|---|---|---|---|
 | LLM API fails during the live pitch | Medium | **Fatal** | AD-3 fallback + A5 cache + D2 recovery line + E3 offline laptop | Demo owner |
+| AI spend or provider traffic exceeds the demo boundary | Low | High | Paid routes require an attested production rate-limit boundary; model/prompt versions are explicit in cache keys; the Gateway key has a hard budget and expiry | Integration |
 | Venue wifi drops | High | High | Run from localhost on the demo laptop; phone hotspot as backup; no external resources (gate-enforced) | Demo owner |
+| Camera/microphone permission, browser dictation, or landmark loading fails | Medium | Medium | Multimodal capture is separately consented and optional; same-origin pinned assets avoid runtime CDN fetches; typed/manual transcript analysis remains available | Interface |
+| On-device landmark tracking causes mobile jank or a long first load | Medium | Medium | Tracking is opt-in, sampled at a bounded rate, and excluded from rubric verdicts; rehearse on the actual demo phone/laptop and use transcript-only mode if performance is poor | Demo owner |
 | Semantic mapping is not ready by Day 3 | Medium | Medium | It is behind a flag. Ship deterministic and say so honestly — that is what we did in the proposal and it scored 91.64 | Lead |
 | Overrun on the 7-minute limit | Medium | High | Hard cut is enforced by the organisers. D1 times to 6:30 with 30s of slack | Pitch owner |
 | Someone breaks `main` at 2am | Medium | High | `pnpm check` is the merge permission; E2 nightly known-good tag to fall back to | Integration |

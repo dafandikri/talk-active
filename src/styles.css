@@ -506,7 +506,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .timer { color: var(--brand); font-variant-numeric: tabular-nums; font-size: var(--step-2); font-weight: var(--weight-heavy); }
 .capture-tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-3); }
 .capture-tabs button {
-  min-height: 34px; padding: 0 var(--space-3); color: var(--text-muted);
+  min-height: 44px; padding: 0 var(--space-3); color: var(--text-muted);
   background: transparent; border: 0; border-radius: var(--radius-sm);
   font-size: var(--step-0); font-weight: var(--weight-bold); cursor: pointer;
 }
@@ -516,9 +516,9 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .record-dot { width: 8px; height: 8px; display: inline-block; margin-right: var(--space-2); background: var(--caution); border-radius: 50%; }
 #attemptTranscript { min-height: 340px; font-size: var(--step-1); }
 .capture-footer { display: flex; align-items: end; justify-content: space-between; gap: var(--space-5); margin-top: var(--space-4); }
-.duration-control { display: grid; grid-template-columns: auto 70px auto; gap: var(--space-2); align-items: center; }
+.duration-control { display: grid; grid-template-columns: auto 78px auto; gap: var(--space-2); align-items: center; }
 .duration-control label { margin: 0; }
-.duration-control input { height: 34px; padding: 0 var(--space-2); }
+.duration-control input { height: 44px; padding: 0 var(--space-2); }
 .duration-control span, .save-state { color: var(--text-muted); font-size: var(--step-0); }
 .save-state span { color: var(--brand); }
 /* INV-7: analysis fails loudly. This is the loud part. */
@@ -842,7 +842,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .rubric-import-status { min-height: var(--space-4); margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); }
 .rubric-list { display: grid; gap: var(--space-3); margin: var(--space-6) 0 var(--space-4); }
 .rubric-row {
-  display: grid; grid-template-columns: 32px minmax(140px, .7fr) minmax(220px, 1.3fr) 30px;
+  display: grid; grid-template-columns: 32px minmax(130px, .65fr) minmax(180px, 1fr) minmax(200px, 1.2fr) 44px;
   gap: var(--space-3); align-items: center; padding: var(--space-4);
   background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-md);
 }
@@ -853,7 +853,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 }
 .rubric-field label { margin-bottom: var(--space-1); color: var(--text-muted); font-size: var(--step-0); }
 .rubric-field input { height: 39px; background: var(--surface); font-size: var(--step-0); }
-.remove-criterion { width: 30px; height: 30px; color: var(--text-muted); background: transparent; border: 0; border-radius: var(--radius-sm); cursor: pointer; }
+.remove-criterion { width: 44px; height: 44px; color: var(--text-muted); background: transparent; border: 0; border-radius: var(--radius-sm); cursor: pointer; }
 .remove-criterion:hover { color: var(--danger); background: var(--danger-wash); }
 .add-criterion {
   width: 100%; min-height: 48px; color: var(--brand); background: transparent;
@@ -918,7 +918,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .dialog-header { display: flex; justify-content: space-between; gap: var(--space-5); }
 .dialog-header h2 { font-size: var(--step-4); }
 .dialog-close {
-  width: 36px; height: 36px; color: var(--text-muted); background: var(--surface-sunken);
+  width: 44px; height: 44px; color: var(--text-muted); background: var(--surface-sunken);
   border: 0; border-radius: 50%; font-size: var(--step-3); cursor: pointer;
 }
 .project-dialog form > p { margin: var(--space-3) 0 var(--space-5); color: var(--text-muted); font-size: var(--step-0); }
@@ -1057,6 +1057,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 
 @media (max-width: 760px) {
   body { padding-bottom: var(--space-8); }
+  input, textarea, select { font-size: var(--step-2); }
   .sidebar { display: none; }
   .mobile-header {
     position: sticky; top: 0; z-index: 20; min-height: 64px;
@@ -1118,8 +1119,9 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   .rubric-editor-card { padding: var(--space-5); }
   .rubric-editor-card .section-title-row { display: block; }
   .rubric-editor-card select { width: 100%; margin-top: var(--space-4); }
-  .rubric-row { grid-template-columns: 30px 1fr 30px; }
-  .rubric-row .rubric-field:nth-child(3) { grid-column: 2 / 4; }
+  .rubric-row { grid-template-columns: 30px 1fr 44px; }
+  .rubric-row .rubric-field:nth-child(3), .rubric-row .rubric-field:nth-child(4) { grid-column: 2 / 4; }
+  .rubric-row .remove-criterion { grid-column: 3; grid-row: 1; }
   .progress-chart-card, .history-card { padding: var(--space-5); }
   .progress-chart-card .section-title-row { display: block; }
   .progress-chart-card select { width: 100%; margin-top: var(--space-4); }

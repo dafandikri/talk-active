@@ -4,8 +4,14 @@ async function expectVisibleControlsHitTest(page: import('@playwright/test').Pag
   const controls = page.locator('a[href], button:not([disabled]), input:not([type="hidden"]), textarea, select, summary');
   for (let index = 0; index < await controls.count(); index += 1) {
     const control = controls.nth(index);
+    const skipLinkState = await control.evaluate((element) => ({
+      focused: element === document.activeElement,
+      skipLink: element.classList.contains('skip-link'),
+    }));
+    if (skipLinkState.skipLink && !skipLinkState.focused) continue;
     if (!await control.isVisible()) continue;
     await control.click({ trial: true });
+    if (skipLinkState.skipLink) await control.blur();
   }
 }
 
@@ -52,7 +58,7 @@ test('production guest completes attempt → evidence → defense → progress',
   await expectVisibleControlsHitTest(page);
 
   await page.getByRole('button', { name: 'Confirm Problem clarity' }).click();
-  await expect(page.getByText('Saved in this browser as a human evaluation label.')).toBeVisible();
+  await expect(page.getByText(/Saved in this browser as a human evaluation label; the original deterministic provenance is preserved\./u)).toBeVisible();
   await page.getByRole('button', { name: 'Reject Solution fit' }).click();
   await expect(page.getByText(/re-checked once with the rejected sentence excluded/i)).toBeVisible();
   await expect.poll(() => page.evaluate(() => {
@@ -86,6 +92,12 @@ test('workspace keeps one practice action above the fold at 720p', async ({ page
   const actionBounds = await practiceActions.boundingBox();
   expect(actionBounds, 'the dominant practice action must have rendered bounds').not.toBeNull();
   expect((actionBounds?.y ?? 720) + (actionBounds?.height ?? 0)).toBeLessThanOrEqual(720);
+
+  const skipLink = page.getByRole('link', { name: 'Skip to workspace content' });
+  await expect(skipLink).not.toBeInViewport();
+  await page.keyboard.press('Tab');
+  await expect(skipLink).toBeFocused();
+  await expect(skipLink).toBeInViewport();
   await expectVisibleControlsHitTest(page);
 });
 
@@ -180,7 +192,7 @@ test('local guest workspace uses stateless semantic review when the capability i
       body: JSON.stringify(body),
     });
     if (pathname === '/api/capabilities') return respond({
-      contractVersion: 1,
+      contractVersion: 2,
       persistence: 'local',
       accounts: false,
       sourceDocuments: false,
@@ -190,8 +202,18 @@ test('local guest workspace uses stateless semantic review when the capability i
       analyzeCalls += 1;
       const input = request.postDataJSON();
       expect(input.transcript).toBe(transcript);
+      expect(input.rubricText).toBeUndefined();
+      expect(input.criteria).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: 'problem-clarity',
+          name: 'Problem clarity',
+          description: expect.any(String),
+          requiredEvidence: expect.any(Array),
+          displayOrder: 0,
+        }),
+      ]));
       return respond({
-        contractVersion: 1,
+        contractVersion: 2,
         analysis: {
           evidenceScore: 50,
           coveredCount: 0,
@@ -217,7 +239,7 @@ test('local guest workspace uses stateless semantic review when the capability i
 
   await page.goto('/practice');
   await page.getByRole('button', { name: /Begin this attempt/i }).click();
-  await expect(page.getByText(/Semantic review sends transcript and rubric text/u)).toBeVisible();
+  await expect(page.getByText(/Semantic review sends this transcript and the typed rubric criteria/u)).toBeVisible();
   await page.getByRole('button', { name: /Review this attempt/i }).click();
   await expect(page.getByText(/4 of 4 criteria used semantic mapping/u)).toBeVisible();
   await expect(page.getByText(/judge question used semantic generation/u)).toBeVisible();
@@ -259,14 +281,14 @@ test('private source upload grounds the saved judge question with visible proven
       body: JSON.stringify(body),
     });
     if (url.pathname === '/api/capabilities') return respond({
-      contractVersion: 1,
+      contractVersion: 2,
       persistence: 'neon',
       accounts: false,
       sourceDocuments: true,
       semantic: { rubric: false, evidence: false, question: false, defense: false },
     });
     if (url.pathname === '/api/projects' && request.method() === 'POST') return respond({
-      contractVersion: 1,
+      contractVersion: 2,
       project: {
         id: projectId, userId: null, title: 'Finals rehearsal',
         eventContext: '7-minute pitch · 3-minute Q&A', deadline: '2026-08-14',
@@ -275,7 +297,7 @@ test('private source upload grounds the saved judge question with visible proven
     });
     if (url.pathname === `/api/projects/${projectId}/rubric` && request.method() === 'PUT') {
       return respond({
-        contractVersion: 1,
+        contractVersion: 2,
         rubric: { id: rubricId, projectId, sourceType: 'manual', confirmedAt: createdAt, createdAt },
         criteria,
       });
@@ -283,10 +305,10 @@ test('private source upload grounds the saved judge question with visible proven
     if (url.pathname === `/api/projects/${projectId}/sources` && request.method() === 'POST') {
       uploadCalls += 1;
       expect(request.headers()['content-type']).toContain('multipart/form-data');
-      return respond({ contractVersion: 1, sourceDocument });
+      return respond({ contractVersion: 2, sourceDocument });
     }
     if (url.pathname === '/api/attempts' && request.method() === 'POST') return respond({
-      contractVersion: 1,
+      contractVersion: 2,
       attempt: {
         id: attemptId, projectId, mode: 'typed', status: 'draft',
         transcript: 'Talk-Active starts from the evaluator rubric and maps each verdict to evidence.',
@@ -295,7 +317,7 @@ test('private source upload grounds the saved judge question with visible proven
     });
     if (url.pathname === `/api/attempts/${attemptId}/evidence` && request.method() === 'POST') {
       return respond({
-        contractVersion: 1,
+        contractVersion: 2,
         attemptId,
         verdicts: criteria.map((criterion, index) => ({
           id: `verdict-source-${index}`,
@@ -319,7 +341,7 @@ test('private source upload grounds the saved judge question with visible proven
     }
     if (url.pathname === `/api/attempts/${attemptId}/question` && request.method() === 'POST') {
       return respond({
-        contractVersion: 1,
+        contractVersion: 2,
         question: {
           id: 'question-source-grounding', attemptId,
           targetCriterionId: criteria[0]?.id,
@@ -467,7 +489,7 @@ test('configured model route fails loudly before spend when its limiter is unava
   });
   expect(response.status()).toBe(503);
   await expect(response.json()).resolves.toEqual({
-    contractVersion: 1,
+    contractVersion: 2,
     error: {
       code: 'ai_rate_limit_unavailable',
       message: 'Semantic analysis is unavailable because its private rate limiter is not configured.',

@@ -24,6 +24,7 @@ interface EnforceOptions {
   environment?: NodeJS.ProcessEnv;
   store?: AiRateLimitStore;
   now?: () => number;
+  cost?: number;
 }
 
 export interface AiRateLimitDecision {
@@ -32,12 +33,16 @@ export interface AiRateLimitDecision {
 }
 
 export const AI_RATE_LIMIT_ROUTE_COST: Readonly<Record<AiRateLimitRoute, number>> = {
-  rubric: 1,
-  analysis: 6,
-  evidence: 5,
-  question: 1,
-  defense: 1,
-  confirmation: 1,
+  rubric: 2,
+  analysis: 42,
+  // A persistent attempt may contain 20 criteria and each schema/grounding
+  // failure gets one corrective retry.
+  evidence: 40,
+  question: 2,
+  defense: 2,
+  // Stateless rejection performs one corrective re-judge and may use two
+  // schema/grounding attempts to refresh its question.
+  confirmation: 3,
 };
 
 const MODEL_ENVIRONMENT: Readonly<Record<AiRateLimitRoute, readonly string[]>> = {
@@ -46,13 +51,14 @@ const MODEL_ENVIRONMENT: Readonly<Record<AiRateLimitRoute, readonly string[]>> =
   evidence: ['AI_EVIDENCE_MODEL'],
   question: ['AI_QUESTION_MODEL'],
   defense: ['AI_DEFENSE_MODEL', 'AI_EVIDENCE_MODEL'],
-  confirmation: ['AI_EVIDENCE_MODEL'],
+  confirmation: ['AI_EVIDENCE_MODEL', 'AI_QUESTION_MODEL'],
 };
 
 const DEFAULT_REFILL_TOKENS = 20;
-const DEFAULT_MAX_TOKENS = 20;
+const DEFAULT_MAX_TOKENS = 50;
 const RATE_LIMIT_INTERVAL = '10 m' as const;
 const RATE_LIMIT_TIMEOUT_MS = 1_000;
+const VERCEL_FIREWALL_MODE = 'vercel-firewall';
 
 function configuredValue(environment: NodeJS.ProcessEnv, key: string): string | null {
   return environment[key]?.trim() || null;
@@ -79,7 +85,38 @@ export function aiRouteUsesModel(
   return MODEL_ENVIRONMENT[route].some((key) => Boolean(configuredValue(environment, key)));
 }
 
+export function statelessAnalysisRateLimitCost(
+  criterionCount: number,
+  environment: NodeJS.ProcessEnv = process.env,
+): number {
+  if (!Number.isSafeInteger(criterionCount) || criterionCount < 1 || criterionCount > 20) {
+    throw new Error('criterionCount must be an integer between 1 and 20.');
+  }
+  const evidenceCalls = configuredValue(environment, 'AI_EVIDENCE_MODEL')
+    ? criterionCount * 2
+    : 0;
+  const questionCalls = configuredValue(environment, 'AI_QUESTION_MODEL') ? 2 : 0;
+  return Math.max(1, evidenceCalls + questionCalls);
+}
+
+export function evidenceRateLimitCost(
+  criterionCount: number,
+  environment: NodeJS.ProcessEnv = process.env,
+): number {
+  if (!Number.isSafeInteger(criterionCount) || criterionCount < 1 || criterionCount > 20) {
+    throw new Error('criterionCount must be an integer between 1 and 20.');
+  }
+  return configuredValue(environment, 'AI_EVIDENCE_MODEL')
+    ? criterionCount * 2
+    : 1;
+}
+
 export function aiRateLimitConfigured(environment: NodeJS.ProcessEnv = process.env): boolean {
+  if (
+    configuredValue(environment, 'AI_RATE_LIMIT_MODE') === VERCEL_FIREWALL_MODE
+    && configuredValue(environment, 'VERCEL') === '1'
+  ) return true;
+
   const secret = configuredValue(environment, 'AI_RATE_LIMIT_HASH_SECRET');
   if (
     !configuredValue(environment, 'UPSTASH_REDIS_REST_URL')
@@ -195,6 +232,16 @@ export async function enforceAiRateLimit(
   if (!aiRateLimitConfigured(environment)) {
     unavailable('Semantic analysis is unavailable because its private rate limiter is not configured.');
   }
+  if (
+    configuredValue(environment, 'AI_RATE_LIMIT_MODE') === VERCEL_FIREWALL_MODE
+    && configuredValue(environment, 'VERCEL') === '1'
+  ) {
+    // The production operator explicitly attests that Vercel Firewall checks
+    // /api traffic by its platform-derived IP and JA4 fingerprint before this
+    // function runs. VERCEL=1 prevents the flag from silently bypassing the
+    // in-process limiter in local or non-Vercel deployments.
+    return { applied: true, identitiesChecked: 1 };
+  }
   const ip = requestIp(request);
   if (!ip) {
     unavailable('Semantic analysis is unavailable because this request could not be assigned a rate-limit identity.');
@@ -204,13 +251,17 @@ export async function enforceAiRateLimit(
 
   const identifiers = [pseudonymousIdentifier('ip', ip, secret)];
   if (userId) identifiers.push(pseudonymousIdentifier('user', userId, secret));
+  const cost = options.cost ?? AI_RATE_LIMIT_ROUTE_COST[route];
+  if (!Number.isSafeInteger(cost) || cost < 1 || cost > AI_RATE_LIMIT_ROUTE_COST[route]) {
+    throw new Error(`Rate-limit cost for ${route} must be between 1 and ${AI_RATE_LIMIT_ROUTE_COST[route]}.`);
+  }
   let results: AiRateLimitResult[];
   try {
     const store = options.store ?? rateLimitStore(environment);
     results = await Promise.all(identifiers.map((identifier) => store.limit(
       route,
       identifier,
-      AI_RATE_LIMIT_ROUTE_COST[route],
+      cost,
     )));
   } catch (error) {
     if (error instanceof ApiProblem) throw error;

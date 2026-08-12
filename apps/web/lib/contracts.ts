@@ -3,7 +3,10 @@ import { z } from 'zod';
 // One file is the runtime boundary and the TypeScript boundary. Route handlers
 // parse with these schemas; components consume the inferred types. A parallel
 // interface declaration is a contract drift bug.
-export const CONTRACT_VERSION = 1 as const;
+// v2 replaces the stateless analysis boundary's flattened `rubricText` with
+// ordered, typed criteria. Keep this version explicit so an older client
+// cannot accidentally send the v1 shape and receive a plausible wrong review.
+export const CONTRACT_VERSION = 2 as const;
 
 const IdSchema = z.string().trim().min(1).max(128);
 const TimestampSchema = z.string().datetime({ offset: true });
@@ -107,6 +110,13 @@ export const EvidenceVerdictSchema = z.object({
       message: 'A partial or unsupported verdict must name the evidence that is missing.',
     });
   }
+  if (value.verdict === 'supported' && value.missingEvidence.length > 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['missingEvidence'],
+      message: 'A supported verdict cannot also claim that evidence is missing.',
+    });
+  }
   if (value.studentOverridden !== (value.studentOverrideVerdict !== null)) {
     context.addIssue({
       code: 'custom',
@@ -147,6 +157,13 @@ export const EvidenceConfirmationSchema = z.object({
       code: 'custom',
       path: ['judgedMissingEvidence'],
       message: 'A partial or unsupported evaluation label must retain the missing evidence it judged.',
+    });
+  }
+  if (value.judgedVerdict === 'supported' && value.judgedMissingEvidence.length > 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['judgedMissingEvidence'],
+      message: 'A supported evaluation label cannot retain missing evidence.',
     });
   }
   if (value.accepted && value.rejudgedAt !== null) {
@@ -279,6 +296,56 @@ export const CreateProjectResponseSchema = z.object({
   project: ProjectSchema,
 });
 
+const CurrentProjectWorkspaceSchema = z.object({
+  project: ProjectSchema,
+  rubric: RubricSchema.nullable(),
+  criteria: z.array(CriterionSchema).max(20),
+  sourceDocuments: z.array(SourceDocumentSchema).max(3),
+}).superRefine((value, context) => {
+  if ((value.rubric === null) !== (value.criteria.length === 0)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['criteria'],
+      message: 'Recovered criteria require their confirmed project rubric.',
+    });
+  }
+  if (value.rubric && value.rubric.projectId !== value.project.id) {
+    context.addIssue({
+      code: 'custom',
+      path: ['rubric', 'projectId'],
+      message: 'The recovered rubric must belong to the recovered project.',
+    });
+  }
+  if (value.criteria.some((criterion) => criterion.rubricId !== value.rubric?.id)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['criteria'],
+      message: 'Every recovered criterion must belong to the recovered rubric.',
+    });
+  }
+  if (value.sourceDocuments.some((document) => document.projectId !== value.project.id)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['sourceDocuments'],
+      message: 'Every recovered source document must belong to the recovered project.',
+    });
+  }
+});
+
+export const CurrentProjectResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  identity: z.enum(['account', 'guest']),
+  current: CurrentProjectWorkspaceSchema.nullable(),
+}).superRefine((value, context) => {
+  if (value.identity === 'guest' && value.current !== null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['current'],
+      message: 'An anonymous SQL identity cannot recover a private project.',
+    });
+  }
+});
+
 export const ConfirmRubricRequestSchema = z.object({
   sourceType: RubricSourceSchema,
   criteria: z.array(NewCriterionSchema).min(1).max(20),
@@ -320,13 +387,38 @@ export const ReusedCitationSchema = z.object({
   ),
 });
 
-export const StatelessAnalysisRequestSchema = z.object({
-  transcript: z.string().trim().min(1).max(12_000),
-  rubricText: z.string().trim().min(1).max(8_000),
-  durationSeconds: z.number().int().positive().max(3_600),
+export const StatelessInputCriterionSchema = z.object({
+  id: IdSchema,
+  name: z.string().trim().min(1).max(200),
+  description: z.string().trim().max(2_000),
+  requiredEvidence: z.array(z.string().trim().min(1).max(200)).max(40),
+  displayOrder: z.number().int().nonnegative(),
 });
 
-const StatelessCriterionSchema = z.object({
+export const StatelessAnalysisRequestSchema = z.object({
+  transcript: z.string().trim().min(1).max(12_000),
+  criteria: z.array(StatelessInputCriterionSchema).min(1).max(20),
+  durationSeconds: z.number().int().positive().max(3_600),
+}).superRefine((value, context) => {
+  const ids = new Set(value.criteria.map((criterion) => criterion.id));
+  if (ids.size !== value.criteria.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['criteria'],
+      message: 'Every criterion must have a unique id.',
+    });
+  }
+  const orders = new Set(value.criteria.map((criterion) => criterion.displayOrder));
+  if (orders.size !== value.criteria.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['criteria'],
+      message: 'Every criterion must have a unique display order.',
+    });
+  }
+});
+
+export const StatelessCriterionSchema = z.object({
   id: IdSchema,
   label: z.string().trim().min(1).max(200),
   requirementText: z.string().trim().max(2_000),
@@ -356,6 +448,13 @@ const StatelessCriterionSchema = z.object({
       code: 'custom',
       path: ['missingSignals'],
       message: 'Partial and missing criteria must name the evidence still missing.',
+    });
+  }
+  if (value.status === 'covered' && value.missingSignals.length > 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['missingSignals'],
+      message: 'A covered criterion cannot also claim that evidence is missing.',
     });
   }
 });
@@ -396,6 +495,13 @@ const StatelessAnalysisResultSchema = z.object({
       message: 'The weakest criterion must exist in the returned evidence rows.',
     });
   }
+  if (new Set(value.criteria.map((criterion) => criterion.id)).size !== value.criteria.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['criteria'],
+      message: 'The returned criteria must have unique ids.',
+    });
+  }
 });
 
 export const StatelessAnalysisResponseSchema = z.object({
@@ -412,13 +518,127 @@ export const StatelessAnalysisResponseSchema = z.object({
 }).superRefine((value, context) => {
   const analysisIds = new Set(value.analysis.criteria.map((criterion) => criterion.id));
   const engineIds = new Set(value.criterionEngines.map((item) => item.criterionId));
-  if (analysisIds.size !== engineIds.size || [...analysisIds].some((id) => !engineIds.has(id))) {
+  if (
+    analysisIds.size !== value.analysis.criteria.length
+    || engineIds.size !== value.criterionEngines.length
+    || analysisIds.size !== engineIds.size
+    || [...analysisIds].some((id) => !engineIds.has(id))
+  ) {
     context.addIssue({
       code: 'custom',
       path: ['criterionEngines'],
       message: 'Every returned criterion must have exactly one analysis engine.',
     });
   }
+});
+
+const StatelessJudgmentSchema = z.object({
+  criterionId: IdSchema,
+  verdict: EvidenceVerdictValueSchema,
+  coverageScore: CoverageScoreSchema,
+  citedSpan: z.string().max(12_000).nullable(),
+  missingEvidence: z.array(z.string().trim().min(1).max(200)).max(40),
+  engine: EvidenceEngineSchema,
+  degradedReason: z.string().trim().min(1).max(500).nullable(),
+}).superRefine((value, context) => {
+  if (value.verdict !== 'unsupported' && !value.citedSpan?.trim()) {
+    context.addIssue({
+      code: 'custom',
+      path: ['citedSpan'],
+      message: 'A supported or partial judgment must cite the answer or transcript.',
+    });
+  }
+  if (value.verdict === 'unsupported' && value.citedSpan !== null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['citedSpan'],
+      message: 'An unsupported judgment cannot retain a supporting citation.',
+    });
+  }
+  if (value.verdict !== 'supported' && value.missingEvidence.length === 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['missingEvidence'],
+      message: 'A partial or unsupported judgment must name the missing evidence.',
+    });
+  }
+  if (value.verdict === 'supported' && value.missingEvidence.length > 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['missingEvidence'],
+      message: 'A supported judgment cannot retain missing evidence.',
+    });
+  }
+});
+
+const RejectedStatelessJudgmentSchema = z.object({
+  verdict: EvidenceVerdictValueSchema,
+  coverageScore: CoverageScoreSchema,
+  citedSpan: z.string().max(12_000).nullable(),
+  missingEvidence: z.array(z.string().trim().min(1).max(200)).max(40),
+  engine: EvidenceEngineSchema,
+}).superRefine((value, context) => {
+  if (value.verdict !== 'unsupported' && !value.citedSpan?.trim()) {
+    context.addIssue({
+      code: 'custom',
+      path: ['citedSpan'],
+      message: 'A supported or partial rejected judgment must retain its citation.',
+    });
+  }
+  if (value.verdict === 'unsupported' && value.citedSpan !== null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['citedSpan'],
+      message: 'An unsupported rejected judgment cannot retain a citation.',
+    });
+  }
+  if (value.verdict !== 'supported' && value.missingEvidence.length === 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['missingEvidence'],
+      message: 'A partial or unsupported rejected judgment must retain its evidence gap.',
+    });
+  }
+  if (value.verdict === 'supported' && value.missingEvidence.length > 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['missingEvidence'],
+      message: 'A supported rejected judgment cannot retain missing evidence.',
+    });
+  }
+});
+
+export const StatelessRejudgeRequestSchema = z.object({
+  transcript: z.string().trim().min(1).max(12_000),
+  criterion: CriterionSchema,
+  rejected: RejectedStatelessJudgmentSchema,
+});
+
+export const StatelessRejudgeResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  judgment: StatelessJudgmentSchema,
+  questionTargetCriterionId: IdSchema,
+  questionText: z.string().trim().min(1).max(2_000),
+  questionEngine: EvidenceEngineSchema,
+  mode: z.enum(['semantic', 'mixed', 'deterministic']),
+}).superRefine((value, context) => {
+  if (value.questionTargetCriterionId !== value.judgment.criterionId) {
+    context.addIssue({
+      code: 'custom',
+      path: ['questionTargetCriterionId'],
+      message: 'The refreshed question must target the re-judged criterion.',
+    });
+  }
+});
+
+export const StatelessDefenseRequestSchema = z.object({
+  answerText: z.string().trim().min(1).max(12_000),
+  criterion: CriterionSchema,
+});
+
+export const StatelessDefenseResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  judgment: StatelessJudgmentSchema,
 });
 
 export const EvidenceResponseSchema = z.object({
@@ -573,6 +793,13 @@ export const SavedCriterionResultSchema = z.object({
       code: 'custom',
       path: ['missingEvidence'],
       message: 'Partial and unsupported local results must retain their explicit evidence gap.',
+    });
+  }
+  if (value.verdict === 'supported' && value.missingEvidence.length > 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['missingEvidence'],
+      message: 'A supported local result cannot retain missing evidence.',
     });
   }
 });
@@ -737,6 +964,7 @@ export type ParsedCriterion = z.infer<typeof ParsedCriterionSchema>;
 export type RubricParseResponse = z.infer<typeof RubricParseResponseSchema>;
 export type CreateProjectRequest = z.infer<typeof CreateProjectRequestSchema>;
 export type CreateProjectResponse = z.infer<typeof CreateProjectResponseSchema>;
+export type CurrentProjectResponse = z.infer<typeof CurrentProjectResponseSchema>;
 export type ConfirmRubricRequest = z.infer<typeof ConfirmRubricRequestSchema>;
 export type ConfirmRubricResponse = z.infer<typeof ConfirmRubricResponseSchema>;
 export type CreateAttemptRequest = z.infer<typeof CreateAttemptRequestSchema>;
@@ -747,6 +975,11 @@ export type EvidenceConfirmationResponse = z.infer<typeof EvidenceConfirmationRe
 export type ReusedCitation = z.infer<typeof ReusedCitationSchema>;
 export type StatelessAnalysisRequest = z.infer<typeof StatelessAnalysisRequestSchema>;
 export type StatelessAnalysisResponse = z.infer<typeof StatelessAnalysisResponseSchema>;
+export type StatelessInputCriterion = z.infer<typeof StatelessInputCriterionSchema>;
+export type StatelessRejudgeRequest = z.infer<typeof StatelessRejudgeRequestSchema>;
+export type StatelessRejudgeResponse = z.infer<typeof StatelessRejudgeResponseSchema>;
+export type StatelessDefenseRequest = z.infer<typeof StatelessDefenseRequestSchema>;
+export type StatelessDefenseResponse = z.infer<typeof StatelessDefenseResponseSchema>;
 export type QuestionResponse = z.infer<typeof QuestionResponseSchema>;
 export type SourceDocumentUploadResponse = z.infer<typeof SourceDocumentUploadResponseSchema>;
 export type SourceDocumentListResponse = z.infer<typeof SourceDocumentListResponseSchema>;

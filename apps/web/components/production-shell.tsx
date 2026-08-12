@@ -125,9 +125,9 @@ export function ProductionShell({ project }: Readonly<{ project: Project }>) {
           <h2 id="boundary-title">Evidence coverage is not confidence or speaking ability.</h2>
         </div>
         <p>
-          Talk-Active evaluates what this transcript makes explicit. The current product does not score
-          posture, facial expression, body language, or personal ability. Delivery counts remain supporting
-          context and never change a rubric verdict.
+          Talk-Active evaluates what this transcript makes explicit. An optional experimental mode can summarize
+          local face or pose landmarks and acoustic measurements, but it does not infer emotion, confidence,
+          personality, health, or ability. Those observations remain supporting context and never change a rubric verdict.
         </p>
       </section>
 

@@ -9,8 +9,12 @@ import {
   templateRubricText,
 } from '../apps/web/lib/rubric-library.ts';
 import {
+  LEGACY_RUBRIC_STORAGE_KEY,
   readRubricSourceType,
+  readStoredRubricCriteria,
+  RUBRIC_STORAGE_KEY,
   RUBRIC_SOURCE_STORAGE_KEY,
+  writeStoredRubricCriteria,
 } from '../apps/web/lib/rubric-storage.ts';
 
 const editorSource = await readFile(
@@ -45,6 +49,56 @@ test('F-9 starter text remains compatible with the production rubric parser', ()
       template.name,
     );
   }
+});
+
+test('A-1 repeated criterion names keep distinct deterministic ids', () => {
+  const parsed = parseRubric('Impact | beneficiary\nImpact | measurable outcome\nImpact-2 | scale');
+  assert.equal(new Set(parsed.map(({ id }) => id)).size, 3);
+  assert.deepEqual(parsed.map(({ id }) => id), ['impact', 'impact-2', 'impact-2-2']);
+});
+
+test('A-1 v1 rubric storage migrates evidence phrases into the typed v2 contract', () => {
+  const values = new Map([[LEGACY_RUBRIC_STORAGE_KEY, JSON.stringify([{
+    id: 'method-fit',
+    name: 'Method fit',
+    evidence: 'research question, sample size; trade-off',
+    sourceExcerpt: 'Method fit — 20 points',
+  }])]]);
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+  };
+  const migrated = readStoredRubricCriteria(storage);
+  assert.ok(migrated);
+  assert.deepEqual(migrated[0].requiredEvidence, ['research question', 'sample size', 'trade-off']);
+  assert.equal(migrated[0].description, '');
+
+  const saved = writeStoredRubricCriteria(storage, migrated);
+  assert.equal(saved[0].sourceExcerpt, 'Method fit — 20 points');
+  assert.match(values.get(RUBRIC_STORAGE_KEY), /"version":2/u);
+});
+
+test('A-1 v2 storage retains a named description-only criterion', () => {
+  const values = new Map();
+  const storage = {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+  };
+  writeStoredRubricCriteria(storage, [{
+    id: 'ethics',
+    name: 'Ethics',
+    description: 'Explain the stated participant safeguards',
+    requiredEvidence: [],
+    sourceExcerpt: 'Ethics: Explain the stated participant safeguards',
+    displayOrder: 0,
+  }]);
+  assert.deepEqual(readStoredRubricCriteria(storage)?.[0].requiredEvidence, []);
+  assert.equal(
+    readStoredRubricCriteria(storage)?.[0].description,
+    'Explain the stated participant safeguards',
+  );
+  assert.match(editorSource, /filter\(\(criterion\) => criterion\.name\)/u);
+  assert.match(editorSource, /sourceExcerpt: null/u);
 });
 
 test('F-9 records only a known rubric source and defaults invalid storage safely', () => {

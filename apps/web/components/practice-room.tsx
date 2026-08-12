@@ -21,6 +21,7 @@ import {
   ConfirmRubricResponseSchema,
   CreateAttemptResponseSchema,
   CreateProjectResponseSchema,
+  CurrentProjectResponseSchema,
   DefenseResponseSchema,
   EvidenceConfirmationResponseSchema,
   EvidenceResponseSchema,
@@ -28,6 +29,8 @@ import {
   SourceDocumentDeleteResponseSchema,
   SourceDocumentUploadResponseSchema,
   StatelessAnalysisResponseSchema,
+  StatelessDefenseResponseSchema,
+  StatelessRejudgeResponseSchema,
   type RubricSource,
   type Criterion,
   type ReusedCitation,
@@ -37,8 +40,20 @@ import {
   appendLocalEvidenceConfirmation,
   rejudgeLocalEvidence,
 } from '@/lib/evidence-confirmations';
+import {
+  MultimodalReview,
+  MultimodalStudio,
+  type MultimodalAttemptResult,
+} from '@/components/multimodal-studio';
 import { parseSavedSessions, PRODUCTION_SESSIONS_KEY } from '@/lib/progress';
-import { readRubricSourceType, RUBRIC_STORAGE_KEY } from '@/lib/rubric-storage';
+import {
+  readRubricSourceType,
+  readStoredRubricCriteria,
+  RUBRIC_SOURCE_STORAGE_KEY,
+  rubricTextFromCriteria,
+  type StoredRubricCriterion,
+  writeStoredRubricCriteria,
+} from '@/lib/rubric-storage';
 
 type Stage = 'setup' | 'attempt' | 'review' | 'defend';
 
@@ -50,25 +65,98 @@ interface RemoteContext {
   criteria: Criterion[];
 }
 
-function storedRubric(): { rubricText: string; sourceType: RubricSource } {
-  try {
-    const saved = JSON.parse(localStorage.getItem(RUBRIC_STORAGE_KEY) ?? '[]') as unknown;
-    if (!Array.isArray(saved) || saved.length === 0) return { rubricText: DEFAULT_RUBRIC, sourceType: 'manual' };
-    const lines = saved.flatMap((item) => {
-      if (!item || typeof item !== 'object' || !('name' in item) || !('evidence' in item)) return [];
-      return [`${String(item.name)} | ${String(item.evidence)}`];
-    });
-    return {
-      rubricText: lines.length > 0 ? lines.join('\n') : DEFAULT_RUBRIC,
-      sourceType: readRubricSourceType(localStorage),
-    };
-  } catch {
-    return { rubricText: DEFAULT_RUBRIC, sourceType: 'manual' };
-  }
+function defaultRubricCriteria(): StoredRubricCriterion[] {
+  return parseRubric(DEFAULT_RUBRIC).map((criterion, displayOrder) => ({
+    id: criterion.id,
+    name: criterion.label,
+    description: '',
+    requiredEvidence: criterion.signals,
+    sourceExcerpt: null,
+    displayOrder,
+  }));
+}
+
+function storedRubric(): {
+  criteria: StoredRubricCriterion[];
+  rubricText: string;
+  sourceType: RubricSource;
+} {
+  const criteria = readStoredRubricCriteria(localStorage) ?? defaultRubricCriteria();
+  return {
+    criteria,
+    rubricText: rubricTextFromCriteria(criteria),
+    sourceType: readRubricSourceType(localStorage),
+  };
 }
 
 function SignalChips({ signals, empty }: Readonly<{ signals: string[]; empty: string }>) {
   return <>{signals.length > 0 ? signals.map((signal) => <span className="signal-chip" key={signal}>{signal}</span>) : <span className="signal-chip neutral">{empty}</span>}</>;
+}
+
+function defenseResultFromJudgment(
+  criterion: AnalysisResult['weakest'],
+  judgment: {
+    verdict: 'supported' | 'partial' | 'unsupported';
+    coverageScore: 0 | 0.5 | 1;
+    citedSpan: string | null;
+    missingEvidence: string[];
+  },
+): DefenseResult {
+  const status = judgment.verdict === 'supported'
+    ? 'defensible' as const
+    : judgment.verdict === 'partial' ? 'developing' as const : 'vulnerable' as const;
+  const feedback = judgment.verdict === 'supported'
+    ? `This answer makes the required “${criterion.label}” evidence explicit.`
+    : judgment.verdict === 'partial'
+      ? `This answer contains relevant evidence, but ${judgment.missingEvidence.slice(0, 2).join(' and ')} still needs to be explicit.`
+      : `This answer does not yet supply explicit evidence for “${criterion.label}”.`;
+  const nextGap = judgment.missingEvidence.slice(0, 2).join(' and ')
+    || 'the concrete proof behind this claim';
+  return {
+    score: judgment.coverageScore * 100,
+    status,
+    criterionId: criterion.id,
+    criterionLabel: criterion.label,
+    matchedSignals: judgment.citedSpan ? [judgment.citedSpan] : [],
+    missingSignals: judgment.missingEvidence,
+    feedback,
+    followUp: `Can you answer once more and make ${nextGap} explicit?`,
+  };
+}
+
+function strictLocalAnalysis(result: AnalysisResult): AnalysisResult {
+  const criteria = result.criteria.map((criterion) => ({
+    ...criterion,
+    status: criterion.missingSignals.length === 0
+      ? 'covered' as const
+      : criterion.matchedSignals.length > 0 ? 'partial' as const : 'missing' as const,
+  }));
+  const weakest = criteria.find((criterion) => criterion.id === result.weakest.id);
+  if (!weakest) throw new Error('The deterministic review returned no weakest criterion.');
+  return {
+    ...result,
+    coveredCount: criteria.filter((criterion) => criterion.status === 'covered').length,
+    criteria,
+    weakest,
+  };
+}
+
+function strictLocalDefense(result: DefenseResult): DefenseResult {
+  if (result.missingSignals.length === 0) return result;
+  if (result.matchedSignals.length === 0) {
+    return {
+      ...result,
+      status: 'vulnerable',
+      feedback: `This answer does not yet supply explicit evidence for “${result.criterionLabel}”.`,
+      followUp: `Can you answer once more and make ${result.missingSignals.slice(0, 2).join(' and ')} explicit?`,
+    };
+  }
+  return {
+    ...result,
+    status: 'developing',
+    feedback: `This answer contains relevant evidence, but ${result.missingSignals.slice(0, 2).join(' and ')} still needs to be explicit.`,
+    followUp: `Can you answer once more and make ${result.missingSignals.slice(0, 2).join(' and ')} explicit?`,
+  };
 }
 
 export function PracticeRoom() {
@@ -84,41 +172,93 @@ export function PracticeRoom() {
   const [persistence, setPersistence] = useState<'local' | 'neon'>('local');
   const [sourceDocumentsAvailable, setSourceDocumentsAvailable] = useState(false);
   const [statelessSemanticAvailable, setStatelessSemanticAvailable] = useState(false);
+  const [semanticDefenseAvailable, setSemanticDefenseAvailable] = useState(false);
   const [sourceDocuments, setSourceDocuments] = useState<SourceDocument[]>([]);
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [sourceBusy, setSourceBusy] = useState(false);
   const [sourceStatus, setSourceStatus] = useState('');
   const [questionSourceFilename, setQuestionSourceFilename] = useState<string | null>(null);
+  const [rubricCriteria, setRubricCriteria] = useState<StoredRubricCriterion[]>(defaultRubricCriteria);
   const [rubricText, setRubricText] = useState(DEFAULT_RUBRIC);
   const [rubricSourceType, setRubricSourceType] = useState<RubricSource>('manual');
   const [remoteContext, setRemoteContext] = useState<RemoteContext | null>(null);
   const [remoteAttemptId, setRemoteAttemptId] = useState<string | null>(null);
   const [engineNote, setEngineNote] = useState('Evidence mapped by deterministic cue matching on this device.');
+  const [defenseEngineNote, setDefenseEngineNote] = useState('');
   const [criterionEngines, setCriterionEngines] = useState<Record<string, 'semantic' | 'deterministic'>>({});
   const [reusedCitations, setReusedCitations] = useState<ReusedCitation[]>([]);
   const [confirmations, setConfirmations] = useState<Record<string, boolean>>({});
   const [confirmationBusy, setConfirmationBusy] = useState<Record<string, boolean>>({});
   const [confirmationNotes, setConfirmationNotes] = useState<Record<string, string>>({});
   const [reviewId, setReviewId] = useState('');
+  const [inputMethod, setInputMethod] = useState<'transcript' | 'observations'>('transcript');
+  const [studioBusy, setStudioBusy] = useState(false);
+  const [multimodalResult, setMultimodalResult] = useState<MultimodalAttemptResult | null>(null);
+  const [observationNote, setObservationNote] = useState('');
   const rubric = useMemo(() => parseRubric(rubricText), [rubricText]);
 
   useEffect(() => {
+    let cancelled = false;
     const stored = storedRubric();
+    setRubricCriteria(stored.criteria);
     setRubricText(stored.rubricText);
     setRubricSourceType(stored.sourceType);
     void requestContract('/api/capabilities', CapabilitiesResponseSchema)
-      .then((capabilities) => {
+      .then(async (capabilities) => {
+        if (cancelled) return;
         setPersistence(capabilities.persistence);
         setSourceDocumentsAvailable(capabilities.sourceDocuments);
         setStatelessSemanticAvailable(
           capabilities.semantic.evidence || capabilities.semantic.question,
         );
+        setSemanticDefenseAvailable(capabilities.semantic.defense);
+        if (capabilities.persistence !== 'neon') return;
+
+        const recovered = await requestContract(
+          '/api/projects/current',
+          CurrentProjectResponseSchema,
+        );
+        if (cancelled || !recovered.current?.rubric?.confirmedAt) return;
+        const criteria = recovered.current.criteria.map((criterion) => ({
+          id: criterion.id,
+          name: criterion.name,
+          description: criterion.description,
+          requiredEvidence: criterion.requiredEvidence,
+          sourceExcerpt: null,
+          displayOrder: criterion.displayOrder,
+        }));
+        if (criteria.length === 0) return;
+        setRemoteContext({
+          projectId: recovered.current.project.id,
+          criteria: recovered.current.criteria,
+        });
+        setSourceDocuments(recovered.current.sourceDocuments);
+        const recoveredRubricText = rubricTextFromCriteria(criteria);
+        const localRubricText = rubricTextFromCriteria(stored.criteria);
+        setRubricCriteria(criteria);
+        setRubricText(recoveredRubricText);
+        setRubricSourceType(recovered.current.rubric.sourceType);
+        writeStoredRubricCriteria(localStorage, criteria);
+        localStorage.setItem(
+          RUBRIC_SOURCE_STORAGE_KEY,
+          recovered.current.rubric.sourceType,
+        );
+        if (localRubricText !== recoveredRubricText) {
+          setSourceStatus(
+            'This signed-in project already has a confirmed rubric. Its saved criteria were restored; browser-only rubric edits do not replace a synced project rubric.',
+          );
+        }
       })
       .catch(() => {
+        if (cancelled) return;
         setPersistence('local');
         setSourceDocumentsAvailable(false);
         setStatelessSemanticAvailable(false);
+        setSemanticDefenseAvailable(false);
       });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function ensureRemoteContext(): Promise<RemoteContext> {
@@ -133,11 +273,11 @@ export function PracticeRoom() {
       ConfirmRubricResponseSchema,
       jsonRequest('PUT', {
         sourceType: rubricSourceType,
-        criteria: rubric.map((criterion, displayOrder) => ({
-          name: criterion.label,
-          description: criterion.requirementText,
-          requiredEvidence: criterion.signals,
-          displayOrder,
+        criteria: rubricCriteria.map((criterion) => ({
+          name: criterion.name,
+          description: criterion.description,
+          requiredEvidence: criterion.requiredEvidence,
+          displayOrder: criterion.displayOrder,
         })),
       }),
     );
@@ -152,10 +292,14 @@ export function PracticeRoom() {
     setReusedCitations([]);
     setConfirmations({});
     setConfirmationNotes({});
+    setDefense(null);
+    setDefenseEngineNote('');
     setReviewId(crypto.randomUUID());
     setQuestionSourceFilename(null);
     try {
-      const localResult = analyzeSpeech({ transcript, rubricText, durationSeconds: duration });
+      const localResult = strictLocalAnalysis(
+        analyzeSpeech({ transcript, rubricText, durationSeconds: duration }),
+      );
       const localReusedCitations = detectReusedCitations(localResult.criteria.map((criterion) => ({
         criterionId: criterion.id,
         citedSpan: criterion.excerpt || null,
@@ -169,7 +313,17 @@ export function PracticeRoom() {
             const response = await requestContract(
               '/api/analyze',
               StatelessAnalysisResponseSchema,
-              jsonRequest('POST', { transcript, rubricText, durationSeconds: duration }),
+              jsonRequest('POST', {
+                transcript,
+                criteria: rubricCriteria.map((criterion) => ({
+                  id: criterion.id,
+                  name: criterion.name,
+                  description: criterion.description,
+                  requiredEvidence: criterion.requiredEvidence,
+                  displayOrder: criterion.displayOrder,
+                })),
+                durationSeconds: duration,
+              }),
             );
             setAnalysis(response.analysis);
             setCriterionEngines(Object.fromEntries(
@@ -322,6 +476,7 @@ export function PracticeRoom() {
     },
     questionText?: string,
     drillText?: string,
+    questionTargetCriterionId?: string,
   ) {
     if (!analysis) return;
     const mappedCriteria = analysis.criteria.map((criterion) => criterion.id === criterionId
@@ -337,6 +492,8 @@ export function PracticeRoom() {
       : criterion);
     const weakest = [...mappedCriteria].sort((left, right) => left.score - right.score)[0];
     if (!weakest) return;
+    const refreshedQuestionTargetsWeakest = questionText !== undefined
+      && questionTargetCriterionId === weakest.id;
     setAnalysis({
       ...analysis,
       evidenceScore: Math.round(
@@ -345,8 +502,8 @@ export function PracticeRoom() {
       coveredCount: mappedCriteria.filter((criterion) => criterion.status === 'covered').length,
       criteria: mappedCriteria,
       weakest,
-      judgeQuestion: questionText ?? analysis.judgeQuestion,
-      drill: drillText ?? analysis.drill,
+      judgeQuestion: refreshedQuestionTargetsWeakest ? questionText : analysis.judgeQuestion,
+      drill: refreshedQuestionTargetsWeakest && drillText ? drillText : analysis.drill,
     });
     setCriterionEngines((current) => ({ ...current, [criterionId]: next.engine }));
     setReusedCitations(detectReusedCitations(mappedCriteria.map((criterion) => ({
@@ -380,13 +537,21 @@ export function PracticeRoom() {
               QuestionResponseSchema,
               jsonRequest('POST'),
             );
-            questionText = question.question.questionText;
+            if (question.question.targetCriterionId === criterionId) {
+              questionText = question.question.questionText;
+            }
             setQuestionSourceFilename(question.sourceDocument?.filename ?? null);
           } catch {
             // The label and replacement verdict are already durable. A stale
             // preview question must not invite a second confirmation/re-judge.
           }
-          applyRejudgedCriterion(criterionId, saved.verdict, questionText);
+          applyRejudgedCriterion(
+            criterionId,
+            saved.verdict,
+            questionText,
+            undefined,
+            questionText ? criterionId : undefined,
+          );
         }
         setConfirmationNotes((current) => ({
           ...current,
@@ -398,7 +563,78 @@ export function PracticeRoom() {
         }));
       } else {
         const createdAt = new Date().toISOString();
-        const localRejudge = accepted ? null : rejudgeLocalEvidence(transcript, criterion, duration);
+        const originalEngine = criterionEngines[criterionId] ?? 'deterministic';
+        let replacement: {
+          verdict: 'supported' | 'partial' | 'unsupported';
+          coverageScore: 0 | 0.5 | 1;
+          citedSpan: string | null;
+          missingEvidence: string[];
+          engine: 'semantic' | 'deterministic';
+        } | null = null;
+        let replacementQuestion: string | undefined;
+        let replacementQuestionTargetCriterionId: string | undefined;
+        let replacementDrill: string | undefined;
+        let rejudgeMode: 'semantic' | 'mixed' | 'deterministic' | 'local-fallback' | null = null;
+
+        if (!accepted && statelessSemanticAvailable) {
+          const typedCriterion = rubricCriteria.find((item) => item.id === criterionId);
+          try {
+            const response = await requestContract(
+              '/api/rejudge',
+              StatelessRejudgeResponseSchema,
+              jsonRequest('POST', {
+                transcript,
+                criterion: {
+                  id: criterion.id,
+                  rubricId: 'stateless-analysis',
+                  name: criterion.label,
+                  description: typedCriterion?.description ?? criterion.requirementText,
+                  requiredEvidence: typedCriterion?.requiredEvidence ?? criterion.signals,
+                  displayOrder: typedCriterion?.displayOrder
+                    ?? analysis.criteria.findIndex((item) => item.id === criterionId),
+                },
+                rejected: {
+                  verdict: criterion.status === 'covered'
+                    ? 'supported'
+                    : criterion.status === 'partial' ? 'partial' : 'unsupported',
+                  coverageScore: criterion.status === 'covered'
+                    ? 1
+                    : criterion.status === 'partial' ? 0.5 : 0,
+                  citedSpan: criterion.excerpt || null,
+                  missingEvidence: criterion.missingSignals,
+                  engine: originalEngine,
+                },
+              }),
+            );
+            replacement = response.judgment;
+            replacementQuestion = response.questionText;
+            replacementQuestionTargetCriterionId = response.questionTargetCriterionId;
+            rejudgeMode = response.mode;
+          } catch {
+            rejudgeMode = 'local-fallback';
+          }
+        }
+
+        if (!accepted && !replacement) {
+          const localRejudge = rejudgeLocalEvidence(transcript, criterion, duration);
+          const localVerdict = localRejudge.criterion.missingSignals.length === 0
+            ? 'supported' as const
+            : localRejudge.criterion.matchedSignals.length > 0
+              ? 'partial' as const
+              : 'unsupported' as const;
+          replacement = {
+            verdict: localVerdict,
+            coverageScore: localVerdict === 'supported' ? 1 : localVerdict === 'partial' ? 0.5 : 0,
+            citedSpan: localVerdict === 'unsupported' ? null : localRejudge.criterion.excerpt || null,
+            missingEvidence: localRejudge.criterion.missingSignals,
+            engine: 'deterministic',
+          };
+          replacementQuestion = localRejudge.judgeQuestion;
+          replacementQuestionTargetCriterionId = criterionId;
+          replacementDrill = localRejudge.drill;
+          rejudgeMode ??= 'deterministic';
+        }
+
         appendLocalEvidenceConfirmation(localStorage, {
           id: crypto.randomUUID(),
           reviewId,
@@ -411,36 +647,38 @@ export function PracticeRoom() {
           judgedCoverageScore: criterion.status === 'covered' ? 1 : criterion.status === 'partial' ? 0.5 : 0,
           judgedCitedSpan: criterion.excerpt || null,
           judgedMissingEvidence: criterion.missingSignals,
-          judgedEngine: 'deterministic',
+          judgedEngine: originalEngine,
           createdAt,
           rejudgedAt: accepted ? null : createdAt,
         });
-        if (localRejudge) {
-          applyRejudgedCriterion(criterionId, {
-            verdict: localRejudge.criterion.status === 'covered'
-              ? 'supported'
-              : localRejudge.criterion.status === 'partial' ? 'partial' : 'unsupported',
-            coverageScore: localRejudge.criterion.status === 'covered'
-              ? 1
-              : localRejudge.criterion.status === 'partial' ? 0.5 : 0,
-            citedSpan: localRejudge.criterion.excerpt || null,
-            missingEvidence: localRejudge.criterion.missingSignals,
-            engine: 'deterministic',
-          }, localRejudge.judgeQuestion, localRejudge.drill);
+        if (replacement) {
+          applyRejudgedCriterion(
+            criterionId,
+            replacement,
+            replacementQuestion,
+            replacementDrill,
+            replacementQuestionTargetCriterionId,
+          );
         } else if (accepted && criterion.status !== 'missing') {
           applyRejudgedCriterion(criterionId, {
             verdict: 'supported',
             coverageScore: 1,
             citedSpan: criterion.excerpt || null,
-            missingEvidence: criterion.missingSignals,
-            engine: 'deterministic',
+            missingEvidence: [],
+            engine: originalEngine,
           });
         }
         setConfirmationNotes((current) => ({
           ...current,
           [criterionId]: accepted
-            ? 'Saved in this browser as a human evaluation label.'
-            : 'Saved in this browser. This criterion was re-checked once with the rejected sentence excluded.',
+            ? `Saved in this browser as a human evaluation label; the original ${originalEngine} provenance is preserved.`
+            : rejudgeMode === 'semantic'
+              ? 'Saved in this browser. A one-time semantic re-judge used different grounded evidence and refreshed the question.'
+              : rejudgeMode === 'mixed'
+                ? 'Saved in this browser. The one-time re-judge used mixed semantic and deterministic units, shown in provenance.'
+                : rejudgeMode === 'local-fallback'
+                  ? 'Saved in this browser. The hosted re-judge was unavailable, so one visible deterministic fallback ran locally.'
+                  : 'Saved in this browser. This criterion was re-checked once with the rejected sentence excluded.',
         }));
       }
       setConfirmations((current) => ({ ...current, [criterionId]: accepted }));
@@ -458,17 +696,54 @@ export function PracticeRoom() {
     setBusy(true);
     try {
       if (!analysis) throw new Error('Review an attempt before entering the judge room.');
-      const localDefense = evaluateDefense({ answer, criterion: analysis.weakest });
-      setDefense(localDefense);
+      const localDefense = strictLocalDefense(
+        evaluateDefense({ answer, criterion: analysis.weakest }),
+      );
+      const typedCriterion = rubricCriteria.find((item) => item.id === analysis.weakest.id);
+      const criterion = {
+        id: analysis.weakest.id,
+        rubricId: 'stateless-analysis',
+        name: analysis.weakest.label,
+        description: typedCriterion?.description ?? analysis.weakest.requirementText,
+        requiredEvidence: typedCriterion?.requiredEvidence ?? analysis.weakest.signals,
+        displayOrder: typedCriterion?.displayOrder
+          ?? analysis.criteria.findIndex((item) => item.id === analysis.weakest.id),
+      };
       if (remoteAttemptId) {
-        const saved = await requestContract(
-          `/api/attempts/${remoteAttemptId}/defense`,
-          DefenseResponseSchema,
-          jsonRequest('POST', { answerText: answer }),
-        );
-        setEngineNote(saved.degraded
-          ? 'The defense was saved with an explicitly labelled deterministic evaluation.'
-          : 'The defense was saved and evaluated only against this answer.');
+        try {
+          const saved = await requestContract(
+            `/api/attempts/${remoteAttemptId}/defense`,
+            DefenseResponseSchema,
+            jsonRequest('POST', { answerText: answer }),
+          );
+          setDefense(defenseResultFromJudgment(analysis.weakest, saved.verdict));
+          setDefenseEngineNote(saved.degraded
+            ? 'Saved with a labelled deterministic fallback. Only this answer was evaluated.'
+            : 'Saved with semantic evidence mapping. The cited text comes only from this answer.');
+        } catch (remoteError) {
+          setDefense(localDefense);
+          setDefenseEngineNote('Hosted defense evaluation was unavailable. This visible deterministic fallback was not synced.');
+          setError(remoteError instanceof Error ? remoteError.message : 'The defense could not be synced.');
+          return;
+        }
+      } else if (semanticDefenseAvailable) {
+        try {
+          const response = await requestContract(
+            '/api/defend',
+            StatelessDefenseResponseSchema,
+            jsonRequest('POST', { answerText: answer, criterion }),
+          );
+          setDefense(defenseResultFromJudgment(analysis.weakest, response.judgment));
+          setDefenseEngineNote(response.judgment.engine === 'semantic'
+            ? 'Mapped semantically against this answer, then grounded to the exact cited span.'
+            : `The model path did not return grounded evidence, so this answer uses a labelled deterministic fallback. ${response.judgment.degradedReason ?? ''}`.trim());
+        } catch (semanticError) {
+          setDefense(localDefense);
+          setDefenseEngineNote(`Hosted defense evaluation was unavailable, so this answer uses a visible deterministic fallback. ${semanticError instanceof Error ? semanticError.message : ''}`.trim());
+        }
+      } else {
+        setDefense(localDefense);
+        setDefenseEngineNote('Checked by deterministic cue matching because semantic defense evaluation is not configured.');
       }
       setError('');
     } catch (caught) {
@@ -538,9 +813,33 @@ export function PracticeRoom() {
         <div className="attempt-layout">
           <div className="surface capture-panel">
             <div className="capture-header"><div><p className="overline">Current attempt</p><h2>Talk-Active · RISTEK Finals</h2></div><div className="timer">typed</div></div>
-            <div className="capture-tabs" role="tablist" aria-label="Input method"><button className="is-active" type="button" role="tab" aria-selected="true">Transcript</button><button type="button" role="tab" aria-selected="false" disabled><span className="record-dot" />Dictation follows after browser parity</button></div>
+            <div className="capture-tabs" role="tablist" aria-label="Practice input method"><button className={inputMethod === 'transcript' ? 'is-active' : ''} type="button" role="tab" aria-selected={inputMethod === 'transcript'} disabled={studioBusy} onClick={() => setInputMethod('transcript')}>Transcript</button><button className={inputMethod === 'observations' ? 'is-active' : ''} type="button" role="tab" aria-selected={inputMethod === 'observations'} disabled={studioBusy} onClick={() => setInputMethod('observations')}><span className="record-dot" />Camera + voice · experimental</button></div>
+            {inputMethod === 'observations' && <MultimodalStudio
+              transcript={transcript}
+              onTranscriptChange={(value) => {
+                setTranscript(value);
+                if (multimodalResult && value.trim() !== multimodalResult.transcript.trim()) {
+                  setMultimodalResult(null);
+                  setObservationNote('The transcript changed, so the prior sensor summary was detached. Capture again to include fresh observations.');
+                }
+              }}
+              onResult={(result) => {
+                setMultimodalResult(result);
+                if (result) setDuration(Math.max(1, Math.round(result.durationSeconds)));
+                setObservationNote(result ? 'Derived sensor summaries are available for this review only.' : '');
+              }}
+              onBusyChange={setStudioBusy}
+            />}
             <label className="sr-only" htmlFor="attemptTranscript">Practice transcript</label>
-            <textarea id="attemptTranscript" rows={15} maxLength={12_000} value={transcript} onChange={(event) => setTranscript(event.target.value)} />
+            <textarea id="attemptTranscript" rows={15} maxLength={12_000} value={transcript} onChange={(event) => {
+              const value = event.target.value;
+              setTranscript(value);
+              if (multimodalResult && value.trim() !== multimodalResult.transcript.trim()) {
+                setMultimodalResult(null);
+                setObservationNote('The transcript changed, so the prior sensor summary was detached. Capture again to include fresh observations.');
+              }
+            }} />
+            {observationNote && <p className="production-field-note" role="status">{observationNote}</p>}
             {sourceDocumentsAvailable && <section className="production-source-attachment" aria-labelledby="sourceAttachmentTitle">
               <div><strong id="sourceAttachmentTitle">Ground the judge question in your material</strong><p>Optional: attach up to three UTF-8 text, Markdown, or JSON files, 40 KB each. Files stay in private project storage.</p></div>
               <div className="production-source-controls"><label className="button button-secondary" htmlFor="practiceSourceFile">Choose source</label><input key={sourceDocuments.length} id="practiceSourceFile" type="file" accept=".txt,.md,.markdown,.json,text/plain,text/markdown,application/json" onChange={(event) => setSourceFile(event.target.files?.[0] ?? null)} /><span>{sourceFile?.name ?? 'No file chosen'}</span><button className="button button-secondary" type="button" disabled={!sourceFile || sourceBusy || sourceDocuments.length >= 3} onClick={() => void uploadSourceDocument()}>{sourceBusy ? 'Saving…' : 'Attach privately'}</button></div>
@@ -550,9 +849,9 @@ export function PracticeRoom() {
             </section>}
             <div className="capture-footer"><div className="duration-control"><label htmlFor="attemptDuration">Duration</label><input id="attemptDuration" type="number" min="1" max="3600" value={duration} onChange={(event) => setDuration(Number(event.target.value))} /><span>seconds</span></div><span className="save-state"><span aria-hidden="true">●</span> Local guest draft</span></div>
             {error && <p className="form-error" role="alert">{error}</p>}
-            <button className="button button-primary button-full" type="button" disabled={busy} aria-busy={busy} onClick={() => void runAnalysis()}>{busy ? 'Reviewing each criterion…' : 'Review this attempt'} <span aria-hidden="true">→</span></button>
+            <button className="button button-primary button-full" type="button" disabled={busy || studioBusy} aria-busy={busy || studioBusy} onClick={() => void runAnalysis()}>{studioBusy ? 'Finish local capture first' : busy ? 'Reviewing each criterion…' : 'Review this attempt'} <span aria-hidden="true">→</span></button>
           </div>
-          <aside className="session-sidebar"><section className="surface session-goal"><p className="overline">Session goal</p><h3>Make every important claim defensible.</h3><p>Complete the attempt naturally. The review isolates only the next weakness worth fixing.</p></section><section className="surface privacy-card"><span className="privacy-icon" aria-hidden="true">⌾</span><div><strong>{persistence === 'local' ? 'Session history stays in this browser' : 'Project sync is active on this deployment'}</strong><p>{persistence === 'local' ? (statelessSemanticAvailable ? 'Semantic review sends transcript and rubric text to the configured model provider. Grounded review results may be cached for up to 24 hours. Raw audio is never saved.' : 'Semantic review is off, so this attempt is checked on-device. Raw audio is never saved.') : 'Attempts and private source files are saved to the configured project services. Raw audio is never saved.'}</p></div></section></aside>
+          <aside className="session-sidebar"><section className="surface session-goal"><p className="overline">Session goal</p><h3>Make every important claim defensible.</h3><p>Complete the attempt naturally. The review isolates only the next weakness worth fixing.</p></section><section className="surface privacy-card"><span className="privacy-icon" aria-hidden="true">⌾</span><div><strong>{persistence === 'local' ? 'Session history stays in this browser' : 'Project sync is active on this deployment'}</strong><p>{persistence === 'local' ? (statelessSemanticAvailable ? 'Semantic review sends this transcript and the typed rubric criteria to the configured model provider. Grounded review results may be cached for up to 24 hours. Raw audio is never saved.' : 'Semantic review is off, so this attempt is checked on-device. Raw audio is never saved.') : 'Attempts and private source files are saved to the configured project services. Raw audio is never saved.'}</p></div></section></aside>
         </div>
       </section>}
 
@@ -566,16 +865,17 @@ export function PracticeRoom() {
           <div className="section-title-row"><div><p className="overline">Rubric evidence map</p><h2>What your transcript actually supports</h2></div><div className="delivery-context"><span>{analysis.delivery.wordsPerMinute} WPM · {analysis.delivery.pace}</span><span>{analysis.delivery.fillerCount} potential fillers</span></div></div>
           <div className="evidence-list">{analysis.criteria.map((criterion) => {
             const found = Boolean(criterion.excerpt);
+            const criterionEngine = criterionEngines[criterion.id] ?? 'deterministic';
             const reuse = reusedCitations.find((item) => item.criterionIds.includes(criterion.id));
             const reusedWith = reuse
               ? analysis.criteria.filter((item) => item.id !== criterion.id && reuse.criterionIds.includes(item.id)).map((item) => item.label)
               : [];
             const evidenceState = reuse ? 'reused' : found ? 'found' : 'absent';
             return <article className="evidence-item" data-evidence={evidenceState} key={criterion.id}>
-              <div className="evidence-topline"><strong>{criterion.label}</strong><span className="evidence-state">{reuse ? 'citation reused' : found ? 'evidence found' : 'no cue matched'}</span></div>
-              {found ? <><blockquote className="evidence-quote">{criterion.excerpt}</blockquote><p className="evidence-source">your words, from this attempt</p></> : <p className="evidence-absent">Nothing in this attempt matched the cues for this criterion. <span>Looked for: {criterion.missingSignals.slice(0, 4).join(', ')}.</span></p>}
+              <div className="evidence-topline"><strong>{criterion.label}</strong><span className="evidence-state">{reuse ? 'citation reused' : found ? criterionEngine === 'semantic' ? 'grounded evidence' : 'cue match' : criterionEngine === 'semantic' ? 'evidence gap' : 'no cue matched'}</span></div>
+              {found ? <><blockquote className="evidence-quote">{criterion.excerpt}</blockquote><p className="evidence-source">your words, from this attempt</p></> : criterionEngine === 'semantic' ? <p className="evidence-absent">The semantic review found no exact passage that supplies this criterion&apos;s required evidence. <span>Still needed: {criterion.missingSignals.slice(0, 4).join(', ')}.</span></p> : <p className="evidence-absent">Nothing in this attempt matched the declared cues for this criterion. <span>Looked for: {criterion.missingSignals.slice(0, 4).join(', ')}.</span></p>}
               {reuse && <p className="citation-reuse-note"><strong>One quote is doing more than one job.</strong> This exact span was also cited for {reusedWith.join(', ')}. Both readings stay visible, but this is not independent evidence for each criterion.</p>}
-              <p className="evidence-provenance">{criterionEngines[criterion.id] === 'semantic' ? 'Mapped semantically, then checked against your exact transcript.' : 'Matched by deterministic cue matching, not semantic analysis.'}</p>
+              <p className="evidence-provenance">{criterionEngine === 'semantic' ? 'Mapped semantically, then checked against your exact transcript.' : 'Matched by deterministic cue matching, not semantic analysis.'}</p>
               <div className="production-confirm"><span>{found ? `Would an evaluator accept this as covering ${criterion.label}?` : 'Is this evidence gap accurate?'}</span><button aria-label={`Confirm ${criterion.label}`} className={`button button-secondary${confirmations[criterion.id] === true ? ' is-selected' : ''}`} type="button" disabled={confirmationBusy[criterion.id] || confirmations[criterion.id] !== undefined} onClick={() => void confirmEvidence(criterion.id, true)}>Yes</button><button aria-label={`Reject ${criterion.label}`} className={`button button-secondary${confirmations[criterion.id] === false ? ' is-selected' : ''}`} type="button" disabled={confirmationBusy[criterion.id] || confirmations[criterion.id] !== undefined} onClick={() => void confirmEvidence(criterion.id, false)}>No</button>{confirmationNotes[criterion.id] && <small role="status">{confirmationNotes[criterion.id]}</small>}</div>
             </article>;
           })}</div>
@@ -591,13 +891,14 @@ export function PracticeRoom() {
             </ul>
           ) : null}
         </section>
+        {multimodalResult && <MultimodalReview result={multimodalResult} />}
         <div className="review-actions"><button className="button button-secondary" type="button" onClick={() => setStage('attempt')}>Revise transcript</button><button className="button button-secondary" type="button" onClick={saveSession}>Save without Q&amp;A</button></div>
       </section>}
 
       {stage === 'defend' && analysis && <section className="practice-stage is-visible"><div className="defense-layout">
         <section className="judge-room"><div className="judge-room-topline"><div className="judge-profile"><span className="judge-avatar" aria-hidden="true">J</span><span><strong>Competition evaluator</strong><small>Questioning <b>{analysis.weakest.label}</b></small></span></div><span className="live-chip"><i /> Q&amp;A drill</span></div><blockquote>{analysis.judgeQuestion}</blockquote>{questionSourceFilename && <p className="question-source-evidence">Grounded in your private source: <strong>{questionSourceFilename}</strong></p>}<p>Answer directly. Name the mechanism, comparison, or proof the rubric expects.</p></section>
         <div className="defense-workspace"><section className="surface answer-panel"><label htmlFor="defenseAnswer">Your answer</label><textarea id="defenseAnswer" rows={10} value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder="Start with a direct answer..." />{error && <p className="form-error" role="alert">{error}</p>}<button className="button button-primary button-full" type="button" disabled={busy} onClick={() => void runDefense()}>{busy ? 'Checking only this answer…' : 'Check this answer'} <span aria-hidden="true">→</span></button></section>
-          <section className="surface defense-feedback" aria-live="polite">{defense ? <div><div className="verdict-row"><div><p className="overline">Answer coverage</p><h3>{defense.status}</h3></div><strong>{defense.score}%</strong></div><p>{defense.feedback}</p><div className="signal-review"><div><span>Made explicit</span><div><SignalChips signals={defense.matchedSignals} empty="No declared cues yet" /></div></div><div><span>Still missing</span><div><SignalChips signals={defense.missingSignals} empty="No declared cues missing" /></div></div></div><div className="follow-up"><span>The judge pushes once more</span><p>{defense.followUp}</p></div><button className="button button-primary button-full" type="button" onClick={saveSession}>Save this session <span aria-hidden="true">✓</span></button></div> : <div className="feedback-empty"><img className="mascot-guide" src={logo.src} alt="" /><h3>Say it in your own words.</h3><p>This check uses only the answer above, never the original pitch.</p></div>}</section>
+          <section className="surface defense-feedback" aria-live="polite">{defense ? <div><div className="verdict-row"><div><p className="overline">Answer evidence coverage</p><h3>{defense.status}</h3></div><strong>{defense.score}%</strong></div><p>{defense.feedback}</p>{defenseEngineNote && <p className="evidence-provenance"><strong>Defense provenance:</strong> {defenseEngineNote}</p>}<div className="signal-review"><div><span>Grounded answer evidence</span><div><SignalChips signals={defense.matchedSignals} empty="No grounded answer span yet" /></div></div><div><span>Still missing</span><div><SignalChips signals={defense.missingSignals} empty="No declared cues missing" /></div></div></div><div className="follow-up"><span>The judge pushes once more</span><p>{defense.followUp}</p></div><button className="button button-primary button-full" type="button" onClick={saveSession}>Save this session <span aria-hidden="true">✓</span></button></div> : <div className="feedback-empty"><img className="mascot-guide" src={logo.src} alt="" /><h3>Say it in your own words.</h3><p>This check uses only the answer above, never the original pitch.</p></div>}</section>
         </div><button className="text-button back-review" type="button" onClick={() => setStage('review')}>← Back to attempt review</button>
       </div></section>}
     </section>

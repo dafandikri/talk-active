@@ -253,7 +253,7 @@ test('A-4 warms one isolated criterion, then fans out the remaining calls', asyn
     const ownCriterion = criteria[index];
     assert.match(prompt, new RegExp(ownCriterion.name, 'u'));
     for (const other of criteria.filter((criterion) => criterion.id !== ownCriterion.id)) {
-      assert.doesNotMatch(prompt, new RegExp(`CRITERION NAME:\\n${other.name}`, 'u'));
+      assert.doesNotMatch(prompt, new RegExp(`"name": "${other.name}"`, 'u'));
     }
   }
   const attempts = events.filter((event) => event.type === 'evidence_attempt_completed');
@@ -278,7 +278,7 @@ test('A-4 keeps the transcript prefix byte-identical while criteria vary', () =>
   assert.match(firstParts[0].text, new RegExp(TRANSCRIPT, 'u'));
   assert.deepEqual(buildEvidenceGatewayOptions({ fallbackModels: ['test/fallback'] }), {
     caching: 'auto',
-    tags: ['evidence-judge', 'contract-v1'],
+    tags: ['evidence-judge', 'contract-v2'],
     models: ['test/fallback'],
   });
 });

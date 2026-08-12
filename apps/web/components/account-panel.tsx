@@ -12,6 +12,11 @@ import {
   LegacyImportResponseSchema,
 } from '@/lib/contracts';
 import { LOCAL_EVIDENCE_CONFIRMATIONS_KEY } from '@/lib/evidence-confirmations';
+import {
+  LEGACY_RUBRIC_STORAGE_KEY,
+  RUBRIC_SOURCE_STORAGE_KEY,
+  RUBRIC_STORAGE_KEY,
+} from '@/lib/rubric-storage';
 
 type FormMode = 'sign-in' | 'sign-up';
 
@@ -92,7 +97,9 @@ export function AccountPanel() {
     const payload = {
       exportedAt: new Date().toISOString(),
       legacyWorkspace: localStorage.getItem('talkactive.workspace.v1'),
-      productionRubric: localStorage.getItem('talkactive.production.rubric.v1'),
+      productionRubric: localStorage.getItem(RUBRIC_STORAGE_KEY),
+      legacyProductionRubric: localStorage.getItem(LEGACY_RUBRIC_STORAGE_KEY),
+      productionRubricSource: localStorage.getItem(RUBRIC_SOURCE_STORAGE_KEY),
       productionSessions: localStorage.getItem('talkactive.production.sessions.v1'),
       evidenceConfirmations: localStorage.getItem(LOCAL_EVIDENCE_CONFIRMATIONS_KEY),
     };

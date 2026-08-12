@@ -136,6 +136,7 @@ export function parseRubric(rubricText: unknown): RubricCriterion[] {
     );
   }
 
+  const usedIds = new Set<string>();
   return lines.map((line, index) => {
     const separator = line.indexOf('|');
     const label = (separator >= 0 ? line.slice(0, separator) : line).trim();
@@ -147,8 +148,17 @@ export function parseRubric(rubricText: unknown): RubricCriterion[] {
     const fallbackSignals = tokenize(label)
       .filter((token) => token.length > 2 && !STOP_WORDS.has(token));
 
+    const baseId = slugify(label, `criterion-${index + 1}`);
+    let id = baseId;
+    let suffix = 2;
+    while (usedIds.has(id)) {
+      id = `${baseId}-${suffix}`;
+      suffix += 1;
+    }
+    usedIds.add(id);
+
     return {
-      id: slugify(label, `criterion-${index + 1}`),
+      id,
       label: label || `Criterion ${index + 1}`,
       requirementText,
       signals: unique(explicitSignals.length > 0 ? explicitSignals : fallbackSignals),
@@ -198,23 +208,14 @@ function evidenceForCriterion(
 }
 
 export function makeJudgeQuestion(criterion: EvidenceCriterion): string {
-  const label = criterion.label.toLocaleLowerCase('en-US');
-  const missing = criterion.missingSignals.slice(0, 2).join(' and ');
-  const missingPrompt = missing ? ` Evidence still missing: ${missing}.` : '';
-
-  if (label.includes('problem')) {
-    return `What direct evidence proves this problem is urgent for your specific users?${missingPrompt}`;
+  const missing = criterion.missingSignals[0];
+  if (missing) {
+    return `What explicit evidence can you add for “${missing}” to satisfy “${criterion.label}”?`;
   }
-  if (label.includes('solution')) {
-    return `Walk me through one user attempt from input to measurable improvement. Where does the product create value that a generic chatbot cannot?${missingPrompt}`;
+  if (criterion.excerpt.trim()) {
+    return `What evidence supports this statement from your rehearsal: “${criterion.excerpt}”?`;
   }
-  if (label.includes('different') || label.includes('unique') || label.includes('innovation')) {
-    return `Existing speaking coaches already support Indonesian practice and feedback. What unique product logic would make a student choose Talk-Active?${missingPrompt}`;
-  }
-  if (label.includes('feasib') || label.includes('technical') || label.includes('trust')) {
-    return `Which part works in the prototype today, which part is simulated, and how will you keep recordings and scoring trustworthy?${missingPrompt}`;
-  }
-  return `Your weakest area is “${criterion.label}.” What concrete claim and evidence would convince a skeptical judge?${missingPrompt}`;
+  return `What explicit evidence would satisfy “${criterion.label}”?`;
 }
 
 export function makeDrill(criterion: EvidenceCriterion): string {
