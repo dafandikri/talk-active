@@ -103,7 +103,10 @@ test('Vercel builds and serves the Next.js application', () => {
 
   assert.equal(vercel.framework, 'nextjs');
   assert.match(vercel.buildCommand, /@talk-active\/web build/u);
-  assert.equal(vercel.outputDirectory, 'apps/web/.next');
+  // No outputDirectory: the nextjs framework handler resolves .next relative
+  // to the build, and naming a path outside that layout is a known way to
+  // stop Vercel recognising the app at all.
+  assert.equal(vercel.outputDirectory, undefined);
   assert.match(ignored, /^docs\/$/mu);
   assert.match(ignored, /^test\/$/mu);
   assert.match(ignored, /^AGENTS\.md$/mu);

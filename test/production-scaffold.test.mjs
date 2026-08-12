@@ -14,7 +14,7 @@ test('M-13 production is deployed from the Next.js app', () => {
   assert.ok(existsSync(join(ROOT, 'apps/web/app/layout.tsx')));
   const vercel = JSON.parse(read('vercel.json'));
   assert.equal(vercel.framework, 'nextjs');
-  assert.equal(vercel.outputDirectory, 'apps/web/.next');
+  assert.equal(vercel.outputDirectory, undefined);
   assert.match(vercel.buildCommand, /@talk-active\/web build/u);
   assert.match(read('apps/web/package.json'), /"next": "16\.3\.0"/u);
   assert.match(read('apps/web/package.json'), /next build --turbopack/u);
