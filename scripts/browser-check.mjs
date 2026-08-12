@@ -281,6 +281,28 @@ async function run() {
     assert.equal(brief.overflow, 0);
     if (screenshotPath) await captureViewport(cdp, derivedScreenshotPath(screenshotPath, 'brief-desktop'));
 
+    // A visitor who has to scroll to find the way in is a visitor who may not
+    // find it at all. 1280x720 is the exhibition projector and the floor of
+    // the laptops judges carry, so it is the screen worth pinning: the primary
+    // call to action has to be reachable without scrolling there.
+    await cdp.call('Emulation.setDeviceMetricsOverride', {
+      width: 1280, height: 720, deviceScaleFactor: 1, mobile: false,
+    });
+    await cdp.call('Page.reload');
+    await waitFor(cdp, `document.readyState === 'complete' && document.querySelector('#briefTitle')`);
+    const briefFold = await evaluate(cdp, `(() => {
+      const cta = document.querySelector('.landing-primary-cta').getBoundingClientRect();
+      return {
+        ctaBottom: Math.round(cta.bottom),
+        viewport: window.innerHeight,
+        screens: Number((document.documentElement.scrollHeight / window.innerHeight).toFixed(2)),
+      };
+    })()`);
+    assert.ok(
+      briefFold.ctaBottom <= briefFold.viewport,
+      `landing call to action falls below the fold on a ${briefFold.viewport}px screen: bottom ${briefFold.ctaBottom}px`,
+    );
+
     await cdp.call('Emulation.setDeviceMetricsOverride', {
       width: 1440, height: 810, deviceScaleFactor: 1, mobile: false,
     });
@@ -591,6 +613,115 @@ async function run() {
       await captureViewport(cdp, screenshotPath);
     }
 
+    // A review can wait twenty seconds on the network. What the user sees
+    // during that wait has to be true: cue matching really has finished, and
+    // the deadline quoted is the one the server keeps. Stalling fetch is the
+    // only way to hold the in-flight state still long enough to read it.
+    await cdp.call('Emulation.setDeviceMetricsOverride', {
+      width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false,
+    });
+    await cdp.call('Page.reload');
+    await waitFor(cdp, `document.readyState === 'complete' && document.querySelector('#homeView')`);
+    await evaluate(cdp, `(() => {
+      const real = window.fetch;
+      window.fetch = (input, init) => String(input).includes('/api/analyze')
+        ? new Promise((resolve) => setTimeout(() => resolve(real(input, init)), 30000))
+        : real(input, init);
+    })()`);
+    await evaluate(cdp, `document.querySelector('[data-route="practice"]').click()`);
+    await waitFor(cdp, `document.querySelector('#practiceSetup')?.classList.contains('is-visible')`);
+    await evaluate(cdp, `document.querySelector('#beginAttempt').click()`);
+    await waitFor(cdp, `document.querySelector('#practiceAttempt')?.classList.contains('is-visible')`);
+    // The deterministic pass rejects an empty transcript before any request is
+    // made (INV-7), so the panel needs a real attempt to have something to
+    // report on.
+    await evaluate(cdp, `(() => {
+      const field = document.querySelector('#attemptTranscript');
+      field.value = 'Many Indonesian students prepare important presentations alone and only receive feedback after the result is final. Talk-Active lets a student use the actual evaluation rubric while practising a pitch. It maps each claim in the transcript to a criterion, points out what is still unsupported, and asks a judge-style follow-up question about the weakest claim.';
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    })()`);
+    await evaluate(cdp, `document.querySelector('#analyzeAttempt').click()`);
+    await waitFor(cdp, `!document.querySelector('#analysisProgress').hidden`);
+    const analysing = await evaluate(cdp, `(() => {
+      const stages = [...document.querySelectorAll('#analysisProgress .analysis-stage')];
+      return {
+        count: stages.length,
+        firstState: stages[0]?.className,
+        firstDetail: stages[0]?.querySelector('small')?.textContent,
+        activeDetail: stages[1]?.querySelector('small')?.textContent,
+        activeState: stages[1]?.className,
+        announced: document.querySelector('#analysisAnnounce').textContent,
+        busy: document.querySelector('#analyzeAttempt').getAttribute('aria-busy'),
+        // The count the panel reports has to be the rubric actually in play,
+        // not a number baked into the markup.
+        rubricCriteria: JSON.parse(localStorage.getItem('talkactive.workspace.v1'))
+          .projects.find((project) => project.id === JSON.parse(localStorage.getItem('talkactive.workspace.v1')).activeProjectId)
+          .rubric.split('\\n').filter((line) => line.trim()).length,
+      };
+    })()`);
+    assert.equal(analysing.count, 2, 'the panel shows exactly the two passes a review runs');
+    assert.match(analysing.firstState, /is-done/u, 'the deterministic pass has already finished by this point');
+    assert.match(
+      analysing.firstDetail,
+      new RegExp(`\\b${analysing.rubricCriteria} criteri(?:on|a) checked on this device`, 'u'),
+      `panel reported "${analysing.firstDetail}" for a ${analysing.rubricCriteria}-criterion rubric`,
+    );
+    assert.match(analysing.activeState, /is-active/u);
+    assert.match(analysing.activeDetail, /falls back to the cue-matched result at 22s/u);
+    assert.doesNotMatch(
+      analysing.activeDetail,
+      /\b\d+\s*(?:of|\/)\s*\d+\b/u,
+      'the client cannot observe per-criterion progress, so it must not display any',
+    );
+    assert.match(analysing.announced, /Cue matching complete/u);
+    assert.equal(analysing.busy, 'true');
+
+    // The booth laptop is handed from visitor to visitor. A name that survives
+    // the handover is a name shown to the wrong person, so the reset has to
+    // clear it and ask again — while a visitor arriving on their own phone is
+    // never stopped at a name gate before they see the product.
+    await cdp.call('Emulation.setDeviceMetricsOverride', {
+      width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false,
+    });
+    await cdp.call('Page.reload');
+    await waitFor(cdp, `document.readyState === 'complete' && document.querySelector('#rehearserChip')`);
+    const identity = await evaluate(cdp, `(() => ({
+      name: document.querySelector('#rehearserName').textContent,
+      initials: document.querySelector('#rehearserInitials').textContent,
+      gated: document.querySelector('#rehearserDialog').open === true,
+    }))()`);
+    assert.equal(identity.name, 'Guest');
+    assert.equal(identity.initials, 'G');
+    assert.equal(identity.gated, false, 'a visitor must reach the product without being stopped for a name');
+
+    await evaluate(cdp, `document.querySelector('#rehearserChip').click()`);
+    await waitFor(cdp, `document.querySelector('#rehearserDialog').open === true`);
+    await evaluate(cdp, `document.querySelector('#rehearserInput').value = 'Sari Wulandari'`);
+    await evaluate(cdp, `document.querySelector('#saveRehearser').click()`);
+    await waitFor(cdp, `document.querySelector('#rehearserName').textContent === 'Sari Wulandari'`);
+    const named = await evaluate(cdp, `(() => ({
+      initials: document.querySelector('#rehearserInitials').textContent,
+      stored: JSON.parse(localStorage.getItem('talkactive.workspace.v1')).rehearser,
+      dialogClosed: document.querySelector('#rehearserDialog').open === false,
+    }))()`);
+    assert.equal(named.initials, 'SW');
+    assert.equal(named.stored, 'Sari Wulandari');
+    assert.equal(named.dialogClosed, true);
+
+    await cdp.call('Page.reload');
+    await waitFor(cdp, `document.readyState === 'complete' && document.querySelector('#rehearserName')?.textContent === 'Sari Wulandari'`);
+
+    await evaluate(cdp, `document.querySelector('[data-reset-workspace]').click()`);
+    await waitFor(cdp, `document.querySelector('#resetDialog').open === true`);
+    await evaluate(cdp, `document.querySelector('#confirmReset').click()`);
+    await waitFor(cdp, `document.querySelector('#rehearserName').textContent === 'Guest'`);
+    const handover = await evaluate(cdp, `(() => ({
+      stored: JSON.parse(localStorage.getItem('talkactive.workspace.v1')).rehearser,
+      prompted: document.querySelector('#rehearserDialog').open === true,
+    }))()`);
+    assert.equal(handover.stored, null, 'the kiosk reset must clear the previous visitor’s name');
+    assert.equal(handover.prompted, true, 'the handover should ask who is rehearsing next');
+
     const checks = [
       ['product-workspace', 'passed'],
       ['reduced-motion', 'passed'],
@@ -610,6 +741,8 @@ async function run() {
       ['reload-persistence', 'passed'],
       ['empty-states', 'passed'],
       ['mobile-layout', 'passed'],
+      ['analysis-progress', 'passed'],
+      ['rehearser-identity', 'passed'],
     ];
     process.stdout.write([
       'browser:',
