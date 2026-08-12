@@ -195,6 +195,47 @@ the sidebar "+" — is fixed. The remaining work is the real thing:
 
 ---
 
+## Phase 7 — Blocking the cutover (found 12 August, evening)
+
+`apps/web` typechecks clean, builds every route, and serves all six pages with zero console
+errors. `vercel.json` still points production at `pnpm build` → `public/`, so the deployed
+site is the vanilla `.mjs` build. These are what stand between here and flipping it.
+
+| ID | Item | Size | Notes |
+|---|---|---|---|
+| **C-1** | **The strict CSP does not survive the port, and nobody has noticed.** `vercel.json` ships `script-src 'self'` with no `unsafe-inline`; `apps/web` ships no CSP at all. Cutting over as-is silently drops the header. | M | See below — the obvious fix does not work. |
+| **C-2** | Repoint `vercel.json` at the Next build (`framework: nextjs`, monorepo root `apps/web`) and verify against a real preview deployment, not a local `next start`. | M | Blocked by C-1. |
+| **C-3** | Delete the vanilla tree only after C-2 is verified on a preview URL. | S | `index.html`, `src/*.mjs`, `scripts/build-public.mjs`, `middleware.js`, and their gates. |
+
+### Why C-1 is not a one-liner
+
+Nonce-based CSP was implemented and **reverted the same evening**, because it broke the app in
+the exact way that is hardest to notice: pages still render — the server-rendered HTML arrives
+fine — while every script is refused, so nothing is interactive. Measured on a real browser
+against `next start`: **20 CSP violations, every `_next/static` chunk plus every inline
+bootstrap script blocked.**
+
+The cause is structural rather than a mistake in the policy. `'strict-dynamic'` only lets
+scripts load when the loader itself carries the nonce, and Next stamps the nonce onto its
+bootstrap at **render** time. These routes are statically prerendered (`○ Static`, with
+`cacheComponents: true`), so the HTML is produced once at build time and cannot carry a
+per-request value. Static prerendering and per-request nonces are mutually exclusive.
+
+Three ways out, none free:
+
+1. **Opt the shell out of static prerendering** so the nonce can be stamped per request. Costs
+   the prerender benefit on exactly the pages that most benefit from it.
+2. **Hash-based CSP** — enumerate the inline bootstrap hashes at build time. Survives static
+   prerendering, but the hashes change whenever Next's bootstrap changes, so it needs a build
+   step that regenerates them or it fails closed on a framework upgrade.
+3. **Accept `script-src 'self' 'unsafe-inline'`** and say so plainly. Weaker than what the
+   vanilla build shipped, and INV-4 means it gets written down rather than quietly adopted.
+
+**Do not cut over before choosing one.** Dropping the header silently is the one option that
+is not on this list.
+
+---
+
 ## Deliberately not doing (and the condition that would change it)
 
 Saying no is the useful half. Each of these was considered.
