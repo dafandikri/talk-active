@@ -54,6 +54,7 @@ export interface DeliveryMetricResult {
   rehearsalScore: number | null;
   weight: number;
   target: string;
+  band: DeliveryMetricBand;
   explanation: string;
 }
 
@@ -236,23 +237,56 @@ function findRepeatedWords(
   return events;
 }
 
-function scoreAtMost(value: number, fullCreditThrough: number, zeroAt: number): number {
-  if (value <= fullCreditThrough) return 100;
-  return round(clamp(100 * (zeroAt - value) / (zeroAt - fullCreditThrough), 0, 100));
+/**
+ * The four numbers a practice band is made of, in the metric's own unit.
+ *
+ * These used to be loose arguments to the scoring functions, and the band the
+ * user saw was a hand-written string beside them ("105–165 words/min"). Two
+ * copies of the same fact drift: changing the score would leave the label
+ * describing the old band, and nothing would fail. Now the band is the value
+ * the score is computed FROM and the value the chart is drawn FROM, so a
+ * changed threshold moves the marker and the shaded zone together.
+ */
+export interface DeliveryMetricBand {
+  /** Lowest value the axis renders; scores zero for a lower-bounded metric. */
+  readonly axisMin: number;
+  /** Highest value the axis renders; scores zero. */
+  readonly axisMax: number;
+  /** Start of the configured practice band. */
+  readonly targetFrom: number;
+  /** End of the configured practice band. */
+  readonly targetTo: number;
 }
 
-function scoreTargetBand(
-  value: number,
+function bandAtMost(fullCreditThrough: number, zeroAt: number): DeliveryMetricBand {
+  return { axisMin: 0, axisMax: zeroAt, targetFrom: 0, targetTo: fullCreditThrough };
+}
+
+function bandBetween(
   lowerTarget: number,
   upperTarget: number,
   lowerZero: number,
   upperZero: number,
-): number {
-  if (value >= lowerTarget && value <= upperTarget) return 100;
-  if (value < lowerTarget) {
-    return round(clamp(100 * (value - lowerZero) / (lowerTarget - lowerZero), 0, 100));
+): DeliveryMetricBand {
+  return { axisMin: lowerZero, axisMax: upperZero, targetFrom: lowerTarget, targetTo: upperTarget };
+}
+
+/** Higher is better, and the score is the observed percentage itself. */
+function bandAtLeast(fullCreditFrom: number): DeliveryMetricBand {
+  return { axisMin: 0, axisMax: 100, targetFrom: fullCreditFrom, targetTo: 100 };
+}
+
+function scoreAtMost(value: number, band: DeliveryMetricBand): number {
+  if (value <= band.targetTo) return 100;
+  return round(clamp(100 * (band.axisMax - value) / (band.axisMax - band.targetTo), 0, 100));
+}
+
+function scoreTargetBand(value: number, band: DeliveryMetricBand): number {
+  if (value >= band.targetFrom && value <= band.targetTo) return 100;
+  if (value < band.targetFrom) {
+    return round(clamp(100 * (value - band.axisMin) / (band.targetFrom - band.axisMin), 0, 100));
   }
-  return round(clamp(100 * (upperZero - value) / (upperZero - upperTarget), 0, 100));
+  return round(clamp(100 * (band.axisMax - value) / (band.axisMax - band.targetTo), 0, 100));
 }
 
 function coefficientOfVariation(samples: readonly number[] | undefined): number | null {
@@ -273,6 +307,7 @@ function makeMetric(
   rehearsalScore: number | null,
   weight: number,
   target: string,
+  band: DeliveryMetricBand,
   explanation: string,
 ): DeliveryMetricResult {
   return {
@@ -284,6 +319,7 @@ function makeMetric(
     rehearsalScore,
     weight,
     target,
+    band,
     explanation,
   };
 }
@@ -335,15 +371,36 @@ function vocalMetrics(
   const pitchVariation = coefficientOfVariation(audio?.pitchHzSamples);
   const energyVariation = coefficientOfVariation(audio?.energyRmsSamples);
 
+  // Each band is declared once, then handed to both the score and the metric.
+  // The chart reads the same object, so the shaded zone can never describe a
+  // threshold the score no longer uses.
+  const paceBand = bandBetween(105, 165, 50, 240);
+  const fillerBand = bandAtMost(2, 12);
+  const repeatBand = bandAtMost(0.5, 8);
+  const pauseBand = bandBetween(0.08, 0.28, 0, 0.65);
+  const pitchBand = bandBetween(0.08, 0.30, 0.01, 0.75);
+  const energyBand = bandBetween(0.12, 0.55, 0.01, 1.25);
+
+  // Three of these are measured as ratios and reported as percentages. The
+  // chart plots the reported value, so the band has to be scaled the same way
+  // or the marker lands in the wrong place.
+  const asPercent = (band: DeliveryMetricBand): DeliveryMetricBand => ({
+    axisMin: round(band.axisMin * 100, 1),
+    axisMax: round(band.axisMax * 100, 1),
+    targetFrom: round(band.targetFrom * 100, 1),
+    targetTo: round(band.targetTo * 100, 1),
+  });
+
   return makeGroup([
     makeMetric(
       'pace',
       'Speaking pace',
       round(wordsPerMinute),
       'words/min',
-      scoreTargetBand(wordsPerMinute, 105, 165, 50, 240),
+      scoreTargetBand(wordsPerMinute, paceBand),
       0.20,
       '105–165 words/min practice band',
+      paceBand,
       `${wordCount} recognized words across ${round(durationSeconds, 1)} seconds.`,
     ),
     makeMetric(
@@ -351,9 +408,10 @@ function vocalMetrics(
       'Filler frequency',
       round(fillersPerMinute, 1),
       'events/min',
-      scoreAtMost(fillersPerMinute, 2, 12),
+      scoreAtMost(fillersPerMinute, fillerBand),
       0.20,
       'At most 2 detected events/min',
+      fillerBand,
       `${fillerCount} configured filler event${fillerCount === 1 ? '' : 's'} found in the transcript.`,
     ),
     makeMetric(
@@ -361,9 +419,10 @@ function vocalMetrics(
       'Adjacent repeated words',
       round(repeatsPerHundredWords, 1),
       'events/100 words',
-      scoreAtMost(repeatsPerHundredWords, 0.5, 8),
+      scoreAtMost(repeatsPerHundredWords, repeatBand),
       0.15,
       'At most 0.5 adjacent repeats/100 words',
+      repeatBand,
       `${repeatedWordCount} additional adjacent word occurrence${repeatedWordCount === 1 ? '' : 's'} detected.`,
     ),
     makeMetric(
@@ -371,9 +430,10 @@ function vocalMetrics(
       'Pause ratio',
       pauseRatio === null ? null : round(pauseRatio * 100, 1),
       '% of session',
-      pauseRatio === null ? null : scoreTargetBand(pauseRatio, 0.08, 0.28, 0, 0.65),
+      pauseRatio === null ? null : scoreTargetBand(pauseRatio, pauseBand),
       0.15,
       '8–28% configured practice band',
+      asPercent(pauseBand),
       pauseRatio === null
         ? 'Audio pause observations were not supplied.'
         : `${round(audio?.pauseSeconds ?? 0, 1)} seconds were marked as pauses.`,
@@ -383,9 +443,10 @@ function vocalMetrics(
       'Pitch variation',
       pitchVariation === null ? null : round(pitchVariation * 100, 1),
       'coefficient %',
-      pitchVariation === null ? null : scoreTargetBand(pitchVariation, 0.08, 0.30, 0.01, 0.75),
+      pitchVariation === null ? null : scoreTargetBand(pitchVariation, pitchBand),
       0.15,
       '8–30% configured variation band',
+      asPercent(pitchBand),
       pitchVariation === null
         ? 'At least five voiced pitch samples are required.'
         : 'Calculated as standard deviation divided by mean pitch for voiced samples.',
@@ -395,9 +456,10 @@ function vocalMetrics(
       'Energy variation',
       energyVariation === null ? null : round(energyVariation * 100, 1),
       'coefficient %',
-      energyVariation === null ? null : scoreTargetBand(energyVariation, 0.12, 0.55, 0.01, 1.25),
+      energyVariation === null ? null : scoreTargetBand(energyVariation, energyBand),
       0.15,
       '12–55% configured variation band',
+      asPercent(energyBand),
       energyVariation === null
         ? 'At least five non-silent energy samples are required.'
         : 'Calculated as standard deviation divided by mean RMS energy for non-silent samples.',
@@ -416,8 +478,14 @@ function visualMetrics(vision: VisionObservations): DeliveryMetricGroup {
     ? null
     : vision.movementActiveFrames / vision.trackedFrames;
   const movementTarget = vision.mode === 'presentation'
-    ? { lower: 0.08, upper: 0.60, upperZero: 0.95, label: '8–60% presentation practice band' }
-    : { lower: 0.02, upper: 0.30, upperZero: 0.80, label: '2–30% interview practice band' };
+    ? { band: bandBetween(0.08, 0.60, 0, 0.95), label: '8–60% presentation practice band' }
+    : { band: bandBetween(0.02, 0.30, 0, 0.80), label: '2–30% interview practice band' };
+  const movementPercentBand: DeliveryMetricBand = {
+    axisMin: round(movementTarget.band.axisMin * 100, 1),
+    axisMax: round(movementTarget.band.axisMax * 100, 1),
+    targetFrom: round(movementTarget.band.targetFrom * 100, 1),
+    targetTo: round(movementTarget.band.targetTo * 100, 1),
+  };
 
   return makeGroup([
     makeMetric(
@@ -428,6 +496,7 @@ function visualMetrics(vision: VisionObservations): DeliveryMetricGroup {
       trackingRatio === null ? null : round(trackingRatio * 100),
       0.35,
       'At least 90% of sampled frames',
+      bandAtLeast(90),
       trackingRatio === null
         ? 'No camera frames were sampled.'
         : `${vision.trackedFrames} of ${vision.sampledFrames} sampled frames contained usable landmarks.`,
@@ -440,6 +509,7 @@ function visualMetrics(vision: VisionObservations): DeliveryMetricGroup {
       framingRatio === null ? null : round(framingRatio * 100),
       0.40,
       'At least 90% of tracked frames',
+      bandAtLeast(90),
       framingRatio === null
         ? 'Usable landmarks are required before framing can be measured.'
         : `${vision.framedFrames} of ${vision.trackedFrames} tracked frames met the mode framing rule.`,
@@ -449,17 +519,10 @@ function visualMetrics(vision: VisionObservations): DeliveryMetricGroup {
       'Movement activity',
       movementRatio === null ? null : round(movementRatio * 100, 1),
       '% of tracked frames',
-      movementRatio === null
-        ? null
-        : scoreTargetBand(
-          movementRatio,
-          movementTarget.lower,
-          movementTarget.upper,
-          0,
-          movementTarget.upperZero,
-        ),
+      movementRatio === null ? null : scoreTargetBand(movementRatio, movementTarget.band),
       0.25,
       movementTarget.label,
+      movementPercentBand,
       movementRatio === null
         ? 'Usable landmarks are required before movement can be measured.'
         : `${vision.movementActiveFrames} tracked frames crossed the calibrated movement threshold.`,

@@ -199,15 +199,54 @@ test('camera-only capture renders observations and a fully disclosed summary at 
   await expect(review.getByText(/not emotion, confidence, health, skill, or hiring suitability/i)).toBeVisible();
   // A summary figure is allowed, but only while a judge can take it apart. Each
   // clause below is one of the conditions AD-9 puts on showing the number at all.
-  const summary = review.locator('.overall-grade');
+  const summary = review.locator('.reading-total');
   await expect(summary).toHaveCount(1);
-  await expect(summary.getByText('Overall rehearsal', { exact: true })).toBeVisible();
-  await expect(review.getByText('50% rubric substance · 25% vocal signals · 25% visual signals')).toBeVisible();
+  await expect(summary.getByText('this attempt', { exact: true })).toBeVisible();
   await expect(review.getByText(/describes one rehearsal attempt, not your ability/i)).toBeVisible();
   await expect(review.getByText(/excluded from the mean rather than counted as zero/i)).toBeVisible();
-  for (const component of ['Substance', 'Vocal delivery', 'Visual delivery']) {
-    await expect(review.locator('.performance-score-grid').getByText(component, { exact: true })).toBeVisible();
+
+  // This assertion used to pin the literal sentence
+  // "50% rubric substance · 25% vocal signals · 25% visual signals" — and it
+  // passed while being FALSE on this very run. Chrome's synthetic camera has no
+  // face in it, so tracking never clears the 80% floor, the visual reading is
+  // excluded, and the vocal reading actually carries half the figure. The screen
+  // claimed a quarter of the number came from a signal that contributed nothing.
+  //
+  // So the property, not the sentence: the caption must describe the arithmetic
+  // that produced the number beside it.
+  const weighting = review.locator('.reading-weighting');
+  await expect(weighting).toBeVisible();
+  const weightingText = (await weighting.innerText()).trim();
+  const statedShares = [...weightingText.matchAll(/(\d+)%/gu)].map((match) => Number(match[1]));
+  expect(statedShares.length, `the weighting must name each share: "${weightingText}"`)
+    .toBeGreaterThan(0);
+  expect(statedShares.reduce((sum, share) => sum + share, 0),
+    `the printed weighting must account for the whole figure: "${weightingText}"`).toBe(100);
+
+  // One drawn block per share named, each as wide as the share it carried.
+  const segments = review.locator('.reading-segment');
+  await expect(segments).toHaveCount(statedShares.length);
+  const barWidth = (await review.locator('.reading-bar').boundingBox())?.width ?? 0;
+  expect(barWidth).toBeGreaterThan(0);
+  for (let index = 0; index < statedShares.length; index += 1) {
+    const box = await segments.nth(index).boundingBox();
+    const drawnShare = ((box?.width ?? 0) / barWidth) * 100;
+    expect(Math.abs(drawnShare - statedShares[index]),
+      `block ${index} is drawn at ${drawnShare.toFixed(1)}% but labelled ${statedShares[index]}%`)
+      .toBeLessThan(4);
   }
+
+  // A signal that was excluded must be named beside the number, not omitted —
+  // and must not still appear in the weighting as though it counted.
+  const excluded = review.locator('.reading-unmeasured li');
+  for (let index = 0; index < await excluded.count(); index += 1) {
+    const entry = (await excluded.nth(index).innerText()).toLowerCase();
+    const signal = entry.includes('visual') ? 'visual' : 'vocal';
+    expect(weightingText.toLowerCase(),
+      `"${signal}" was reported unmeasured yet still claims a share of the figure`)
+      .not.toContain(`${signal} signals`);
+  }
+
   // The number never gets to call itself a verdict on the person. Scoped to the
   // figure's own label: the boundary paragraph says these words on purpose, to
   // deny them.

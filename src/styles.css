@@ -788,7 +788,25 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
    One column, not two: a quote that has to share a row with another quote is a
    quote nobody reads. Amethyst left rule + wash makes the card scannable as
    "this one has proof" from across a booth. */
-.evidence-list { display: grid; grid-template-columns: 1fr; gap: var(--space-3); margin-top: var(--space-5); }
+/* THE MAP. Every criterion on one line, above the detail.
+   The quoted span is the largest text on the page by deliberate design, so six
+   criteria run several screens and "how am I doing overall" cost a round trip.
+   These cells answer it in place and jump to the criterion they name. They
+   index the evidence; they never stand in for it. */
+.evidence-map { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-5) 0 var(--space-3); padding: 0; list-style: none; }
+.evidence-map a { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 32px; padding: var(--space-2) var(--space-3); color: var(--text-secondary); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-full); font-size: var(--step-0); font-weight: var(--weight-bold); text-decoration: none; }
+.evidence-map a:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.evidence-map-mark { width: var(--space-3); height: var(--space-3); flex: none; background: var(--absence); border-radius: var(--radius-full); }
+.evidence-map-label { max-width: 18ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.evidence-map a[data-evidence="found"] { color: var(--evidence-strong); background: var(--evidence-wash); border-color: var(--evidence-border); }
+.evidence-map a[data-evidence="found"] .evidence-map-mark { background: var(--evidence); }
+/* Reuse is not a third verdict — it is a cited span doing two jobs. A ring
+   rather than a fill, so it reads as "cited, with a caveat". */
+.evidence-map a[data-evidence="reused"] { color: var(--text-primary); background: var(--surface-sunken); border-color: var(--border-strong); }
+.evidence-map a[data-evidence="reused"] .evidence-map-mark { background: transparent; border: 2px solid var(--evidence); }
+.evidence-map-count { margin: 0 0 var(--space-3); color: var(--text-muted); font-size: var(--step-0); }
+
+.evidence-list { display: grid; grid-template-columns: 1fr; gap: var(--space-3); margin-top: var(--space-3); }
 
 .evidence-item {
   padding: var(--space-4) var(--space-5);
@@ -829,10 +847,15 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   line-height: var(--leading-snug);
   text-wrap: pretty;
 }
-.evidence-quote::before { content: "\201C"; }
-.evidence-quote::after { content: "\201D"; }
+/* The marks belong to the TEXT, not the block. Hung on the blockquote they
+   bracketed the attribution too, so the closing mark fell to its own line
+   underneath "your words, from this attempt". */
+.evidence-quote-text::before { content: "\201C"; }
+.evidence-quote-text::after { content: "\201D"; }
 
-.evidence-source { margin: 0; color: var(--evidence-strong); font-size: var(--step-0); font-weight: var(--weight-bold); }
+/* The attribution now lives inside the quote it attributes, which removes a
+   whole line per criterion without removing a word. */
+.evidence-source { display: block; margin-top: var(--space-2); color: var(--evidence-strong); font-size: var(--step-0); font-style: normal; font-weight: var(--weight-bold); }
 
 /* No evidence found. Stated plainly, with the cues we looked for, so the user
    knows exactly what to say next time. INV-3 cuts both ways: a verdict with no
@@ -841,7 +864,8 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .evidence-absent span { color: var(--text-muted); }
 /* A fallback is an honest disclosure, not an error. It should read as a
    footnote, never as a warning that undermines the verdict beside it. */
-.evidence-provenance { margin-top: var(--space-2); color: var(--text-muted); font-size: var(--step-0); }
+.evidence-provenance { margin: 0; color: var(--text-muted); font-size: var(--step-0); }
+.evidence-meta { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-end; gap: var(--space-1) var(--space-3); text-align: right; }
 .citation-reuse-note {
   margin-top: var(--space-3);
   padding: var(--space-3);

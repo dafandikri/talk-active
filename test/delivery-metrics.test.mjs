@@ -238,3 +238,108 @@ test('the same observations always produce byte-equivalent results', () => {
 
   assert.deepEqual(analyzeDeliveryMetrics(input), analyzeDeliveryMetrics(input));
 });
+
+// ---------------------------------------------------------------------------
+//  The band a chart draws must be the band the score was computed from.
+//
+//  Before this, the practice band existed twice: as loose arguments to the
+//  scoring function, and as an English sentence beside it ("105–165 words/min
+//  practice band"). Nothing tied them together, so moving a threshold would
+//  leave the label — and now the shaded zone on the chart — describing a rule
+//  the product no longer applies. A chart that disagrees with its own number is
+//  worse than no chart, because a judge who spots it stops trusting the rest.
+// ---------------------------------------------------------------------------
+function allMetrics(result) {
+  return [...result.vocal.metrics, ...(result.visual?.metrics ?? [])];
+}
+
+const FULLY_OBSERVED = {
+  durationSeconds: 60,
+  transcript: 'We shipped a rubric grounded rehearsal workspace for Indonesian students.',
+  audio: {
+    pauseSeconds: 9,
+    pitchHzSamples: [165, 180, 195, 172, 188, 176],
+    energyRmsSamples: [0.12, 0.2, 0.16, 0.24, 0.18, 0.21],
+  },
+  vision: {
+    mode: 'presentation',
+    sampledFrames: 100,
+    trackedFrames: 92,
+    framedFrames: 85,
+    movementActiveFrames: 30,
+  },
+};
+
+test('every metric carries a band with a plotted target zone inside its axis', () => {
+  const metrics = allMetrics(analyzeDeliveryMetrics(FULLY_OBSERVED));
+  assert.ok(metrics.length >= 9, 'expected the full vocal and visual metric set');
+
+  for (const item of metrics) {
+    const { axisMin, axisMax, targetFrom, targetTo } = item.band;
+    for (const [name, value] of Object.entries(item.band)) {
+      assert.ok(Number.isFinite(value), `${item.id}.band.${name} must be a finite number`);
+    }
+    assert.ok(axisMin < axisMax, `${item.id} axis must span a positive range`);
+    assert.ok(targetFrom <= targetTo, `${item.id} target zone must not be inverted`);
+    assert.ok(
+      targetFrom >= axisMin && targetTo <= axisMax,
+      `${item.id} target zone must sit inside the axis it is drawn on`,
+    );
+  }
+});
+
+test('a band-scored metric reads 100 inside its own band and 0 at its axis edges', () => {
+  // Coverage metrics score as the observed percentage itself, so their band is
+  // a guidance threshold rather than the scoring rule. Every other metric is
+  // scored BY the band, and that is the relationship worth pinning.
+  const guidanceOnly = new Set(['tracking-coverage', 'framing-coverage']);
+  const metrics = allMetrics(analyzeDeliveryMetrics(FULLY_OBSERVED))
+    .filter((item) => !guidanceOnly.has(item.id));
+  assert.ok(metrics.length >= 7, 'expected at least seven band-scored metrics');
+
+  for (const item of metrics) {
+    const { axisMin, axisMax, targetFrom, targetTo } = item.band;
+    const midpoint = (targetFrom + targetTo) / 2;
+    assert.ok(
+      item.observedValue === null || item.rehearsalScore !== null,
+      `${item.id} reported a value without a score`,
+    );
+    // Reconstructing the score from the band is the whole point: if these two
+    // ever disagree, the marker on the chart is pointing at the wrong rule.
+    const scoreAt = (value) => {
+      if (value >= targetFrom && value <= targetTo) return 100;
+      if (value < targetFrom) return Math.round(100 * (value - axisMin) / (targetFrom - axisMin));
+      return Math.round(100 * (axisMax - value) / (axisMax - targetTo));
+    };
+    assert.equal(scoreAt(midpoint), 100, `${item.id} should score 100 at the middle of its band`);
+    assert.equal(scoreAt(axisMax), 0, `${item.id} should score 0 at the top of its axis`);
+    if (targetFrom > axisMin) {
+      assert.equal(scoreAt(axisMin), 0, `${item.id} should score 0 at the bottom of its axis`);
+    }
+  }
+});
+
+test('a reported percentage is plotted against a band in the same unit', () => {
+  // Pause, pitch, energy, and movement are measured as ratios and reported as
+  // percentages. Scoring used the ratio band; plotting uses the reported value.
+  // Mixing the two puts an 18% pause ratio at the far right of a 0–0.65 axis.
+  const result = analyzeDeliveryMetrics(FULLY_OBSERVED);
+  const scaled = [
+    [metric(result.vocal, 'pause-ratio'), 0, 65, 8, 28],
+    [metric(result.vocal, 'pitch-variation'), 1, 75, 8, 30],
+    [metric(result.vocal, 'energy-variation'), 1, 125, 12, 55],
+    [metric(result.visual, 'movement-activity'), 0, 95, 8, 60],
+  ];
+
+  for (const [item, axisMin, axisMax, targetFrom, targetTo] of scaled) {
+    assert.deepEqual(
+      item.band,
+      { axisMin, axisMax, targetFrom, targetTo },
+      `${item.id} band must be expressed in the unit it reports`,
+    );
+    assert.ok(
+      item.observedValue >= item.band.axisMin && item.observedValue <= item.band.axisMax,
+      `${item.id} observed ${item.observedValue} fell outside its own plotted axis`,
+    );
+  }
+});

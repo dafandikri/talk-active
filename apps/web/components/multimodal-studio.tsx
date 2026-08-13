@@ -13,6 +13,8 @@ import {
   type DeliveryMetricsResult,
   type VisionObservations,
 } from '@/lib/delivery-metrics';
+import { summarizeRehearsalReading } from '@/lib/rehearsal-reading';
+import { MetricBand, ReadingComposition } from './delivery-charts';
 import {
   createAudioObserver,
   type AudioObservationSample,
@@ -548,19 +550,24 @@ export function MultimodalReview({
   }, [result.recording]);
   const visual = result.visionSummary;
   const vocalScore = result.metrics.vocal.rehearsalScore;
-  const reliableVisualTracking = (visual?.metrics.trackingCoveragePercent ?? 0) >= 80;
+  const trackingPercent = visual?.metrics.trackingCoveragePercent ?? 0;
+  const reliableVisualTracking = trackingPercent >= 80;
   const speechDisruptions = result.speechDisruptions ?? [];
   const visualScore = reliableVisualTracking ? (result.metrics.visual?.rehearsalScore ?? null) : null;
-  const availableDelivery = [vocalScore, visualScore].filter((value): value is number => value !== null);
-  const deliveryMean = availableDelivery.length > 0
-    ? availableDelivery.reduce((sum, value) => sum + value, 0) / availableDelivery.length
-    : substanceScore;
-  const overallGrade = Math.round((substanceScore * 0.5) + (deliveryMean * 0.5));
-  const metricCards = [
-    { label: 'Substance', value: substanceScore, note: 'Rubric evidence with cited transcript spans' },
-    { label: 'Vocal delivery', value: vocalScore, note: `${result.metrics.fillerCount} transcript fillers · ${result.metrics.repeatedWordCount} adjacent repeats` },
-    { label: 'Visual delivery', value: visualScore, note: reliableVisualTracking ? `${result.metrics.visual?.measurementCoverage ?? 0}% measurement coverage` : 'Insufficient reliable tracking; excluded from the overall reading' },
-  ];
+  // The weighting is computed from what was actually measurable, not asserted.
+  // This screen used to print a fixed "50 / 25 / 25" while the arithmetic
+  // renormalized around a missing camera — so an attempt with no usable
+  // landmarks showed a caption claiming a quarter of the figure came from a
+  // signal that contributed nothing.
+  const reading = summarizeRehearsalReading({
+    substance: substanceScore,
+    vocal: vocalScore,
+    visual: visualScore,
+    vocalExcludedReason: 'No transcript or acoustic timing was available to read.',
+    visualExcludedReason: visual
+      ? `Landmarks held for ${trackingPercent}% of sampled frames, below the 80% floor this reading requires.`
+      : 'The camera was not part of this attempt.',
+  });
   const replayEvents = [
     ...speechDisruptions.map((event, index) => ({
       key: `speech-${event.startMs}-${index}`,
@@ -601,8 +608,9 @@ export function MultimodalReview({
     void player.play();
   }
   return <section className="surface multimodal-review">
-    <div className="multimodal-review-heading"><div><p className="overline">Multimodal performance map</p><h2>How the attempt came across</h2><p>50% rubric substance · 25% vocal signals · 25% visual signals</p></div><div className="overall-grade"><span>Overall rehearsal</span><strong>{overallGrade}</strong><small>/ 100</small></div></div>
-    <p className="delivery-boundary"><strong>This number describes one rehearsal attempt, not your ability.</strong> It is a disclosed 50/25/25 weighting of readings taken from configured, inspectable thresholds, and every component below shows the evidence behind it. Signals that were not measured are excluded from the mean rather than counted as zero. These readings describe observable camera, transcript, and acoustic signals—not emotion, confidence, health, skill, or hiring suitability.</p>
+    <div className="multimodal-review-heading"><div><p className="overline">Multimodal performance map</p><h2>How the attempt came across</h2></div></div>
+    <ReadingComposition reading={reading} headingId="rehearsalReadingLabel" />
+    <p className="delivery-boundary"><strong>This number describes one rehearsal attempt, not your ability.</strong> The bar above is its whole arithmetic: each block is as wide as the share it carried and as full as it scored. Readings come from configured, inspectable thresholds, and every component below shows the evidence behind it. Signals that were not measured are excluded from the mean rather than counted as zero. These readings describe observable camera, transcript, and acoustic signals—not emotion, confidence, health, skill, or hiring suitability.</p>
     {recordingUrl && <section className="recording-review" aria-labelledby="replayTitle">
       <div><p className="overline">Attempt replay</p><h3 id="replayTitle">Review the moment, not just the number.</h3><p>Timestamp buttons start two seconds before each observation so you can judge the surrounding context yourself.</p></div>
       <video ref={videoRef} className="recording-player" src={recordingUrl} controls playsInline preload="metadata" aria-label="Recorded attempt replay" />
@@ -647,10 +655,12 @@ export function MultimodalReview({
       </p>
     </section>}
 
-    <div className="performance-score-grid">{metricCards.map((card) => <article key={card.label}><span>{card.label}</span><strong className={card.value === null ? 'is-text' : undefined}>{card.value === null ? 'insufficient' : card.value}</strong><small>{card.note}</small>{card.value !== null && <i><b style={{ width: `${card.value}%` }} /></i>}</article>)}</div>
     <div className="performance-details">
-      <div><h3>Voice evidence</h3><ul>{result.metrics.vocal.metrics.map((metric) => <li key={metric.id}><span><strong>{metric.label}</strong><small>{metric.explanation}</small></span><b>{metric.observedValue === null ? 'not measured' : `${metric.observedValue} ${metric.unit}`}</b></li>)}</ul>{(result.metrics.fillers.length > 0 || result.metrics.repeatedWordEvents.length > 0) && <div className="event-timeline transcript-cue-list"><span>Transcript cue evidence</span>{result.metrics.fillers.map((filler) => <p key={filler.label}><time>filler</time><q>{filler.label}</q> × {filler.count}</p>)}{result.metrics.repeatedWordEvents.slice(0, 6).map((event) => <p key={`${event.word}-${event.tokenIndex}`}><time>{event.timestampSeconds === null ? `word ${event.tokenIndex + 1}` : formatTime(event.timestampSeconds * 1_000)}</time><q>{event.word}</q> repeated {event.additionalOccurrences + 1} times in sequence</p>)}</div>}<div className="event-timeline speech-disruption-list"><h4>Possible hesitation cues</h4><ul>{speechDisruptions.length > 0 ? speechDisruptions.slice(0, 8).map((event, index) => <li key={`${event.kind}-${event.startMs}-${index}`}><time>{formatTime(event.startMs)}</time><span><strong>{event.label}</strong><small>{event.evidence}</small></span></li>) : <li><time>—</time><span><strong>No audio or interim-dictation candidate crossed the prototype thresholds.</strong><small>Short or unvoiced hesitations may still be missed.</small></span></li>}</ul></div></div>
-      <div><h3>Camera evidence</h3>{visual ? <><ul>{visual.mode === 'interview' ? <>
+      <div><h3>Voice evidence</h3><ul className="metric-band-list">{result.metrics.vocal.metrics.map((metric) => <MetricBand metric={metric} key={metric.id} />)}</ul>{(result.metrics.fillers.length > 0 || result.metrics.repeatedWordEvents.length > 0) && <div className="event-timeline transcript-cue-list"><span>Transcript cue evidence</span>{/* The quote and its count are one grid cell. Left as siblings they were a
+    third child in a two-column grid, so every count wrapped onto its own
+    row under the timestamp. */}
+{result.metrics.fillers.map((filler) => <p key={filler.label}><time>filler</time><span><q>{filler.label}</q> × {filler.count}</span></p>)}{result.metrics.repeatedWordEvents.slice(0, 6).map((event) => <p key={`${event.word}-${event.tokenIndex}`}><time>{event.timestampSeconds === null ? `word ${event.tokenIndex + 1}` : formatTime(event.timestampSeconds * 1_000)}</time><span><q>{event.word}</q> repeated {event.additionalOccurrences + 1} times in sequence</span></p>)}</div>}<div className="event-timeline speech-disruption-list"><h4>Possible hesitation cues</h4><ul>{speechDisruptions.length > 0 ? speechDisruptions.slice(0, 8).map((event, index) => <li key={`${event.kind}-${event.startMs}-${index}`}><time>{formatTime(event.startMs)}</time><span><strong>{event.label}</strong><small>{event.evidence}</small></span></li>) : <li><time>—</time><span><strong>No audio or interim-dictation candidate crossed the prototype thresholds.</strong><small>Short or unvoiced hesitations may still be missed.</small></span></li>}</ul></div></div>
+      <div><h3>Camera evidence</h3>{visual ? <>{result.metrics.visual && <ul className="metric-band-list">{result.metrics.visual.metrics.map((metric) => <MetricBand metric={metric} key={metric.id} />)}</ul>}<ul className="raw-observation-list">{visual.mode === 'interview' ? <>
         <li><span><strong>Reliable face tracking</strong><small>Frames with usable landmarks</small></span><b>{visual.metrics.trackingCoveragePercent}%</b></li>
         <li><span><strong>Face framing</strong><small>Measured after calibration</small></span><b>{visual.metrics.framedPercent}%</b></li>
         <li><span><strong>Camera-facing head direction</strong><small>This is not eye contact</small></span><b>{visual.metrics.cameraFacingPercent ?? 'n/a'}{visual.metrics.cameraFacingPercent === null ? '' : '%'}</b></li>

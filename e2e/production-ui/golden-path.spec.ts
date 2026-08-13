@@ -57,9 +57,13 @@ test('production guest completes attempt → evidence → defense → progress',
   await expect(page.getByText(/not confidence or speaking ability/i)).toBeVisible();
   await expectVisibleControlsHitTest(page);
 
-  await page.getByRole('button', { name: 'Confirm Problem clarity' }).click();
+  // Matched by pattern, not by exact string. The visible button says only
+  // "Yes"/"No", so the accessible name has to name the criterion AND what
+  // agreeing to it means — wording that should stay free to improve. What must
+  // not change is that the name identifies its criterion unambiguously.
+  await page.getByRole('button', { name: /^Confirm\b.*\bProblem clarity$/ }).click();
   await expect(page.getByText(/Saved in this browser as a human evaluation label; the original deterministic provenance is preserved\./u)).toBeVisible();
-  await page.getByRole('button', { name: 'Reject Solution fit' }).click();
+  await page.getByRole('button', { name: /^Reject\b.*\bSolution fit$/ }).click();
   await expect(page.getByText(/re-checked once with the rejected sentence excluded/i)).toBeVisible();
   await expect.poll(() => page.evaluate(() => {
     const raw = localStorage.getItem('talkactive.production.evidence-confirmations.v1');
@@ -137,7 +141,12 @@ test('review visibly flags one citation reused across criteria', async ({ page }
 
   const reused = page.locator('.evidence-item[data-evidence="reused"]');
   await expect(reused).toHaveCount(2);
-  await expect(page.getByText('citation reused', { exact: true })).toHaveCount(2);
+  // Scoped to the criterion cards. The evidence map above them announces the
+  // same state to screen readers for each cell, which is correct for an index
+  // but makes a page-wide text count ambiguous about where the verdict lives.
+  await expect(page.locator('.evidence-item .evidence-state')
+    .filter({ hasText: /^citation reused$/ })).toHaveCount(2);
+  await expect(page.locator('.evidence-map a[data-evidence="reused"]')).toHaveCount(2);
   await expect(reused.first().locator('.citation-reuse-note')).toContainText('Evaluation fit');
   await expect(reused.last().locator('.citation-reuse-note')).toContainText('Grounding');
   await expect(page.locator('.evidence-item[data-evidence="found"]')).toHaveCount(0);
@@ -245,7 +254,14 @@ test('local guest workspace uses stateless semantic review when the capability i
   await expect(page.getByText(/4 of 4 criteria used semantic mapping/u)).toBeVisible();
   await expect(page.getByText(/judge question used semantic generation/u)).toBeVisible();
   await expect(page.locator('.evidence-provenance')).toHaveCount(4);
-  await expect(page.locator('.evidence-provenance').first()).toContainText('Mapped semantically');
+  // Provenance is now a chip on the criterion's topline rather than a sentence
+  // on its own line. It has to stay VISIBLE text — it is a boundary disclosure
+  // under INV-4, and a hover tooltip discloses nothing on a touch screen — so
+  // this asserts both the wording and that it is actually rendered.
+  const provenance = page.locator('.evidence-provenance').first();
+  await expect(provenance).toBeVisible();
+  await expect(provenance).toContainText('semantic');
+  await expect(provenance).toContainText('checked against your transcript');
   expect(analyzeCalls).toBe(1);
 });
 

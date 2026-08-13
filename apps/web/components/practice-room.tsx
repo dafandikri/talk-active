@@ -961,6 +961,32 @@ export function PracticeRoom() {
         </div>
         <section className="surface evidence-section">
           <div className="section-title-row"><div><p className="overline">Rubric evidence map</p><h2>What your transcript actually supports</h2></div><div className="delivery-context"><span>{analysis.delivery.wordsPerMinute} WPM · {analysis.delivery.pace}</span><span>{analysis.delivery.fillerCount} potential fillers</span></div></div>
+          {/* The whole rubric on one line, before the detail.
+              With six criteria the list below runs several screens — the quote
+              is deliberately the largest text on the page, and that is not
+              negotiable — so "how am I doing overall" used to cost a scroll in
+              each direction. The map answers it in place, and each cell jumps
+              to its own criterion (Nielsen: user control, and recognition over
+              recall). Nothing here replaces the evidence; it indexes it. */}
+          <ol className="evidence-map" aria-label="Every rubric criterion and whether this attempt cites a transcript span for it">
+            {analysis.criteria.map((criterion) => {
+              const reuse = reusedCitations.find((item) => item.criterionIds.includes(criterion.id));
+              const state = reuse ? 'reused' : criterion.excerpt ? 'found' : 'absent';
+              const stateWord = reuse ? 'citation reused' : criterion.excerpt ? 'evidence cited' : 'no evidence cited';
+              return <li key={criterion.id}>
+                <a href={`#evidence-${criterion.id}`} data-evidence={state} title={`${criterion.label} — ${stateWord}`}>
+                  <span className="evidence-map-mark" aria-hidden="true" />
+                  <span className="evidence-map-label">{criterion.label}</span>
+                  <span className="sr-only">{stateWord}</span>
+                </a>
+              </li>;
+            })}
+          </ol>
+          {/* "4 of 4 cite a span" is true and still misleading when two of them
+              cite the SAME span. The per-criterion cards already disclose reuse;
+              a summary line that hides it would undo that at a glance, which is
+              the one place a judge actually looks first. */}
+          <p className="evidence-map-count">{analysis.criteria.filter((criterion) => criterion.excerpt).length} of {analysis.criteria.length} criteria cite a span from this transcript{reusedCitations.length > 0 ? `, though ${reusedCitations.reduce((total, item) => total + item.criterionIds.length, 0)} of them share a quote` : ''}. Coverage counts cited spans, not quality.</p>
           <div className="evidence-list">{analysis.criteria.map((criterion) => {
             const found = Boolean(criterion.excerpt);
             const criterionEngine = criterionEngines[criterion.id] ?? 'deterministic';
@@ -969,12 +995,20 @@ export function PracticeRoom() {
               ? analysis.criteria.filter((item) => item.id !== criterion.id && reuse.criterionIds.includes(item.id)).map((item) => item.label)
               : [];
             const evidenceState = reuse ? 'reused' : found ? 'found' : 'absent';
-            return <article className="evidence-item" data-evidence={evidenceState} key={criterion.id}>
-              <div className="evidence-topline"><strong>{criterion.label}</strong><span className="evidence-state">{reuse ? 'citation reused' : found ? criterionEngine === 'semantic' ? 'grounded evidence' : 'cue match' : criterionEngine === 'semantic' ? 'evidence gap' : 'no cue matched'}</span></div>
-              {found ? <><blockquote className="evidence-quote">{criterion.excerpt}</blockquote><p className="evidence-source">your words, from this attempt</p></> : criterionEngine === 'semantic' ? <p className="evidence-absent">The semantic review found no exact passage that supplies this criterion&apos;s required evidence. <span>Still needed: {criterion.missingSignals.slice(0, 4).join(', ')}.</span></p> : <p className="evidence-absent">Nothing in this attempt matched the declared cues for this criterion. <span>Looked for: {criterion.missingSignals.slice(0, 4).join(', ')}.</span></p>}
+            return <article className="evidence-item" data-evidence={evidenceState} id={`evidence-${criterion.id}`} key={criterion.id}>
+              {/* Provenance moved onto the topline as a chip. It was a full
+                  sentence on its own line under every criterion — six copies of
+                  a fact that does not change between them, each costing a line
+                  of the scroll the user complained about.
+                  It stays VISIBLE text rather than a tooltip: this is a
+                  boundary disclosure, and INV-4 says boundaries are stated, not
+                  hidden. A hover title is hidden on every touch screen, which
+                  is most of the room. So the wording shortens and the word that
+                  carries the limit — "deterministic" — survives verbatim. */}
+              <div className="evidence-topline"><strong>{criterion.label}</strong><span className="evidence-meta"><span className="evidence-state">{reuse ? 'citation reused' : found ? criterionEngine === 'semantic' ? 'grounded evidence' : 'cue match' : criterionEngine === 'semantic' ? 'evidence gap' : 'no cue matched'}</span><span className="evidence-provenance">{criterionEngine === 'semantic' ? 'semantic, checked against your transcript' : 'deterministic cue matching, not semantic analysis'}</span></span></div>
+              {found ? <blockquote className="evidence-quote"><span className="evidence-quote-text">{criterion.excerpt}</span><cite className="evidence-source">your words, from this attempt</cite></blockquote> : criterionEngine === 'semantic' ? <p className="evidence-absent">The semantic review found no exact passage that supplies this criterion&apos;s required evidence. <span>Still needed: {criterion.missingSignals.slice(0, 4).join(', ')}.</span></p> : <p className="evidence-absent">Nothing in this attempt matched the declared cues for this criterion. <span>Looked for: {criterion.missingSignals.slice(0, 4).join(', ')}.</span></p>}
               {reuse && <p className="citation-reuse-note"><strong>One quote is doing more than one job.</strong> This exact span was also cited for {reusedWith.join(', ')}. Both readings stay visible, but this is not independent evidence for each criterion.</p>}
-              <p className="evidence-provenance">{criterionEngine === 'semantic' ? 'Mapped semantically, then checked against your exact transcript.' : 'Matched by deterministic cue matching, not semantic analysis.'}</p>
-              <div className="production-confirm"><span>{found ? `Would an evaluator accept this as covering ${criterion.label}?` : 'Is this evidence gap accurate?'}</span><button aria-label={`Confirm ${criterion.label}`} className={`button button-secondary${confirmations[criterion.id] === true ? ' is-selected' : ''}`} type="button" disabled={confirmationBusy[criterion.id] || confirmations[criterion.id] !== undefined} onClick={() => void confirmEvidence(criterion.id, true)}>Yes</button><button aria-label={`Reject ${criterion.label}`} className={`button button-secondary${confirmations[criterion.id] === false ? ' is-selected' : ''}`} type="button" disabled={confirmationBusy[criterion.id] || confirmations[criterion.id] !== undefined} onClick={() => void confirmEvidence(criterion.id, false)}>No</button>{confirmationNotes[criterion.id] && <small role="status">{confirmationNotes[criterion.id]}</small>}</div>
+              <div className="production-confirm"><span>{found ? 'Would an evaluator accept this?' : 'Is this gap accurate?'}</span><button aria-label={found ? `Confirm that the cited span covers ${criterion.label}` : `Confirm the evidence gap for ${criterion.label}`} className={`button button-secondary${confirmations[criterion.id] === true ? ' is-selected' : ''}`} type="button" disabled={confirmationBusy[criterion.id] || confirmations[criterion.id] !== undefined} onClick={() => void confirmEvidence(criterion.id, true)}>Yes</button><button aria-label={found ? `Reject the cited span for ${criterion.label}` : `Reject the evidence gap for ${criterion.label}`} className={`button button-secondary${confirmations[criterion.id] === false ? ' is-selected' : ''}`} type="button" disabled={confirmationBusy[criterion.id] || confirmations[criterion.id] !== undefined} onClick={() => void confirmEvidence(criterion.id, false)}>No</button>{confirmationNotes[criterion.id] && <small role="status">{confirmationNotes[criterion.id]}</small>}</div>
             </article>;
           })}</div>
         </section>

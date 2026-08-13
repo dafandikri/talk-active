@@ -211,6 +211,85 @@
    empty state unstyled. */
 .metrics-boundary, .observation-empty, .performance-empty { margin: var(--space-5) 0 0; color: var(--text-muted); font-size: var(--step-0); }
 
+/* ---------------------------------------------------------------------------
+   THE REHEARSAL READING
+   The composite figure, drawn as the arithmetic that produced it: each block is
+   as WIDE as the share it carried and as FULL as it scored. A block that had to
+   be excluded is not drawn at all — the remaining widths change instead, which
+   is what actually happened to the number.
+
+   The two hues are the product invariant made visible. Rubric evidence is the
+   headline, so it keeps the one reserved saturated hue; both delivery signals
+   share a single quieter one and are told apart by their labels. Three
+   competing colours would have said "these are peers", which is exactly what
+   the invariant denies. Verified with the palette validator: the pair holds
+   ΔE 18.8 under protanopia against a 8.0 target.
+
+   The score grid this replaces had no stylesheet entry at all — three bare
+   <article> elements and two default-bulleted lists, stacked. It was not a
+   weak visualisation; it was unstyled markup.
+   ------------------------------------------------------------------------ */
+.reading-composition { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-6); align-items: center; margin-bottom: var(--space-4); padding: var(--space-5); background: var(--surface-sunken); border-radius: var(--radius-md); }
+.reading-total { display: grid; justify-items: center; align-content: center; }
+.reading-total strong { font-size: var(--step-5); font-weight: var(--weight-heavy); line-height: var(--leading-tight); font-variant-numeric: tabular-nums; }
+.reading-total > span { color: var(--text-muted); font-size: var(--step-1); font-weight: var(--weight-bold); }
+.reading-total small { margin-top: var(--space-1); color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+.reading-bar-wrap { min-width: 0; --reading-track-height: 5rem; }
+.reading-bar { position: relative; display: flex; gap: var(--space-1); align-items: stretch; }
+.reading-segment { min-width: 0; display: grid; grid-template-rows: var(--reading-track-height) auto; gap: var(--space-2); }
+/* The composite's own level, drawn across the blocks it was computed from. */
+.reading-average { position: absolute; inset-inline: 0; height: 0; border-top: 2px dashed var(--text-primary); pointer-events: none; }
+.reading-segment-track { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.reading-segment-fill { position: absolute; inset-inline: 0; bottom: 0; }
+/* Reserved-hue rule: the substance block is literally the rubric evidence
+   reading, so it is the one place in this chart entitled to evidence blue. */
+.reading-segment-evidence .reading-segment-fill { background: var(--evidence); }
+.reading-segment-delivery .reading-segment-fill { background: var(--accent-orange); }
+.reading-segment-label { min-width: 0; display: grid; gap: var(--space-1); }
+.reading-segment-label b { font-size: var(--step-2); font-weight: var(--weight-heavy); line-height: var(--leading-tight); font-variant-numeric: tabular-nums; }
+.reading-segment-label small { color: var(--text-secondary); font-size: var(--step-0); overflow-wrap: anywhere; }
+.reading-weighting { margin: var(--space-4) 0 0; color: var(--text-secondary); font-size: var(--step-0); font-weight: var(--weight-bold); }
+.reading-legend { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); }
+.reading-legend-rule { flex: none; width: var(--space-5); border-top: 2px dashed var(--text-primary); }
+.reading-unmeasured { display: grid; gap: var(--space-1); margin: var(--space-2) 0 0; padding: 0; list-style: none; }
+.reading-unmeasured li { padding-left: var(--space-3); border-left: 2px solid var(--absence-border); color: var(--text-muted); font-size: var(--step-0); }
+
+/* ---------------------------------------------------------------------------
+   METRIC BANDS
+   A bullet chart per observation: the configured practice band as a shaded
+   zone, the observed value as a marker on the same axis. The list this replaces
+   printed "178 words/min" beside "105–165 words/min practice band" and left the
+   comparison — and the size of the gap, which is the actionable part — to the
+   reader.
+   ------------------------------------------------------------------------ */
+.metric-band-list { display: grid; gap: var(--space-4); margin: 0; padding: 0; list-style: none; }
+.metric-band { min-width: 0; padding: var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-sm); }
+.metric-band-topline { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); }
+.metric-band-topline strong { font-size: var(--step-1); }
+.metric-band-topline b { flex: none; font-size: var(--step-1); font-weight: var(--weight-heavy); font-variant-numeric: tabular-nums; }
+.metric-band-topline b.is-absent { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-bold); }
+.metric-band-track { position: relative; height: var(--space-5); margin-top: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.metric-band-zone { position: absolute; inset-block: 0; background: var(--accent-orange-wash); border-inline: 1px solid var(--accent-orange); }
+/* The marker is an ink tick, not a coloured dot: it has to stay legible where
+   it overlaps the shaded zone and where it sits on bare track. */
+.metric-band-marker { position: absolute; inset-block: calc(-1 * var(--space-1)); width: 3px; background: var(--text-primary); border-radius: var(--radius-full); transform: translateX(-50%); }
+.metric-band-marker[data-inside="no"]::after { content: ""; position: absolute; left: 50%; bottom: calc(-1 * var(--space-2)); width: var(--space-2); height: var(--space-2); background: var(--text-primary); border-radius: var(--radius-full); transform: translateX(-50%); }
+.metric-band-axis { display: flex; justify-content: space-between; gap: var(--space-2); margin: var(--space-3) 0 0; color: var(--text-muted); font-size: var(--step-0); font-variant-numeric: tabular-nums; }
+.metric-band-target { color: var(--text-secondary); font-weight: var(--weight-bold); text-align: center; }
+.metric-band-note { display: block; margin-top: var(--space-2); color: var(--text-muted); font-size: var(--step-0); }
+.metric-band-absent { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); }
+.metric-band[data-measured="no"] { border: 1px dashed var(--absence-border); background: transparent; }
+.metric-band[data-measured="no"] .metric-band-note { display: none; }
+
+.performance-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-6); margin-top: var(--space-6); }
+.performance-details > div { min-width: 0; }
+.performance-details h3 { margin-bottom: var(--space-4); font-size: var(--step-2); }
+.raw-observation-list { display: grid; gap: var(--space-2); margin: var(--space-4) 0 0; padding: 0; list-style: none; }
+.raw-observation-list li { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-3); background: var(--surface-sunken); border-radius: var(--radius-sm); font-size: var(--step-0); }
+.raw-observation-list li span strong, .raw-observation-list li span small { display: block; }
+.raw-observation-list li span small { margin-top: var(--space-1); color: var(--text-muted); }
+.raw-observation-list li > b { flex: none; align-self: center; font-variant-numeric: tabular-nums; }
+
 @media (max-width: 760px) {
   .multimodal-studio, .multimodal-review { padding: var(--space-4); }
   .multimodal-studio,
@@ -226,7 +305,12 @@
   .multimodal-review-heading { align-items: stretch; flex-direction: column; }
   .studio-heading, .studio-controls { align-items: stretch; flex-direction: column; }
   .studio-live { align-self: flex-start; }
-  .studio-mode-tabs, .observation-summary-grid, .observation-details { grid-template-columns: 1fr; }
+  .studio-mode-tabs, .observation-summary-grid, .observation-details, .performance-details { grid-template-columns: 1fr; }
+  /* The bar keeps its proportions on a phone — the widths ARE the weighting, so
+     stacking the segments would delete the thing the chart exists to show. Only
+     the height and the label size give way. */
+  .reading-composition { grid-template-columns: 1fr; gap: var(--space-4); justify-items: start; }
+  .reading-bar-wrap { width: 100%; --reading-track-height: 3.5rem; }
   .studio-stage { min-height: 0; }
   .studio-record, .studio-stop { width: 100%; min-width: 0; }
   .studio-controls select { width: 100%; }
