@@ -641,3 +641,6 @@
   .timeline-lane { grid-template-columns: 3.5rem minmax(0, 1fr); gap: var(--space-2); }
   .timeline-axis { margin-left: calc(3.5rem + var(--space-2)); }
 }
+/* The saved review already lists every cue as text below, so the plotted lanes
+   are the second reading of the same data rather than the only one. */
+.saved-attempt-timeline { margin: 0 0 var(--space-5); padding-top: 0; border-top: 0; }

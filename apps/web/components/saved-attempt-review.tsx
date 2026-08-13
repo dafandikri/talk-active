@@ -99,6 +99,22 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
     () => [...(review?.deliveryEvents ?? [])].sort((left, right) => left.startMs - right.startMs),
     [review?.deliveryEvents],
   );
+  // The list below says a cue happened; the timeline says when, and next to
+  // what. Four fillers spread across six minutes and four in the closing thirty
+  // seconds are the same list and completely different advice.
+  //
+  // Voice and camera are separate labelled lanes, so the marks share one hue.
+  // Colouring the lanes instead would repeat what position already says, and the
+  // obvious warm/green pair for them separates at only ΔE 4.2 under protanopia.
+  const timelineDurationMs = Math.max(
+    1_000,
+    review?.recording?.durationMs ?? Math.round((review?.attempt.durationSeconds ?? 0) * 1_000),
+  );
+  const timelineLanes = [
+    { id: 'voice', label: 'Voice', events: events.filter((event) => event.source !== 'vision') },
+    { id: 'camera', label: 'Camera', events: events.filter((event) => event.source === 'vision') },
+  ].filter((lane) => lane.events.length > 0);
+
   const recordingReady = review?.recording?.status === 'ready';
 
   function seekToEvent(event: AttemptDeliveryEvent) {
@@ -192,8 +208,8 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
             ? <>
               <dl className="saved-delivery-metrics">
                 <div><dt>Capture mode</dt><dd>{delivery.mode === 'interview' ? 'Face · interview' : 'Full body · presentation'}</dd></div>
-                <div><dt>Vocal rehearsal grade</dt><dd>{delivery.vocalScore}/100</dd></div>
-                <div><dt>Visual rehearsal grade</dt><dd>{delivery.visualScore === null ? 'Not measured' : `${delivery.visualScore}/100`}</dd></div>
+                <div><dt>Vocal rehearsal reading</dt><dd>{delivery.vocalScore}/100</dd></div>
+                <div><dt>Visual rehearsal reading</dt><dd>{delivery.visualScore === null ? 'Not measured' : `${delivery.visualScore}/100`}</dd></div>
                 <div><dt>Usable tracking</dt><dd>{delivery.trackingCoveragePercent === null ? 'Not measured' : `${Math.round(delivery.trackingCoveragePercent)}%`}</dd></div>
                 <div><dt>Filler cues</dt><dd>{delivery.fillerCount}</dd></div>
                 <div><dt>Repeated-word cues</dt><dd>{delivery.repeatedWordCount}</dd></div>
@@ -210,6 +226,34 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
           <span className="session-status">{events.length} {events.length === 1 ? 'moment' : 'moments'}</span>
         </div>
         <p className="saved-section-intro">Timestamps point to detected cues, not diagnoses or objective judgments. Each replay jump starts two seconds earlier so you can review the context.</p>
+        {timelineLanes.length > 0 && <div className="attempt-timeline saved-attempt-timeline">
+          {timelineLanes.map((lane) => (
+            <div className="timeline-lane" key={lane.id}>
+              <span className="timeline-lane-label">{lane.label}</span>
+              <div className="timeline-track">
+                {lane.events.map((event) => {
+                  const left = Math.min(99, (event.startMs / timelineDurationMs) * 100);
+                  const span = Math.max(0, (event.endMs - event.startMs) / timelineDurationMs) * 100;
+                  return (
+                    <button
+                      key={event.id}
+                      className="timeline-mark"
+                      type="button"
+                      style={{ left: `${left}%`, width: `${Math.max(span, 1.5)}%` }}
+                      onClick={() => seekToEvent(event)}
+                      disabled={!recordingReady}
+                      title={`${formatClock(event.startMs)} · ${event.label}`}
+                      aria-label={`${formatClock(event.startMs)}, ${event.label}. ${recordingReady ? 'Play the replay from two seconds before this.' : 'The replay is not available, so this cue cannot be played.'}`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          <p className="timeline-axis" aria-hidden="true">
+            <span>0:00</span><span>{formatClock(timelineDurationMs / 2)}</span><span>{formatClock(timelineDurationMs)}</span>
+          </p>
+        </div>}
         {events.length === 0
           ? <p className="empty-list">No timestamped delivery cues were retained for this attempt.</p>
           : <ul className="saved-timeline-list">{events.map((event) => <li key={event.id}>
