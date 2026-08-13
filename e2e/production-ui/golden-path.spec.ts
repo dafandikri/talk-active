@@ -295,16 +295,14 @@ test('progress names a weakness only after it recurs and retains its evidence', 
   await expectVisibleControlsHitTest(page);
 });
 
-test('rubric import stays traceable and requires human confirmation', async ({ page }) => {
+test('rubric editor caps the criteria list and keeps Save at the end', async ({ page }) => {
   await page.goto('/rubric');
   await expectVisibleControlsHitTest(page);
-  await page.getByText('Import from a scoring matrix').click();
-  await page.getByLabel('Paste the scoring matrix').fill(
-    'Problem evidence | affected students, frequency, source\nFeasibility | architecture, cost, timeline',
-  );
-  await page.getByRole('button', { name: 'Structure these criteria' }).click();
-  await expect(page.getByRole('status')).toContainText('2 criteria structured in deterministic mode');
-  await expect(page.locator('.production-source-quote')).toHaveCount(2);
+  const addCriterion = page.getByRole('button', { name: 'Add criterion' });
+  await expect(page.locator('.rubric-row')).toHaveCount(4);
+  await addCriterion.click();
+  await expect(page.locator('.rubric-row')).toHaveCount(5);
+  await expect(addCriterion).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Save rubric' })).toBeVisible();
   await expectVisibleControlsHitTest(page);
 });
@@ -338,7 +336,7 @@ test('mobile workspace exposes the complete frozen navigation', async ({ page })
   await expectVisibleControlsHitTest(page);
   await nav.getByRole('link', { name: /Rubric/i }).click();
   await expect(page).toHaveURL(/\/rubric$/u);
-  await expect(page.getByRole('heading', { name: 'Make feedback follow the real rules.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Modify rubric' })).toBeVisible();
 });
 
 test('account sync is optional and fails closed when secrets are absent', async ({ page, request }) => {

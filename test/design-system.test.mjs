@@ -584,13 +584,14 @@ test('the Talk-Active lockup is consistent across product and landing surfaces',
 });
 
 test('workflow views keep the character system restrained and evidence-safe', () => {
-  // practice, rubric, progress, and account each carry exactly one.
-  assert.equal((INDEX.match(/className="workflow-mark"/gu) ?? []).length, 4,
-    'each workflow view carries exactly one workflow mark');
+  // practice, progress, and account each carry exactly one. The rubric editor dropped its
+  // banner on 13 August so the criteria list starts at the top of the page.
+  assert.equal((INDEX.match(/className="workflow-mark"/gu) ?? []).length, 3,
+    'each workflow view that keeps a banner carries exactly one workflow mark');
   assert.match(STYLES_CODE, /\.workflow-header\s*\{[^}]*background:\s*var\(--accent-sun-wash\);[^}]*border:\s*2px solid var\(--text-primary\);[^}]*box-shadow:\s*none;/su);
   assert.match(STYLES_CODE, /\.workflow-mark\s*\{[^}]*object-fit:\s*contain;[^}]*box-shadow:\s*none;/su);
   assert.doesNotMatch(STYLES_CODE, /\.workflow-mark\s*\{[^}]*(?:background|border):/su);
-  for (const selector of ['setup-form', 'setup-rubric', 'capture-panel', 'rubric-editor-card', 'rubric-guide', 'progress-chart-card', 'history-card']) {
+  for (const selector of ['setup-form', 'setup-rubric', 'capture-panel', 'rubric-editor-card', 'progress-chart-card', 'history-card']) {
     assert.match(STYLES_CODE, new RegExp(`(?:\\.${selector}[^{}]*)\\{[^}]*border:\\s*2px solid var\\(--text-primary\\);`, 'su'));
   }
   assert.doesNotMatch(STYLES_CODE, /#(?:practice|rubric|progress)View \.workflow-(?:header|mark)[^{]*\{[^}]*box-shadow:[^}]*var\(--accent-/su);

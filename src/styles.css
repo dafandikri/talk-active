@@ -820,38 +820,22 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 /* ---------------------------------------------------------------------------
    RUBRIC
    ------------------------------------------------------------------------ */
-.rubric-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--space-5); align-items: start; }
+.rubric-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); align-items: start; }
 .rubric-editor-card { padding: var(--space-6); border: 2px solid var(--text-primary); }
-.rubric-editor-card .section-title-row { align-items: center; }
-.rubric-editor-card select { width: 260px; }
-.rubric-import {
-  margin-top: var(--space-5); padding: var(--space-4);
-  background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-md);
-}
-.rubric-import summary { color: var(--brand); font-size: var(--step-0); font-weight: var(--weight-heavy); cursor: pointer; }
-.rubric-import-lede { margin: var(--space-3) 0; color: var(--text-muted); font-size: var(--step-0); }
-.rubric-import textarea { min-height: 132px; background: var(--surface); }
-.rubric-import button {
-  min-height: 42px; margin-top: var(--space-3); padding: 0 var(--space-4);
-  color: var(--brand-contrast); background: var(--brand); border: 0; border-radius: var(--radius-full);
-  font-size: var(--step-0); font-weight: var(--weight-heavy); cursor: pointer;
-}
-.rubric-import button:disabled { opacity: .45; cursor: not-allowed; }
-.rubric-import-status { min-height: var(--space-4); margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); }
-.rubric-list { display: grid; gap: var(--space-3); margin: var(--space-6) 0 var(--space-4); }
+.rubric-list-lede { margin: var(--space-5) 0 0; color: var(--text-muted); font-size: var(--step-0); }
+.rubric-status { min-height: var(--space-4); margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); }
+.rubric-list { display: grid; gap: var(--space-3); margin: var(--space-3) 0 var(--space-4); }
 .rubric-row {
-  display: grid; grid-template-columns: 32px minmax(140px, .7fr) minmax(220px, 1.3fr) 30px;
+  display: grid; grid-template-columns: minmax(140px, .7fr) minmax(220px, 1.3fr) 30px;
   gap: var(--space-3); align-items: center; padding: var(--space-4);
   background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-md);
 }
-.rubric-number {
-  width: 28px; height: 28px; display: grid; place-items: center;
-  color: var(--brand); background: var(--brand-wash); border-radius: var(--radius-sm);
-  font-size: var(--step-0); font-weight: var(--weight-heavy);
-}
 .rubric-field label { margin-bottom: var(--space-1); color: var(--text-muted); font-size: var(--step-0); }
 .rubric-field input { height: 39px; background: var(--surface); font-size: var(--step-0); }
-.remove-criterion { width: 30px; height: 30px; color: var(--text-muted); background: transparent; border: 0; border-radius: var(--radius-sm); cursor: pointer; }
+.remove-criterion {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  color: var(--text-muted); background: transparent; border: 0; border-radius: var(--radius-sm); cursor: pointer;
+}
 .remove-criterion:hover { color: var(--danger); background: var(--danger-wash); }
 .add-criterion {
   width: 100%; min-height: 48px; color: var(--brand); background: transparent;
@@ -859,20 +843,8 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   font-size: var(--step-0); font-weight: var(--weight-heavy); cursor: pointer;
 }
 .add-criterion span { margin-right: var(--space-2); font-size: var(--step-1); }
-.rubric-guide { padding: var(--space-6); border: 2px solid var(--text-primary); }
-.rubric-guide ul { display: grid; gap: var(--space-5); margin: var(--space-5) 0; padding: 0; list-style: none; }
-.rubric-guide li { display: flex; gap: var(--space-3); }
-.rubric-guide li > span {
-  width: 26px; height: 26px; display: grid; place-items: center; flex: 0 0 auto;
-  color: var(--brand); background: var(--brand-wash); border-radius: 50%;
-  font-size: var(--step-0); font-weight: var(--weight-heavy);
-}
-.rubric-guide strong, .rubric-guide small { display: block; }
-.rubric-guide strong { font-size: var(--step-0); }
-.rubric-guide small { margin-top: var(--space-1); color: var(--text-muted); font-size: var(--step-0); }
-.guide-note { padding: var(--space-4); background: var(--surface-inverse); color: var(--text-on-inverse); border-radius: var(--radius-md); }
-.guide-note strong { color: var(--text-on-inverse); }
-.guide-note p { margin: var(--space-2) 0 0; color: var(--text-on-inverse-muted); font-size: var(--step-0); }
+.add-criterion:disabled { opacity: .45; cursor: not-allowed; }
+.rubric-actions { display: flex; justify-content: flex-end; margin-top: var(--space-5); }
 
 /* ---------------------------------------------------------------------------
    PROGRESS
@@ -1046,7 +1018,6 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   .focus-stat:last-child { border-right: 0; }
   .attempt-layout, .rubric-layout, .review-grid { grid-template-columns: 1fr; }
   .session-sidebar { grid-template-columns: 1fr 1fr; }
-  .rubric-guide { display: none; }
   .brief-intro, .brief-problem, .brief-audience, .brief-difference, .brief-demo { grid-template-columns: 1fr; }
   .brief-intro { gap: var(--space-5); }
   .brief-loop-heading, .brief-reality-heading { display: block; }
@@ -1114,10 +1085,11 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   .feedback-empty { min-height: 260px; }
   .signal-review { grid-template-columns: 1fr; }
   .rubric-editor-card { padding: var(--space-5); }
-  .rubric-editor-card .section-title-row { display: block; }
-  .rubric-editor-card select { width: 100%; margin-top: var(--space-4); }
-  .rubric-row { grid-template-columns: 30px 1fr 30px; }
-  .rubric-row .rubric-field:nth-child(3) { grid-column: 2 / 4; }
+  /* Criterion and its trash control share the first row; evidence takes the full width below. */
+  .rubric-row { grid-template-columns: 1fr 30px; }
+  .rubric-row .rubric-field:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .rubric-row .rubric-field:nth-child(2) { grid-column: 1 / 3; grid-row: 2; }
+  .rubric-row .remove-criterion { grid-column: 2; grid-row: 1; }
   .progress-chart-card, .history-card { padding: var(--space-5); }
   .progress-chart-card .section-title-row { display: block; }
   .progress-chart-card select { width: 100%; margin-top: var(--space-4); }

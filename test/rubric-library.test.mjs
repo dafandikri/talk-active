@@ -56,8 +56,9 @@ test('F-9 records only a known rubric source and defaults invalid storage safely
   assert.equal(RUBRIC_SOURCE_STORAGE_KEY, 'talkactive.production.rubric-source.v1');
 });
 
-test('F-9 tells users templates are unofficial and never auto-saved', () => {
-  assert.match(editorSource, /not official scoring rubrics/iu);
+// The "not official scoring rubrics" sentence was removed from the editor on 13 August as
+// part of the rubric-page declutter. F-9's never-auto-saved half is still enforced here.
+test('F-9 tells users templates are never auto-saved', () => {
   assert.match(editorSource, /starter loaded but not saved/iu);
   assert.match(editorSource, /confirm with Save rubric/iu);
 });
