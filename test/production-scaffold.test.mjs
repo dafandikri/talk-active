@@ -99,9 +99,13 @@ test('M-4 keeps deterministic grounding separate from model judgment', () => {
 
 test('M-5 keeps the evidence judge per-criterion and uses both failover layers', () => {
   const judge = read('apps/web/lib/ai/evidence-judge.ts');
+  const environment = read('.env.example');
   assert.match(judge, /Output\.object/u);
   assert.match(judge, /models: request\.fallbackModels/u);
-  assert.match(judge, /zeroDataRetention: true/u);
+  assert.doesNotMatch(judge, /zeroDataRetention:\s*true/u,
+    'the Hobby deployment must not force a Pro-only Gateway option that rejects every semantic call');
+  assert.match(environment, /Criterion-[\s\S]+processed under the configured model provider's data terms/u,
+    'removing the unavailable ZDR option requires an explicit provider-processing boundary');
   assert.match(judge, /Promise\.allSettled/u);
   assert.match(judge, /findGroundedSpan/u);
   assert.doesNotMatch(judge, /AI_EVIDENCE_MODEL\s*\?\?\s*['"][^'"]+['"]/u, 'model tiers must be configured, not illustrative IDs baked into code');

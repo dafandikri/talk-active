@@ -39,8 +39,8 @@ export function apiFailure(error: unknown): NextResponse {
 }
 
 export function withApiErrors<Arguments extends unknown[]>(
-  handler: (...args: Arguments) => Promise<NextResponse>,
-): (...args: Arguments) => Promise<NextResponse> {
+  handler: (...args: Arguments) => Promise<Response>,
+): (...args: Arguments) => Promise<Response> {
   return async (...args) => {
     try {
       return await handler(...args);

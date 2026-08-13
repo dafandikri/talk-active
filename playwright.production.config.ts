@@ -14,7 +14,10 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:4183',
     browserName: 'chromium',
     headless: true,
-    launchOptions: browserPath ? { executablePath: browserPath } : undefined,
+    launchOptions: {
+      ...(browserPath ? { executablePath: browserPath } : {}),
+      args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'],
+    },
     trace: 'retain-on-failure',
   },
   webServer: {

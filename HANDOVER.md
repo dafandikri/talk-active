@@ -23,11 +23,25 @@ The last complete gate on the known-good release passed 161 unit/invariant check
 checks, all 16 demo stages, zero console errors, and all 19 artifact checks. Run `pnpm check`
 again after every change; this statement is not permission to skip the gate.
 
+## Integration in progress — 13 August
+
+`mansiz-dev` (claim coaching, rubric moments, transcript timing, wording cues, the capture
+bell) and `farrel-dev2` (the Kato interview format) are both integrated in the working tree of
+`integration/dafa-farrel`, **uncommitted by request**. On top of them: per-project language,
+project-scoped routing across every workspace page, the practice step opening on the typed
+transcript with live capture as an explicit choice, a delivery review that leads with bullet
+charts instead of a table of numbers, and narration that prefers a natural voice with a local
+fallback. `pnpm check` passes end to end on this tree.
+
+**One deploy prerequisite:** `apps/web/drizzle/0008_flat_frank_castle.sql` adds
+`projects.language`. The signed-in path selects that column, so the migration has to reach Neon
+**before** the code does, or every project query fails on stage. It is additive and defaulted,
+so applying it early is safe.
+
 ## What remains human-owned
 
-No outstanding feature branch needs integration. The remaining work is physical or organizer
-evidence recorded in `docs/operations/FINAL-SUBMISSION-CHECKLIST.md` and
-`docs/finals-readiness.json`:
+The remaining work is physical or organizer evidence recorded in
+`docs/operations/FINAL-SUBMISSION-CHECKLIST.md` and `docs/finals-readiness.json`:
 
 1. Confirm the exact filename format and AI-assistance policy with the organizer.
 2. Complete three timed pitch runs, the operator handoff, Q&A drill, and Wi-Fi-off rehearsal.

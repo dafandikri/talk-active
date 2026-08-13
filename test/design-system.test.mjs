@@ -36,6 +36,7 @@ const TAGLINE_LOCKUP = readFileSync(join(ROOT, 'src/assets/LOGO & TAGLINE.png'))
 // React surfaces that replaced them, so the markup-level assertions below keep
 // checking the same product decisions rather than being quietly dropped.
 const readAll = (relatives) => relatives.map((relative) => read(relative)).join('\n');
+const WORKSPACE_FRAME = read('apps/web/components/workspace-frame.tsx');
 const INDEX = readAll([
   'apps/web/components/workspace-frame.tsx',
   'apps/web/components/practice-room.tsx',
@@ -425,11 +426,11 @@ test('every named typeface is a platform font or is shipped with @font-face', ()
 test('font-family in components resolves to a role token', () => {
   const offenders = linesMatching(COMPONENT_STYLES_CODE, /font-family\s*:/u).filter((entry) => {
     const values = [...entry.line.matchAll(/font-family\s*:\s*([^;}]+)/gu)].map((m) => m[1].trim());
-    return values.some((value) => !/^(var\(--font-(ui|voice)\)|inherit)$/u.test(value));
+    return values.some((value) => !/^(var\(--font-(ui|heading|voice)\)|inherit)$/u.test(value));
   });
   assert.equal(
     offenders.length, 0,
-    report(offenders, 'font-family must be var(--font-ui), var(--font-voice), or inherit.'),
+    report(offenders, 'font-family must be var(--font-ui), var(--font-heading), var(--font-voice), or inherit.'),
   );
 });
 
@@ -557,10 +558,7 @@ test('the Next.js shell imports the frozen visual system directly and in cascade
 });
 
 test('dashboard home carries the approved character-led outlined material', () => {
-  assert.match(
-    STYLES_CODE,
-    /\.home-header\s*\{[^}]*border:\s*2px solid var\(--text-primary\);[^}]*box-shadow:\s*var\(--space-1\) var\(--space-1\) 0 var\(--accent-orange\);/su,
-  );
+  assert.doesNotMatch(STYLES_CODE, /\.home-header\s*\{/u, 'the dashboard title must not be rendered as a yellow banner');
   assert.match(
     STYLES_CODE,
     /\.focus-card\s*\{[^}]*border:\s*2px solid var\(--text-primary\);[^}]*box-shadow:\s*var\(--space-1\) var\(--space-1\) 0 var\(--accent-sky\);/su,
@@ -579,18 +577,23 @@ test('the Talk-Active lockup is consistent across product and landing surfaces',
   assert.match(BRIEF, /brand\/talk-active-logo\.svg/u, 'the landing must draw the mark from the committed brand asset');
   assert.match(INDEX, /Talk-<(?:strong|span) className="brand-wordmark-accent">Active<\/(?:strong|span)>/u,
     'the accent must stay on "Active" so the lockup reads identically on every surface');
-  // Every surface draws the mark from the committed brand asset, never a copy.
+  // Light workflow headers use the vector lockup; the dark sidebar must use
+  // the supplied RGBA dashboard mark whose speech-bubble interior is white.
   assert.match(INDEX, /brand\/talk-active-logo\.svg/u);
+  assert.match(WORKSPACE_FRAME, /assets\/LOGO-dashboard\.png/u,
+    'the dark workspace shell must use the dashboard mark with its opaque white interior');
+  assert.doesNotMatch(WORKSPACE_FRAME, /brand\/talk-active-logo\.svg/u,
+    'the transparent vector mark makes the speech-bubble interior disappear on the dark sidebar');
 });
 
 test('workflow views keep the character system restrained and evidence-safe', () => {
-  // practice, rubric, progress, and account each carry exactly one.
-  assert.equal((INDEX.match(/className="workflow-mark"/gu) ?? []).length, 4,
-    'each workflow view carries exactly one workflow mark');
-  assert.match(STYLES_CODE, /\.workflow-header\s*\{[^}]*background:\s*var\(--accent-sun-wash\);[^}]*border:\s*2px solid var\(--text-primary\);[^}]*box-shadow:\s*none;/su);
+  // Practice, progress, and account retain a small mark in a plain page header.
+  assert.equal((INDEX.match(/className="workflow-mark"/gu) ?? []).length, 3,
+    'each marked workflow view carries exactly one workflow mark');
+  assert.doesNotMatch(STYLES_CODE, /\.workflow-header\s*\{/u, 'workflow views must not use the yellow banner treatment');
   assert.match(STYLES_CODE, /\.workflow-mark\s*\{[^}]*object-fit:\s*contain;[^}]*box-shadow:\s*none;/su);
   assert.doesNotMatch(STYLES_CODE, /\.workflow-mark\s*\{[^}]*(?:background|border):/su);
-  for (const selector of ['setup-form', 'setup-rubric', 'capture-panel', 'rubric-editor-card', 'rubric-guide', 'progress-chart-card', 'history-card']) {
+  for (const selector of ['setup-form', 'setup-rubric', 'capture-panel', 'rubric-editor-card', 'progress-chart-card', 'history-card']) {
     assert.match(STYLES_CODE, new RegExp(`(?:\\.${selector}[^{}]*)\\{[^}]*border:\\s*2px solid var\\(--text-primary\\);`, 'su'));
   }
   assert.doesNotMatch(STYLES_CODE, /#(?:practice|rubric|progress)View \.workflow-(?:header|mark)[^{]*\{[^}]*box-shadow:[^}]*var\(--accent-/su);
@@ -602,4 +605,50 @@ test('every semantic token is documented with its intent', () => {
   const undocumented = ['--evidence', '--absence', '--brand', '--font-voice', '--step-evidence']
     .filter((name) => !doc.includes(name));
   assert.deepEqual(undocumented, [], `these tokens carry the product thesis and must be explained in the design system doc: ${undocumented.join(', ')}`);
+});
+
+// Kato is the only illustration on the dashboard, so he is either carrying
+// information or taking up space. These pin him to the first.
+const WORKSPACE_PAGE = read('apps/web/app/(workspace)/workspace/page.tsx');
+
+test('the mascot pose is chosen by the state of the work, not fixed', () => {
+  for (const pose of ['kato-macaw-alert', 'kato-macaw-questioning', 'kato-macaw-reading']) {
+    assert.ok(WORKSPACE_PAGE.includes(pose), `${pose} is drawn but never used, so a state has no face`);
+  }
+  for (const state of ['waiting', 'supported', 'gap']) {
+    assert.match(WORKSPACE_PAGE, new RegExp(`state: '${state}'`, 'u'), `no pose reports the ${state} state`);
+  }
+  assert.match(
+    WORKSPACE_PAGE,
+    /data-coach=\{coach\.state\}/u,
+    'the state must reach the DOM, or styling cannot respond to it',
+  );
+});
+
+test('swapping pose cannot shift the layout', () => {
+  // The three drawings are 392x489, 544x535, and 454x624. A single hardcoded
+  // size would be wrong for at least two of them and would move the card.
+  assert.match(WORKSPACE_PAGE, /width=\{coach\.art\.width\}/u);
+  assert.match(WORKSPACE_PAGE, /height=\{coach\.art\.height\}/u);
+  assert.ok(
+    !/className="focus-mascot"[^>]*width="\d+"/u.test(WORKSPACE_PAGE),
+    'a literal width brings back the layout shift these attributes exist to prevent',
+  );
+});
+
+test('the mascot reads as two planes at different depths', () => {
+  // Depth comes from parallax between the figure and the plate behind it. One
+  // plane moving alone reads as a sticker sliding around.
+  assert.match(STYLES, /\.focus-coach\s*\{[^}]*perspective:/u, 'the container needs a perspective for any Z to matter');
+  assert.match(STYLES, /@keyframes mascot-greet[^}]*\{[\s\S]*?translate3d[\s\S]*?rotateY/u);
+  assert.match(STYLES, /@keyframes coach-plate[\s\S]*?translateZ\(-90px\)/u);
+  assert.match(STYLES, /\.focus-coach::before[\s\S]*?animation:\s*coach-plate/u);
+});
+
+test('reduced motion stops the movement and keeps the meaning', () => {
+  const reduced = STYLES.slice(STYLES.indexOf('@media (prefers-reduced-motion: reduce)'));
+  assert.match(reduced, /\.focus-mascot\s*\{\s*animation:\s*none !important;\s*\}/u);
+  assert.match(reduced, /\.focus-coach::before\s*\{\s*animation:\s*none !important;\s*\}/u);
+  // The pose itself is chosen in the component, so it survives this media query
+  // by construction. That is the point: motion is decoration, pose is content.
 });

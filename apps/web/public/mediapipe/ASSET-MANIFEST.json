@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "auditedOn": "2026-08-13",
+  "scope": "Unmodified MediaPipe runtime and model assets redistributed under apps/web/public/mediapipe, plus the build-time JavaScript package represented by its pinned npm archive.",
+  "hashAlgorithm": "sha256",
+  "licenseFiles": {
+    "Apache-2.0": "LICENSE-APACHE-2.0.txt"
+  },
+  "components": [
+    {
+      "id": "pkg:npm/@mediapipe/tasks-vision@1.0.1",
+      "name": "@mediapipe/tasks-vision",
+      "version": "1.0.1",
+      "supplier": "The MediaPipe Authors (Google)",
+      "modified": false,
+      "licenseConcluded": "Apache-2.0",
+      "source": {
+        "type": "npm",
+        "url": "https://registry.npmjs.org/@mediapipe/tasks-vision/-/tasks-vision-1.0.1.tgz",
+        "integrity": "sha512-rvRE2FmAZ6ZxKSw7wq+e+jQDpN3t1B/tD2mJz9SmAzb1msoDkd4dMoE4wAh8Z30Um0PQwLiHr9QtomhmXk3aUQ=="
+      },
+      "licenseEvidence": [
+        {
+          "kind": "installed-package-metadata",
+          "location": "apps/web/node_modules/@mediapipe/tasks-vision/package.json",
+          "assertion": "version is 1.0.1 and license is Apache-2.0"
+        },
+        {
+          "kind": "npm-registry-metadata",
+          "url": "https://registry.npmjs.org/@mediapipe/tasks-vision/1.0.1",
+          "assertion": "license is Apache-2.0"
+        },
+        {
+          "kind": "upstream-license",
+          "url": "https://github.com/google-ai-edge/mediapipe/blob/master/LICENSE",
+          "assertion": "MediaPipe source is distributed under Apache License 2.0"
+        }
+      ],
+      "assets": [
+        {
+          "path": "wasm/vision_wasm_internal.js",
+          "bytes": 323377,
+          "sha256": "e170ee67dd4e16c1a6fcd8840a206687e5a59b22c20e4a902bc445b095454d73",
+          "packagePath": "wasm/vision_wasm_internal.js"
+        },
+        {
+          "path": "wasm/vision_wasm_internal.wasm",
+          "bytes": 11756954,
+          "sha256": "8da277a733926eacd0474b8704b36742d6ec3231c57a860c5b889dff8f1df886",
+          "packagePath": "wasm/vision_wasm_internal.wasm"
+        },
+        {
+          "path": "wasm/vision_wasm_module_internal.js",
+          "bytes": 323415,
+          "sha256": "da8934057f147b622e82cfb4c0dbd85461c598e268588b5a8ba9ca963a8ff82d",
+          "packagePath": "wasm/vision_wasm_module_internal.js"
+        },
+        {
+          "path": "wasm/vision_wasm_module_internal.wasm",
+          "bytes": 11756972,
+          "sha256": "2dabd8e23c60984628beb7bb338764c81a08e6837145273f59578684b5d53c1b",
+          "packagePath": "wasm/vision_wasm_module_internal.wasm"
+        },
+        {
+          "path": "wasm/vision_wasm_nosimd_internal.js",
+          "bytes": 323180,
+          "sha256": "e81d715a3d42cc3373602eb2f7aff795d164934db680e32496b65dab537f9658",
+          "packagePath": "wasm/vision_wasm_nosimd_internal.js"
+        },
+        {
+          "path": "wasm/vision_wasm_nosimd_internal.wasm",
+          "bytes": 10960242,
+          "sha256": "a28483cd42e74e855bf5ebdb6b40d9b66a5b49e35e95020bc97669e6822a3192",
+          "packagePath": "wasm/vision_wasm_nosimd_internal.wasm"
+        }
+      ]
+    },
+    {
+      "id": "mediapipe-face-landmarker-float16-v1",
+      "name": "MediaPipe Face Landmarker model bundle",
+      "version": "float16/1",
+      "supplier": "Google MediaPipe",
+      "modified": false,
+      "licenseConcluded": "Apache-2.0",
+      "source": {
+        "type": "google-cloud-storage",
+        "url": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+        "immutableUrl": "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task?generation=1683136941916318",
+        "gcsGeneration": "1683136941916318",
+        "etag": "b0e7274907a1644404fef66b28dd6d85",
+        "md5Base64": "sOcnSQehZEQE/vZrKN1thQ==",
+        "crc32cBase64": "2FSEdQ==",
+        "lastModified": "2023-05-03T18:02:21Z"
+      },
+      "licenseEvidence": [
+        {
+          "kind": "official-model-index",
+          "url": "https://developers.google.com/edge/mediapipe/solutions/vision/face_landmarker#models",
+          "assertion": "identifies the downloadable bundle and its three constituent model cards"
+        },
+        {
+          "kind": "official-model-card",
+          "url": "https://storage.googleapis.com/mediapipe-assets/MediaPipe%20BlazeFace%20Model%20Card%20%28Short%20Range%29.pdf",
+          "assertion": "BlazeFace Short Range is licensed under Apache License, Version 2.0"
+        },
+        {
+          "kind": "official-model-card",
+          "url": "https://storage.googleapis.com/mediapipe-assets/Model%20Card%20MediaPipe%20Face%20Mesh%20V2.pdf",
+          "assertion": "Face Mesh V2 is licensed under Apache License, Version 2.0"
+        },
+        {
+          "kind": "official-model-card",
+          "url": "https://storage.googleapis.com/mediapipe-assets/Model%20Card%20Blendshape%20V2.pdf",
+          "assertion": "Blendshape V2 is licensed under Apache License, Version 2.0"
+        }
+      ],
+      "assets": [
+        {
+          "path": "models/face_landmarker.task",
+          "bytes": 3758596,
+          "sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+          "bundleContents": [
+            {
+              "path": "face_detector.tflite",
+              "bytes": 229746
+            },
+            {
+              "path": "face_landmarks_detector.tflite",
+              "bytes": 2553590
+            },
+            {
+              "path": "geometry_pipeline_metadata_landmarks.binarypb",
+              "bytes": 19376
+            },
+            {
+              "path": "face_blendshapes.tflite",
+              "bytes": 955312
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mediapipe-pose-landmarker-lite-float16-v1",
+      "name": "MediaPipe Pose Landmarker Lite model bundle",
+      "version": "float16/1",
+      "supplier": "Google MediaPipe",
+      "modified": false,
+      "licenseConcluded": "Apache-2.0",
+      "source": {
+        "type": "google-cloud-storage",
+        "url": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+        "immutableUrl": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task?generation=1682624736756847",
+        "gcsGeneration": "1682624736756847",
+        "etag": "04a75ddf7c811ac7a1a4523266dd7d88",
+        "md5Base64": "BKdd33yBGsehpFIyZt19iA==",
+        "crc32cBase64": "Y2/V6A==",
+        "lastModified": "2023-04-27T19:45:36Z"
+      },
+      "licenseEvidence": [
+        {
+          "kind": "official-model-index",
+          "url": "https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker#models",
+          "assertion": "identifies the Lite downloadable bundle and its BlazePose GHUM 3D model card"
+        },
+        {
+          "kind": "official-model-card",
+          "url": "https://storage.googleapis.com/mediapipe-assets/Model%20Card%20BlazePose%20GHUM%203D.pdf",
+          "assertion": "BlazePose GHUM 3D is licensed under Apache License, Version 2.0"
+        }
+      ],
+      "assets": [
+        {
+          "path": "models/pose_landmarker_lite.task",
+          "bytes": 5777746,
+          "sha256": "59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a",
+          "bundleContents": [
+            {
+              "path": "pose_detector.tflite",
+              "bytes": 2959078
+            },
+            {
+              "path": "pose_landmarks_detector.tflite",
+              "bytes": 2818390
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "auditBoundary": [
+    "Runtime assets were compared byte-for-byte with the installed @mediapipe/tasks-vision 1.0.1 package.",
+    "Model assets were compared byte-for-byte with the listed Google Cloud Storage object generations on 2026-08-13.",
+    "The model objects have no embedded readable license file; license conclusions rely on the official Google model indexes and linked model cards.",
+    "This manifest does not independently enumerate every transitive library compiled into Google's opaque WebAssembly binaries."
+  ]
+}

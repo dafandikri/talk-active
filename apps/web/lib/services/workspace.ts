@@ -17,11 +17,14 @@ import {
   CONTRACT_VERSION,
   CreateAttemptResponseSchema,
   CreateProjectResponseSchema,
+  CurrentProjectResponseSchema,
   DefenseResponseSchema,
   EvidenceConfirmationResponseSchema,
   EvidenceResponseSchema,
   EvidenceVerdictSchema,
   ProgressResponseSchema,
+  ProjectListResponseSchema,
+  ProjectWorkspaceResponseSchema,
   QuestionResponseSchema,
   SourceDocumentDeleteResponseSchema,
   SourceDocumentListResponseSchema,
@@ -29,16 +32,21 @@ import {
   SourceDocumentUploadResponseSchema,
   WorkspaceExportSchema,
   LegacyImportResponseSchema,
+  UpdateProjectResponseSchema,
   type LegacyWorkspaceImportSchema,
   type ConfirmRubricRequest,
   type CreateAttemptRequest,
   type CreateProjectRequest,
+  type UpdateProjectRequest,
   type DefenseRequest,
   type EvidenceConfirmationRequest,
   type SourceDocument,
 } from '../contracts';
 import type { Database } from '../db/client';
 import {
+  attemptDeliveryEvents,
+  attemptDeliveryReviews,
+  attemptRecordings,
   attempts,
   criteria,
   defenseAnswers,
@@ -52,6 +60,11 @@ import {
 } from '../db/schema';
 import { parseRubric } from '../analyzer';
 import { compareAttemptEvidence } from '../progress';
+import { selectWeakestCriterion } from '../weakest-criterion';
+import {
+  type RecordingStorage,
+  vercelRecordingStorage,
+} from '../attempt-recordings';
 import {
   MAX_SOURCE_DOCUMENTS,
   SourceDocumentError,
@@ -84,9 +97,17 @@ export async function createOwnedProject(
   input: CreateProjectRequest,
   userId: string | null,
 ) {
+  if (!userId) {
+    throw new ApiProblem(
+      401,
+      'authentication_required',
+      'Sign in before saving a project to the synced workspace.',
+    );
+  }
   const [project] = await db.insert(projects).values({
     userId,
     title: input.title,
+    language: input.language,
     eventContext: input.eventContext,
     deadline: input.deadline,
   }).returning();
@@ -94,12 +115,171 @@ export async function createOwnedProject(
   return CreateProjectResponseSchema.parse({ contractVersion: CONTRACT_VERSION, project });
 }
 
-async function assertProjectAccess(db: Database, projectId: string, userId: string | null) {
-  const [project] = await db.select({ id: projects.id, userId: projects.userId })
+/**
+ * The 100 most recently active projects this account owns.
+ *
+ * One grouped query rather than a lookup per project: the switcher shows an
+ * attempt count and a last-practised date per row, and doing that with a query
+ * each would put an N+1 behind a control a user opens casually.
+ *
+ * The caller is already required to be a signed-in owner (M-9: these routes
+ * reject an anonymous SQL identity, because guest rows used user_id = NULL and
+ * NULL is not an owner). So there is no guest branch here to get wrong — a
+ * signed-out visitor never reaches this function.
+ */
+export async function listOwnedProjects(db: Database, userId: string) {
+  const rows = await db.select({
+    project: projects,
+    rubricConfirmedAt: rubrics.confirmedAt,
+    attemptCount: sql<number>`count(distinct ${attempts.id})`,
+    lastAttemptAt: sql<string | null>`max(${attempts.createdAt})`,
+  })
     .from(projects)
-    .where(eq(projects.id, projectId))
+    .leftJoin(rubrics, eq(rubrics.projectId, projects.id))
+    .leftJoin(attempts, eq(attempts.projectId, projects.id))
+    .where(eq(projects.userId, userId))
+    .groupBy(projects.id, rubrics.confirmedAt)
+    .orderBy(desc(projects.updatedAt), desc(projects.createdAt))
+    // Keep the query and response contract in agreement. Without this limit,
+    // the 101st project made the entire switcher response fail validation.
+    .limit(100);
+
+  return ProjectListResponseSchema.parse({
+    contractVersion: CONTRACT_VERSION,
+    identity: 'account',
+    projects: rows.map((row) => ({
+      project: row.project,
+      attemptCount: Number(row.attemptCount),
+      // A count of zero cannot carry a date; the contract rejects that pair.
+      lastAttemptAt: Number(row.attemptCount) === 0 ? null : row.lastAttemptAt,
+      rubricConfirmed: row.rubricConfirmedAt !== null,
+    })),
+  });
+}
+
+async function assertProjectAccess(db: Database, projectId: string, userId: string | null) {
+  if (!userId) {
+    throw new ApiProblem(
+      401,
+      'authentication_required',
+      'Sign in before accessing a synced project.',
+    );
+  }
+  // Put the owner predicate in the lookup itself. Fetching by id and comparing
+  // afterward makes it too easy for a future caller to use the row before the
+  // ownership check, and it briefly loads another account's data into memory.
+  const [project] = await db.select()
+    .from(projects)
+    .where(and(
+      eq(projects.id, projectId),
+      eq(projects.userId, userId),
+    ))
     .limit(1);
-  if (!project || project.userId !== userId) notFound('Project');
+  if (!project) notFound('Project');
+  return project;
+}
+
+export async function getOwnedProjectById(
+  db: Database,
+  projectId: string,
+  userId: string | null,
+) {
+  const project = await assertProjectAccess(db, projectId, userId);
+
+  const [rubric] = await db.select().from(rubrics)
+    .where(eq(rubrics.projectId, projectId))
+    .limit(1);
+  const recoveredCriteria = rubric
+    ? await db.select().from(criteria)
+      .where(eq(criteria.rubricId, rubric.id))
+      .orderBy(asc(criteria.displayOrder))
+    : [];
+  const recoveredSources = await db.select().from(sourceDocuments)
+    .where(eq(sourceDocuments.projectId, projectId))
+    .orderBy(asc(sourceDocuments.uploadedAt));
+
+  return ProjectWorkspaceResponseSchema.parse({
+    contractVersion: CONTRACT_VERSION,
+    workspace: {
+      project,
+      rubric: rubric ?? null,
+      criteria: recoveredCriteria,
+      sourceDocuments: recoveredSources,
+    },
+  });
+}
+
+export async function updateOwnedProject(
+  db: Database,
+  projectId: string,
+  input: UpdateProjectRequest,
+  userId: string | null,
+) {
+  const owned = await assertProjectAccess(db, projectId, userId);
+  const [project] = await db.update(projects)
+    .set({ language: input.language, updatedAt: now() })
+    // Keep the write owner-scoped too. Account ownership is not currently
+    // mutable, but the predicate makes that safety independent of that fact.
+    .where(and(
+      eq(projects.id, projectId),
+      eq(projects.userId, owned.userId!),
+    ))
+    .returning();
+  if (!project) notFound('Project');
+  return UpdateProjectResponseSchema.parse({ contractVersion: CONTRACT_VERSION, project });
+}
+
+export async function getCurrentOwnedProject(
+  db: Database,
+  userId: string | null,
+) {
+  // Guest project rows historically used user_id = NULL. SQL NULL is not an
+  // owner identity: querying it would let one anonymous visitor discover
+  // another visitor's workspace. Guests therefore stay local/stateless until
+  // they explicitly create a synced account.
+  if (!userId) {
+    return CurrentProjectResponseSchema.parse({
+      contractVersion: CONTRACT_VERSION,
+      identity: 'guest',
+      current: null,
+    });
+  }
+
+  const [owned] = await db.select({ project: projects, rubric: rubrics })
+    .from(projects)
+    .innerJoin(rubrics, and(
+      eq(rubrics.projectId, projects.id),
+      sql`${rubrics.confirmedAt} is not null`,
+    ))
+    .where(eq(projects.userId, userId))
+    .orderBy(desc(projects.updatedAt), desc(projects.createdAt))
+    .limit(1);
+  if (!owned) {
+    return CurrentProjectResponseSchema.parse({
+      contractVersion: CONTRACT_VERSION,
+      identity: 'account',
+      current: null,
+    });
+  }
+
+  const { project, rubric } = owned;
+  const recoveredCriteria = await db.select().from(criteria)
+    .where(eq(criteria.rubricId, rubric.id))
+    .orderBy(asc(criteria.displayOrder));
+  const recoveredSources = await db.select().from(sourceDocuments)
+    .where(eq(sourceDocuments.projectId, project.id))
+    .orderBy(asc(sourceDocuments.uploadedAt));
+
+  return CurrentProjectResponseSchema.parse({
+    contractVersion: CONTRACT_VERSION,
+    identity: 'account',
+    current: {
+      project,
+      rubric,
+      criteria: recoveredCriteria,
+      sourceDocuments: recoveredSources,
+    },
+  });
 }
 
 export async function confirmProjectRubric(
@@ -305,6 +485,36 @@ export async function deleteProjectSourceDocument(
   });
 }
 
+export async function getAttemptCriterionCount(
+  db: Database,
+  attemptId: string,
+  userId: string | null,
+): Promise<number> {
+  const [attemptOwner] = await db.select({ projectId: attempts.projectId }).from(attempts)
+    .where(eq(attempts.id, attemptId))
+    .limit(1);
+  if (!attemptOwner) notFound('Attempt');
+  await assertProjectAccess(db, attemptOwner.projectId, userId);
+
+  const [row] = await db.select({
+    criterionCount: sql<number>`count(${criteria.id})`,
+  }).from(rubrics)
+    .innerJoin(criteria, eq(criteria.rubricId, rubrics.id))
+    .where(and(
+      eq(rubrics.projectId, attemptOwner.projectId),
+      sql`${rubrics.confirmedAt} is not null`,
+    ));
+  const criterionCount = Number(row?.criterionCount ?? 0);
+  if (!Number.isSafeInteger(criterionCount) || criterionCount < 1 || criterionCount > 20) {
+    throw new ApiProblem(
+      409,
+      'criteria_required',
+      'This attempt has no valid confirmed rubric criteria to evaluate.',
+    );
+  }
+  return criterionCount;
+}
+
 export async function evaluateAttemptEvidence(
   db: Database,
   attemptId: string,
@@ -426,6 +636,7 @@ export async function confirmAttemptEvidence(
       const [verdict] = await tx.update(evidenceVerdicts).set({
           verdict: 'supported',
           coverageScore: 1,
+          missingEvidence: [],
           studentOverridden: context.verdict.verdict !== 'supported',
           studentOverrideVerdict: context.verdict.verdict !== 'supported' ? 'supported' : null,
         }).where(eq(evidenceVerdicts.id, context.verdict.id)).returning();
@@ -502,7 +713,7 @@ export async function createAttemptQuestion(
     .where(eq(attempts.id, attemptId)).limit(1);
   if (!attemptOwner) notFound('Attempt');
   await assertProjectAccess(db, attemptOwner.projectId, userId);
-  const [weakest] = await db.select({
+  const candidates = await db.select({
     attempt: attempts,
     criterion: criteria,
     verdict: evidenceVerdicts,
@@ -512,9 +723,8 @@ export async function createAttemptQuestion(
     .where(and(
       eq(evidenceVerdicts.attemptId, attemptId),
       eq(evidenceVerdicts.stage, 'initial'),
-    ))
-    .orderBy(asc(evidenceVerdicts.coverageScore), asc(criteria.displayOrder))
-    .limit(1);
+    ));
+  const weakest = selectWeakestCriterion(candidates);
   if (!weakest) notFound('Initial evidence review');
 
   const judgment = {
@@ -674,6 +884,29 @@ export async function getProjectProgress(
     .having(sql`coalesce(avg(${evidenceVerdicts.coverageScore}), max(${attempts.legacyEvidenceCoverage}) / 100) is not null`)
     .orderBy(asc(attempts.createdAt));
 
+  const progressAttemptIds = progress.map((point) => point.attemptId);
+  const deliveryReviewRows = progressAttemptIds.length > 0
+    ? await db.select({ attemptId: attemptDeliveryReviews.attemptId })
+      .from(attemptDeliveryReviews)
+      .where(inArray(attemptDeliveryReviews.attemptId, progressAttemptIds))
+    : [];
+  const recordingStatusRows = progressAttemptIds.length > 0
+    ? await db.select({
+      attemptId: attemptRecordings.attemptId,
+      status: attemptRecordings.status,
+    }).from(attemptRecordings)
+      .where(inArray(attemptRecordings.attemptId, progressAttemptIds))
+    : [];
+  const attemptsWithDelivery = new Set(deliveryReviewRows.map((row) => row.attemptId));
+  const recordingStatusByAttempt = new Map(
+    recordingStatusRows.map((row) => [row.attemptId, row.status] as const),
+  );
+  const enrichedProgress = progress.map((point) => ({
+    ...point,
+    hasDeliveryReview: attemptsWithDelivery.has(point.attemptId),
+    recordingStatus: recordingStatusByAttempt.get(point.attemptId) ?? null,
+  }));
+
   const weaknessRows = await db.select({
     criterionId: criteria.id,
     criterionName: criteria.name,
@@ -764,7 +997,7 @@ export async function getProjectProgress(
   return ProgressResponseSchema.parse({
     contractVersion: CONTRACT_VERSION,
     projectId,
-    attempts: progress,
+    attempts: enrichedProgress,
     recurringWeaknesses,
     attemptComparisons,
   });
@@ -783,6 +1016,7 @@ export async function exportOwnedWorkspace(
       exportedAt: now(),
       projects: [], rubrics: [], criteria: [], attempts: [], verdicts: [], questions: [],
       evidenceConfirmations: [], defenseAnswers: [], sourceDocuments: [],
+      deliveryReviews: [], deliveryEvents: [], recordings: [],
     });
   }
 
@@ -808,6 +1042,31 @@ export async function exportOwnedWorkspace(
   const answerRows = questionIds.length > 0
     ? await db.select().from(defenseAnswers).where(inArray(defenseAnswers.questionId, questionIds))
     : [];
+  const deliveryReviewRows = attemptIds.length > 0
+    ? await db.select().from(attemptDeliveryReviews)
+      .where(inArray(attemptDeliveryReviews.attemptId, attemptIds))
+    : [];
+  const deliveryEventRows = attemptIds.length > 0
+    ? await db.select().from(attemptDeliveryEvents)
+      .where(inArray(attemptDeliveryEvents.attemptId, attemptIds))
+    : [];
+  // Blob references are private access coordinates, not portable user data.
+  // Export the lifecycle metadata needed to understand retention without
+  // exposing either the private URL or storage pathname.
+  const recordingMetadataRows = attemptIds.length > 0
+    ? await db.select({
+      id: attemptRecordings.id,
+      attemptId: attemptRecordings.attemptId,
+      status: attemptRecordings.status,
+      contentType: attemptRecordings.contentType,
+      sizeBytes: attemptRecordings.sizeBytes,
+      durationMs: attemptRecordings.durationMs,
+      expiresAt: attemptRecordings.expiresAt,
+      createdAt: attemptRecordings.createdAt,
+      uploadedAt: attemptRecordings.uploadedAt,
+    }).from(attemptRecordings)
+      .where(inArray(attemptRecordings.attemptId, attemptIds))
+    : [];
   const documentRows = await db.select().from(sourceDocuments)
     .where(inArray(sourceDocuments.projectId, projectIds));
   let exportedDocuments: Array<SourceDocument & { content: string }> = [];
@@ -832,6 +1091,9 @@ export async function exportOwnedWorkspace(
     questions: questionRows,
     defenseAnswers: answerRows,
     sourceDocuments: exportedDocuments,
+    deliveryReviews: deliveryReviewRows,
+    deliveryEvents: deliveryEventRows,
+    recordings: recordingMetadataRows,
   });
 }
 
@@ -839,11 +1101,32 @@ export async function deleteOwnedAccount(
   db: Database,
   userId: string,
   storage: SourceDocumentStorage = vercelSourceDocumentStorage,
+  recordingStorage: RecordingStorage = vercelRecordingStorage,
 ) {
   const ownedSources = await db.select({ blobUrl: sourceDocuments.blobUrl })
     .from(sourceDocuments)
     .innerJoin(projects, eq(projects.id, sourceDocuments.projectId))
     .where(eq(projects.userId, userId));
+  const ownedRecordings = await db.select({
+    blobUrl: attemptRecordings.blobUrl,
+    pathname: attemptRecordings.pathname,
+  })
+    .from(attemptRecordings)
+    .innerJoin(attempts, eq(attempts.id, attemptRecordings.attemptId))
+    .innerJoin(projects, eq(projects.id, attempts.projectId))
+    .where(eq(projects.userId, userId));
+  try {
+    await recordingStorage.delete(ownedRecordings.map((recording) => (
+      recording.blobUrl ?? recording.pathname
+    )));
+  } catch {
+    throw new ApiProblem(
+      503,
+      'recording_storage_unavailable',
+      'Private recording storage could not complete account deletion.',
+      true,
+    );
+  }
   try {
     await storage.delete(ownedSources.map((source) => source.blobUrl));
   } catch (error) {

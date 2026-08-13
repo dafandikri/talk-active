@@ -1,57 +1,85 @@
 import Link from 'next/link';
 
 import logo from '../../../src/assets/brand/talk-active-logo.svg';
+import mascot from '../../../src/assets/mascot/kato-macaw-reading.svg';
 import type { Project } from '@/lib/contracts';
 
 export function ProductionShell({ project }: Readonly<{ project: Project }>) {
   return (
     <main className="production-shell">
-      <nav className="production-shell__nav" aria-label="Primary navigation">
-        {/* The landing had lost its mark in the port and shipped a bare text
-            link. The visual system is frozen, so the lockup is restored here in
-            the same shape the workspace uses. */}
+      <header className="production-shell__nav">
         <Link className="production-shell__brand brand" href="/" aria-label="Talk-Active home">
           <img className="brand-mark" src={logo.src} alt="" />
           <span className="brand-wordmark">Talk-<strong className="brand-wordmark-accent">Active</strong></span>
         </Link>
-        <Link href="/workspace">Open workspace</Link>
-      </nav>
+      </header>
 
       <section className="production-shell__hero" aria-labelledby="production-title">
-        <p className="production-shell__eyebrow">Rubric-grounded rehearsal</p>
-        <h1 className="production-shell__title" id="production-title">
-          Practise the evidence your evaluator expects.
-        </h1>
-        <p className="production-shell__lede">
-          Bring a real rubric, rehearse one attempt, inspect the exact sentence behind each
-          verdict, then answer the hardest remaining question.
-        </p>
-        <div className="production-shell__actions">
-          <Link className="production-shell__action" href="/workspace">
-            Continue {project.title}
-          </Link>
+        <div className="production-shell__hero-copy">
+          <h1 className="production-shell__title" id="production-title">
+            Rehearse the claim a judge will challenge next.
+          </h1>
+          {/* "rubric-grounded" twice in one sentence, and the second half only
+              restated the first. One naming of Kato, one claim, no repetition. */}
+          <p className="production-shell__lede">
+            Practise with <b>Kato</b> against the rubric you will actually be judged against.
+          </p>
+          <div className="production-shell__actions">
+            <Link className="production-shell__action" href="/enter">
+              Start practicing <span aria-hidden="true">→</span>
+            </Link>
+          </div>
         </div>
-        <p className="production-shell__boundary">
-          Evidence coverage is formative feedback, not confidence or speaking ability.
-          The production migration keeps deterministic cue matching available while the
-          grounded semantic pipeline is evaluated criterion by criterion.
-        </p>
+
+        <div
+          className="production-shell__demo"
+          id="grounded-review"
+          aria-label={`Example rubric evidence review for ${project.title}`}
+        >
+          <div className="production-shell__demo-topline">
+            <span>Example attempt review</span>
+            <span className="production-shell__evidence-engine"><i /> semantic mapping</span>
+          </div>
+          <p className="production-shell__evidence-criterion">Criterion · Differentiation</p>
+          <blockquote>
+            “Unlike generic delivery coaches, Talk-Active starts from the evaluator rubric.”
+          </blockquote>
+          <p className="production-shell__citation">Exact words from the rehearsal transcript</p>
+          <div className="production-shell__gap">
+            <span>Still implicit</span>
+            <strong>Name the closest alternative and the mechanism it lacks.</strong>
+          </div>
+          <div className="production-shell__question">
+            <span aria-hidden="true">Q</span>
+            <p>What makes this different from putting the same rubric into a general chat tool?</p>
+          </div>
+          <img src={mascot.src} alt="" />
+        </div>
       </section>
 
-      <section className="production-shell__status" aria-label="Migration safeguards">
-        <article>
-          <h2>One contract</h2>
-          <p>Frontend fixtures and route handlers validate the same schemas.</p>
-        </article>
-        <article>
-          <h2>Cited verdicts</h2>
-          <p>Support must point to a transcript span; gaps name what is missing.</p>
-        </article>
-        <article>
-          <h2>Safe cutover</h2>
-          <p>The working vanilla product stays live until the complete loop reaches parity.</p>
-        </article>
+      <section className="production-shell__use-cases" aria-labelledby="use-cases-title">
+        <div className="production-shell__section-intro">
+          <h2 id="use-cases-title">One method, different high-stakes scenarios.</h2>
+        </div>
+        <div>
+          <article><h3>Competition pitch</h3><p>Connect product claims to the scoring rubric before the final Q&amp;A.</p></article>
+          <article><h3>Scholarship interview</h3><p>Make each selection criterion explicit in the answer you rehearse.</p></article>
+          <article><h3>Thesis defense</h3><p>Find where a method or conclusion still lacks a defensible explanation.</p></article>
+          <article><h3>and more…</h3><p>Any room where a written rubric decides the outcome.</p></article>
+        </div>
       </section>
+
+      <section className="production-shell__final">
+        <Link className="production-shell__action" href="/enter">Start practicing now <span aria-hidden="true">→</span></Link>
+      </section>
+
+      <footer className="production-shell__footer">
+        <Link className="production-shell__brand brand" href="/" aria-label="Talk-Active home">
+          <img className="brand-mark" src={logo.src} alt="" />
+          <span className="brand-wordmark">Talk-<strong className="brand-wordmark-accent">Active</strong></span>
+        </Link>
+        <p>Rubric-grounded rehearsal for answers that need evidence.</p>
+      </footer>
     </main>
   );
 }

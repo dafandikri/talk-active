@@ -12,6 +12,11 @@ import {
   LegacyImportResponseSchema,
 } from '@/lib/contracts';
 import { LOCAL_EVIDENCE_CONFIRMATIONS_KEY } from '@/lib/evidence-confirmations';
+import {
+  LEGACY_RUBRIC_STORAGE_KEY,
+  RUBRIC_SOURCE_STORAGE_KEY,
+  RUBRIC_STORAGE_KEY,
+} from '@/lib/rubric-storage';
 
 type FormMode = 'sign-in' | 'sign-up';
 
@@ -92,7 +97,9 @@ export function AccountPanel() {
     const payload = {
       exportedAt: new Date().toISOString(),
       legacyWorkspace: localStorage.getItem('talkactive.workspace.v1'),
-      productionRubric: localStorage.getItem('talkactive.production.rubric.v1'),
+      productionRubric: localStorage.getItem(RUBRIC_STORAGE_KEY),
+      legacyProductionRubric: localStorage.getItem(LEGACY_RUBRIC_STORAGE_KEY),
+      productionRubricSource: localStorage.getItem(RUBRIC_SOURCE_STORAGE_KEY),
       productionSessions: localStorage.getItem('talkactive.production.sessions.v1'),
       evidenceConfirmations: localStorage.getItem(LOCAL_EVIDENCE_CONFIRMATIONS_KEY),
     };
@@ -136,7 +143,7 @@ export function AccountPanel() {
   }
 
   return <section className="view is-visible" aria-labelledby="accountTitle">
-    <header className="page-header compact-header workflow-header"><div className="workflow-heading"><img className="workflow-mark" src={logo.src} alt="" /><div><p className="overline">Optional account sync</p><h1 id="accountTitle">Practise first. Sync only when it helps.</h1><p className="page-lede">An account is for continuity across devices. It never gates a first rehearsal.</p></div></div><Link className="button button-secondary" href="/workspace">Continue as guest</Link></header>
+    <header className="page-header compact-header"><div className="workflow-heading"><img className="workflow-mark" src={logo.src} alt="" /><div><p className="overline">Optional account sync</p><h1 id="accountTitle">Practise first. Sync only when it helps.</h1><p className="page-lede">An account is for continuity across devices. It never gates a first rehearsal.</p></div></div></header>
     <div className="production-account-layout">
       <section className="surface production-account-card">
         {!checked ? <p role="status">Checking account availability…</p> : !accountsAvailable ? <div className="production-account-empty"><p className="overline">Guest mode active</p><h2>Account sync is not configured here.</h2><p>Your local workspace remains fully usable. When the deployment has Postgres and an auth secret, this same screen enables account creation and sign-in.</p><Link className="button button-primary" href="/practice">Start a local rehearsal</Link></div> : sessionUser ? <div className="production-account-empty"><p className="overline">Signed in</p><h2>{sessionUser.name}</h2><p>{sessionUser.email}</p><button className="button button-secondary" type="button" disabled={busy} onClick={() => void signOut()}>Sign out</button></div> : <>
@@ -164,7 +171,7 @@ export function AccountPanel() {
           <button className="button button-danger" type="button" disabled={busy || deleteConfirmation !== 'DELETE MY TALK-ACTIVE DATA'} onClick={() => void deleteAccountData()}>Delete synced account data</button>
         </div>}
       </section>
-      <aside className="surface rubric-guide"><p className="overline">What changes</p><ul><li><span>1</span><div><strong>Guest stays available</strong><small>No account is required for a first run.</small></div></li><li><span>2</span><div><strong>Identity is separate</strong><small>Account records live in the configured Postgres deployment, not inside transcripts.</small></div></li><li><span>3</span><div><strong>Inference is disclosed separately</strong><small>Signing in does not change where configured model providers process criterion-scoped text.</small></div></li></ul><div className="guide-note"><strong>Data boundary</strong><p>Raw audio is never persisted. Local work is not deleted when account sync becomes available.</p></div></aside>
+      <aside className="surface rubric-guide"><p className="overline">What changes</p><ul><li><span>1</span><div><strong>Guest stays available</strong><small>No account is required for a first run.</small></div></li><li><span>2</span><div><strong>Identity is separate</strong><small>Account records live in the configured Postgres deployment, not inside transcripts.</small></div></li><li><span>3</span><div><strong>Inference is disclosed separately</strong><small>Signing in does not change where configured model providers process criterion-scoped text.</small></div></li></ul><div className="guide-note"><strong>Data boundary</strong><p>A camera-and-microphone replay is saved only after you opt in. Durable replay requires a signed-in owner and private storage; deleting it keeps the text feedback. Local work is separate.</p></div></aside>
     </div>
   </section>;
 }

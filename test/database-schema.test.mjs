@@ -19,6 +19,9 @@ test('M-2 models the complete differentiating loop and stores provenance per ver
     'questions',
     'defenseAnswers',
     'sourceDocuments',
+    'attemptDeliveryReviews',
+    'attemptDeliveryEvents',
+    'attemptRecordings',
   ]) {
     assert.match(schema, new RegExp(`export const ${table} = pgTable`, 'u'), `${table} is missing`);
   }
@@ -33,14 +36,26 @@ test('M-2 encodes traceability and deletion obligations in Postgres constraints'
   assert.match(schema, /evidence_verdicts_supported_or_partial_has_span/u);
   assert.match(schema, /evidence_confirmations_verdict_unique/u);
   assert.match(schema, /judgedCitedSpan: text\('judged_cited_span'\)/u);
-  assert.match(schema, /evidence_verdicts_unsupported_has_gap/u);
+  assert.match(schema, /evidence_verdicts_unsupported_has_no_span/u);
+  assert.match(schema, /evidence_verdicts_non_supported_has_gap/u);
+  assert.match(schema, /evidence_confirmations_unsupported_has_no_span/u);
+  assert.match(schema, /evidence_confirmations_non_supported_has_gap/u);
   assert.match(schema, /questionBasis\('basis'\)\.default\('legacy-unknown'\)\.notNull\(\)/u);
   assert.match(schema, /questions_source_basis_consistent/u);
   assert.match(schema, /source_documents_size_domain/u);
   assert.match(schema, /source_documents_content_type_allowed/u);
   assert.match(schema, /sourceDocumentId: uuid\('source_document_id'\)[\s\S]+onDelete: 'restrict'/u);
   assert.match(schema, /onDelete: 'cascade'/u);
-  assert.doesNotMatch(schema, /audio|recording|soft.delete|deleted_at/iu);
+  assert.match(schema, /attempt_delivery_events_time_order/u);
+  assert.match(schema, /attempt_delivery_events_time_domain/u);
+  assert.match(schema, /attempt_recordings_attempt_id_unique/u);
+  assert.match(schema, /attempt_recordings_pathname_unique/u);
+  assert.match(schema, /attempt_recordings_size_domain/u);
+  assert.match(schema, /attempt_recordings_duration_domain/u);
+  assert.match(schema, /attempt_recordings_content_type_allowed/u);
+  assert.match(schema, /attempt_recordings_ready_metadata_consistent/u);
+  assert.match(schema, /expiresAt: timestamp\('expires_at'/u);
+  assert.doesNotMatch(schema, /soft.delete|deleted_at/iu);
 });
 
 test('M-2 checks in a generated SQL migration, not only an ORM declaration', () => {
@@ -53,8 +68,21 @@ test('M-2 checks in a generated SQL migration, not only an ORM declaration', () 
   assert.match(migration, /"engine" "evidence_engine" NOT NULL/u);
   assert.match(migration, /ON DELETE cascade/u);
   assert.match(migration, /evidence_verdicts_supported_or_partial_has_span/u);
+  assert.match(migration, /evidence_verdicts_unsupported_has_no_span/u);
+  assert.match(migration, /evidence_verdicts_non_supported_has_gap/u);
   assert.match(migration, /CREATE TYPE "public"\."question_basis"/u);
   assert.match(migration, /questions_source_basis_consistent/u);
   assert.match(migration, /source_documents_size_domain/u);
   assert.match(migration, /source_documents_content_type_allowed/u);
+  assert.match(migration, /CREATE TABLE "attempt_delivery_reviews"/u);
+  assert.match(migration, /CREATE TABLE "attempt_delivery_events"/u);
+  assert.match(migration, /CREATE TABLE "attempt_recordings"/u);
+  assert.match(migration, /attempt_delivery_events_time_order/u);
+  assert.match(migration, /attempt_delivery_events_time_domain/u);
+  assert.match(migration, /attempt_recordings_attempt_id_unique/u);
+  assert.match(migration, /attempt_recordings_pathname_unique/u);
+  assert.match(migration, /attempt_recordings_size_domain/u);
+  assert.match(migration, /attempt_recordings_duration_domain/u);
+  assert.match(migration, /attempt_recordings_content_type_allowed/u);
+  assert.match(migration, /attempt_recordings_ready_metadata_consistent/u);
 });

@@ -10,6 +10,9 @@ coverage/
 playwright-report/
 test-results/
 .codex-qa/
+# Local UI review captures. Screenshots are evidence for one review, not
+# artifacts of the product, and they cost megabytes per pass.
+.lavish/
 
 # Local source captures are preserved outside Git; the searchable transcription
 # and its enforced requirements live in docs/TECHNICAL-MEETING-2026.md.

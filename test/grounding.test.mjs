@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   MIN_SPAN_CHARS,
+  findGroundedRange,
   findGroundedSpan,
   normaliseForGrounding,
   spanIsGrounded,
@@ -32,6 +33,22 @@ test('M-4 rejects fabricated and coincidentally short spans', () => {
   assert.equal(spanIsGrounded('we tripled our revenue', transcript), false);
   assert.ok('students'.length < MIN_SPAN_CHARS);
   assert.equal(spanIsGrounded('students', transcript), false);
+});
+
+test('M-4 findGroundedRange returns offsets that slice back to the same span', () => {
+  const transcript = 'Opening. Students said—clearly—it helped. Closing.';
+  const range = findGroundedRange('students said-clearly-it helped', transcript);
+  assert.notEqual(range, null);
+  assert.equal(range.span, 'Students said—clearly—it helped');
+  assert.equal(transcript.slice(range.start, range.end), range.span);
+  assert.equal(range.start, transcript.indexOf('Students'));
+});
+
+test('M-4 findGroundedRange refuses exactly what findGroundedSpan refuses', () => {
+  const transcript = 'Indonesian students prepare important presentations alone.';
+  assert.equal(findGroundedRange('we tripled our revenue', transcript), null);
+  assert.equal(findGroundedRange('students', transcript), null);
+  assert.equal(findGroundedSpan('students', transcript), null);
 });
 
 test('M-4 normalises compatibility characters and invisible paste artefacts', () => {

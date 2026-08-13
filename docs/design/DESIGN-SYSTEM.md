@@ -194,8 +194,8 @@ practice and review screens keep the calmer paper treatment.
 - **Dashboard home — 60%:** full character plus 4px hard offsets. It feels
   recognizably related to the landing page without becoming a poster.
 - **Practice, review, judge room, rubric, progress — 30%:** a small Kato mark in
-  a pale-yellow Home-style header, deep-green actions, warm-white cards, and
-  plain black outlines. These work surfaces use no decorative shadows or
+  a plain page header, deep-green actions, warm-white cards, and plain black
+  outlines. These work surfaces use no decorative shadows, yellow banners, or
   route-specific colour stripes. Evidence remains more visually dominant than
   brand decoration.
 

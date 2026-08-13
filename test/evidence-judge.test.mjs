@@ -5,8 +5,10 @@ import {
   buildEvidenceGatewayOptions,
   buildEvidenceMessages,
   buildEvidencePrompt,
+  EvidenceJudgeOutputSchema,
   judgeCriterion,
   judgeEvidence,
+  MAX_EVIDENCE_SPAN_CHARS,
   rejudgeCriterionAfterRejection,
 } from '../apps/web/lib/ai/evidence-judge.ts';
 
@@ -21,11 +23,30 @@ const CRITERION = {
 
 const TRANSCRIPT = 'Unlike generic delivery coaches, Talk-Active starts from the evaluator rubric.';
 
+test('M-5 output contract keeps reasoning internal and requires every non-supported gap', () => {
+  const partialWithoutGap = EvidenceJudgeOutputSchema.safeParse({
+    reasoning: 'The mechanism is present but the comparison is incomplete.',
+    verdict: 'partial',
+    citedSpan: 'Unlike generic delivery coaches',
+    missingEvidence: [],
+  });
+  const unsupportedWithCitation = EvidenceJudgeOutputSchema.safeParse({
+    reasoning: 'The evidence does not satisfy the criterion.',
+    verdict: 'unsupported',
+    citedSpan: 'Unlike generic delivery coaches',
+    missingEvidence: ['unique mechanism'],
+  });
+
+  assert.equal(partialWithoutGap.success, false);
+  assert.equal(unsupportedWithCitation.success, false);
+});
+
 test('M-5 accepts a structured semantic verdict only after mapping it to the original span', async () => {
   const result = await judgeCriterion(TRANSCRIPT, CRITERION, {
     model: 'test/small-tier',
     generate: async () => ({
       output: {
+        reasoning: 'The transcript directly contrasts the product with a generic alternative.',
         verdict: 'supported',
         citedSpan: 'unlike generic delivery coaches',
         missingEvidence: [],
@@ -48,11 +69,11 @@ test('M-5 retries a fabricated citation once with the rejected span as new infor
       requests.push(request);
       return requests.length === 1
         ? {
-            output: { verdict: 'supported', citedSpan: 'We dominate every competitor.', missingEvidence: [] },
+            output: { reasoning: 'The sentence appears to support the comparison.', verdict: 'supported', citedSpan: 'We dominate every competitor.', missingEvidence: [] },
             modelId: 'test/model',
           }
         : {
-            output: { verdict: 'partial', citedSpan: 'Unlike generic delivery coaches', missingEvidence: ['outcome evidence'] },
+            output: { reasoning: 'The alternative is named but an outcome is still absent.', verdict: 'partial', citedSpan: 'Unlike generic delivery coaches', missingEvidence: ['outcome evidence'] },
             modelId: 'test/model',
           };
     },
@@ -62,6 +83,42 @@ test('M-5 retries a fabricated citation once with the rejected span as new infor
   assert.match(requests[1].correction, /We dominate every competitor/u);
   assert.equal(result.engine, 'semantic');
   assert.equal(result.verdict, 'partial');
+  assert.equal(result.attempts, 2);
+});
+
+test('M-5 rejects over-quoted evidence and retries with a bounded exact passage', async () => {
+  const longPassage = `${'Long supporting context. '.repeat(20)}Unlike generic delivery coaches.`;
+  const requests = [];
+  const result = await judgeCriterion(longPassage, CRITERION, {
+    model: 'test/small-tier',
+    generate: async (request) => {
+      requests.push(request);
+      return requests.length === 1
+        ? {
+            output: {
+              reasoning: 'The full passage contains relevant evidence.',
+              verdict: 'partial',
+              citedSpan: longPassage,
+              missingEvidence: ['unique mechanism'],
+            },
+            modelId: 'test/model',
+          }
+        : {
+            output: {
+              reasoning: 'The smallest exact comparison is sufficient.',
+              verdict: 'partial',
+              citedSpan: 'Unlike generic delivery coaches',
+              missingEvidence: ['unique mechanism'],
+            },
+            modelId: 'test/model',
+          };
+    },
+  });
+
+  assert.ok(longPassage.length > MAX_EVIDENCE_SPAN_CHARS);
+  assert.equal(requests.length, 2);
+  assert.match(requests[1].correction, new RegExp(String(MAX_EVIDENCE_SPAN_CHARS), 'u'));
+  assert.equal(result.citedSpan, 'Unlike generic delivery coaches');
   assert.equal(result.attempts, 2);
 });
 
@@ -79,6 +136,7 @@ test('A-5 re-judges a student rejection exactly once with the old span as a hard
       requests.push(request);
       return {
         output: {
+          reasoning: 'A different exact passage explains the mechanism but not the comparison.',
           verdict: 'partial',
           citedSpan: 'Talk-Active starts from the evaluator rubric',
           missingEvidence: ['measured comparison'],
@@ -109,6 +167,7 @@ test('A-5 settles unsupported when the one re-judge repeats rejected evidence', 
       calls += 1;
       return {
         output: {
+          reasoning: 'The original citation appears to support the criterion.',
           verdict: 'supported',
           citedSpan: 'Unlike generic delivery coaches',
           missingEvidence: [],
@@ -128,7 +187,7 @@ test('M-5 labels deterministic fallback after two ungrounded semantic responses'
   const result = await judgeCriterion(TRANSCRIPT, CRITERION, {
     model: 'test/small-tier',
     generate: async () => ({
-      output: { verdict: 'supported', citedSpan: 'A fabricated sentence long enough to pass length.', missingEvidence: [] },
+      output: { reasoning: 'This appears to be supporting evidence.', verdict: 'supported', citedSpan: 'A fabricated sentence long enough to pass length.', missingEvidence: [] },
       modelId: 'test/model',
     }),
   });
@@ -180,7 +239,7 @@ test('A-4 warms one isolated criterion, then fans out the remaining calls', asyn
       active -= 1;
       if (request.criterion.id === CRITERION.id) firstFinished = true;
       return {
-        output: { verdict: 'unsupported', citedSpan: null, missingEvidence: ['direct evidence'] },
+        output: { reasoning: 'The transcript does not include the required direct evidence.', verdict: 'unsupported', citedSpan: null, missingEvidence: ['direct evidence'] },
         modelId: 'test/model',
         cacheReadTokens: request.criterion.id === CRITERION.id ? 0 : 120,
         cacheWriteTokens: request.criterion.id === CRITERION.id ? 120 : 0,
@@ -194,7 +253,7 @@ test('A-4 warms one isolated criterion, then fans out the remaining calls', asyn
     const ownCriterion = criteria[index];
     assert.match(prompt, new RegExp(ownCriterion.name, 'u'));
     for (const other of criteria.filter((criterion) => criterion.id !== ownCriterion.id)) {
-      assert.doesNotMatch(prompt, new RegExp(`CRITERION NAME:\\n${other.name}`, 'u'));
+      assert.doesNotMatch(prompt, new RegExp(`"name": "${other.name}"`, 'u'));
     }
   }
   const attempts = events.filter((event) => event.type === 'evidence_attempt_completed');
@@ -218,9 +277,8 @@ test('A-4 keeps the transcript prefix byte-identical while criteria vary', () =>
   assert.notEqual(firstParts[1].text, secondParts[1].text);
   assert.match(firstParts[0].text, new RegExp(TRANSCRIPT, 'u'));
   assert.deepEqual(buildEvidenceGatewayOptions({ fallbackModels: ['test/fallback'] }), {
-    zeroDataRetention: true,
     caching: 'auto',
-    tags: ['evidence-judge', 'contract-v1'],
+    tags: ['evidence-judge', 'contract-v2'],
     models: ['test/fallback'],
   });
 });
@@ -239,7 +297,7 @@ test('A-1 emits per-model grounding outcomes without transcript or citation cont
     model: 'test/requested-tier',
     onEvent: (event) => events.push(event),
     generate: async () => ({
-      output: { verdict: 'supported', citedSpan: fabricatedSpan, missingEvidence: [] },
+      output: { reasoning: 'This appears to support the criterion.', verdict: 'supported', citedSpan: fabricatedSpan, missingEvidence: [] },
       modelId: 'test/answering-model',
       cacheReadTokens: 80,
       cacheWriteTokens: 0,
@@ -273,6 +331,7 @@ test('A-1 logging failures never replace a grounded product verdict', async () =
     onEvent: () => { throw new Error('observability unavailable'); },
     generate: async () => ({
       output: {
+        reasoning: 'The transcript directly contrasts the product with a generic alternative.',
         verdict: 'supported',
         citedSpan: 'Unlike generic delivery coaches',
         missingEvidence: [],

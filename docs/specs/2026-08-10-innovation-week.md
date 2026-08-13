@@ -69,12 +69,39 @@ of the product worthy of it.**
 3. **Demo resilience** — public access, kiosk reset, mobile, zero console errors, no external hangs.
 4. **Interface polish** — the screens judges and visitors actually see.
 5. **Pitch + Q&A** — 7-minute script, live demo choreography, drilled answers.
+6. **Experimental multimodal rehearsal (lead-approved integration, 13 Aug)** — opt-in browser
+   dictation plus on-device MediaPipe face/pose landmarks and Web Audio observations. Results
+   keep rubric substance, vocal signals, and visual signals separately inspectable. Possible
+   prolonged-vocalization and clustered stop-start cues are timestamped experimental
+   observations, never a medical diagnosis or speaking-ability judgment. The manual transcript
+   path remains the demo-safe fallback.
+7. **Private attempt replay (captain-approved branch, 13 Aug)** — a separate, explicit opt-in
+   records the rehearsal camera and microphone so a signed-in student can revisit timestamped
+   delivery observations. A guest can review the in-memory replay only for the current page;
+   durable upload requires an owned account, Postgres, and configured private Blob storage.
+   Recording/upload failure is non-blocking and never prevents rubric analysis or saving the
+   text-based attempt.
+8. **Turn-based Kato interview (captain-approved experimental branch, 13 Aug)** — a separate
+   rehearsal format asks up to five fixed rubric-derived questions and checkpoints each answer
+   locally without waiting for a model between questions. Question text is always visible and
+   browser text-to-speech remains optional. With explicit consent, one media session and one
+   replay timeline span the full interview while answer transcripts retain separate turn and
+   time-window boundaries. Final submit runs one turn-aware batch review; each answer is judged
+   only against its paired criterion and Kato's wording never becomes student evidence.
+9. **Unified project-led rehearsal (captain-approved integration, 13 Aug)** — the public
+   landing page remains the front door, the workspace lets an owner choose the project being
+   rehearsed, and Practice opens that project's multimodal studio directly instead of asking
+   the user to choose transcript versus observations. Project language is persisted as a
+   BCP-47 locale and drives both browser dictation and optional question narration. The review
+   leads with rubric evidence and one next action, uses one synchronized timeline, and keeps
+   raw delivery observations behind progressive disclosure rather than repeating them across
+   several equally prominent panels.
 
 ### Out — decided, not deferred by accident
 
-Accounts and auth · cloud sync · audio recording and transcription · body-language or facial
-analysis · streaks or gamification · institutional dashboards · any numeric confidence or
-ability score · payment.
+Identity recognition · emotion, personality, confidence, health, gaze, or hiring inference ·
+candidate ranking · background recording · mandatory recording · streaks or gamification ·
+institutional dashboards · payment.
 
 > Adding scope during a four-day sprint is how demos break. INV-6 is in force. Any addition
 > to this list requires the lead's sign-off and a note in this file.
@@ -86,12 +113,19 @@ ability score · payment.
 | # | Decision | Rationale |
 |---|---|---|
 | **AD-1** | Semantic analysis runs in a **Vercel Function** (`/api/analyze`), never in the browser. | The API key must never reach the client. Also lets us cache and rate-limit. |
-| **AD-2** | The analyzer keeps its **pure function boundary**. The server returns the same shape `analyzeSpeech` returns. | The UI does not learn a second data model. Fallback becomes a one-line swap. |
+| **AD-2** | Rubric criteria remain a **versioned typed contract** from import through evidence review. The deterministic analyzer receives a derived compatibility string only at its boundary. | Descriptions, multi-word evidence phrases, stable IDs, and source order must survive semantic judging without lossy prompt reconstruction. |
 | **AD-3** | **Every AI call is wrapped**: `try semantic → catch deterministic`, with a visible mode badge. | INV-8. A dropped connection degrades the demo instead of ending it. |
 | **AD-4** | The model **must return the transcript span** justifying each verdict; a verdict without a span is rejected server-side. | INV-3. This is the differentiator; it cannot be left to prompt politeness. |
-| **AD-5** | Responses are **cached by hash** of (transcript + rubric). | Cost, rate limits, and instant replay of the stage demo. |
-| **AD-6** | **No new runtime dependencies in the client.** Server may use the AI SDK. | The zero-dependency client is part of the feasibility story. |
-| **AD-7** | Feature flag `SEMANTIC_ANALYSIS` defaults **on locally, on in production, off if the key is absent**. | Absent key must never crash — it silently degrades. |
+| **AD-5** | Fully semantic responses are cached by a versioned hash of transcript, typed criteria, prompts, and configured models; duration-only delivery observations are recomputed. Deterministic fallbacks are not cached as semantic answers. | Cost, rate limits, and instant replay without stale results after a prompt, model, rubric-description, or evidence-phrase change. |
+| **AD-6** | The client adds one pinned vision dependency, `@mediapipe/tasks-vision@1.0.1`; its WASM and model assets are vendored same-origin. | One reviewed dependency buys the visible camera feature while avoiding a CDN/model-download failure on stage. |
+| **AD-7** | Semantic capability is exposed only when a model and an enforced paid-route boundary are configured. Every response names semantic or deterministic provenance. | A missing key, model, or rate-limit boundary must never spend unexpectedly or masquerade as semantic analysis. |
+| **AD-8** | The multimodal studio is the default attempt surface, but every capture signal remains optional, independently consented, and fail-open. MediaPipe/WASM/model assets are same-origin; browser speech recognition may use the browser vendor's speech service. | Removing the transcript-versus-observations mode choice reduces setup work without turning a page visit into camera, microphone, dictation, or replay consent. Denied permissions and unavailable signals still leave editable transcript analysis usable. |
+| **AD-9** | A rehearsal summary may combine substance, vocal, and visual readings under a disclosed 50/25/25 weighting. It describes one attempt, never the speaker: it is never labelled as ability, confidence, skill, or a grade, it never changes a rubric verdict, and it never appears without its weighting, its three components with their own evidence, and the list of what could not be measured. | A single figure is only defensible while a judge can take it apart. The moment it reads as a rating of the person rather than a description of one attempt, it is a claim we cannot source, and INV-6 puts it back out of scope. |
+| **AD-10** | Saved replay is opt-in, private, ownership-checked on every metadata and media request, and retained separately from delivery observations. Each recording carries a 30-day target expiry timestamp and an explicit delete control; account deletion removes the private blob before database ownership cascades. | Camera and microphone data need a stronger boundary than derived feedback. Deleting a replay keeps its transcript, rubric evidence, and delivery observations useful. Expiry metadata is implemented, but automatic physical cleanup is not claimed until a cleanup job is deployed and verified. |
+| **AD-11** | Replay and timestamped delivery observations are supporting context only. Recording availability, upload success, and replay deletion do not change rubric coverage, vocal, visual, or composite results. | Storage state is not evidence of presentation quality, and a private-storage outage must not change a student's feedback. |
+| **AD-12** | Interview orchestration is a finite state machine owned by application code: fixed rubric order and the five-question hard cap cannot be changed by a model response. Intermediate submit stores an answer and advances locally; only final submit sends the ordered answer/criterion pairs for analysis. Each verdict must ground its citation inside its own answer. Optional media uses one consented stream, recording, and monotonic timeline for the full conversation, with answer windows stored as offsets into it. TTS is excluded from answer transcription and evidence. Individual turn detail stays page-local on this experimental branch; the existing saved progress entry receives one answer-only aggregate. | Removing model-dependent branching makes question transitions immediate and predictable while preserving strict answer-local grounding. One recording avoids repeated permissions and incompatible clocks. The final batch retains deterministic fallback and can evaluate independent turns concurrently; a single hardest follow-up becomes review guidance for the next rehearsal rather than interrupting this one. The explicit persistence boundary avoids claiming multi-turn storage that the current one-question-per-attempt schema does not provide. |
+| **AD-13** | Language belongs to the project (`id-ID` or `en-US`), not to an individual attempt. A selected project is carried by URL and owner-checked API lookup; title, rubric, locale, sources, saved attempt, and progress must change together. | A language selector inside capture duplicates project setup and makes dictation and narration drift. An explicit project identity also prevents the interface from showing one project while saving against the server's most recently updated project. |
+| **AD-14** | Review information is ordered: rubric evidence and next action first; one synchronized rubric/voice/camera timeline second; replay third; delivery detail last. Exact evidence or missing cues remain visible, while raw counters, all metric bands, transcript highlighting, coaching detail, and full event lists use accessible progressive disclosure. | The original review repeated coverage, WPM, fillers, camera observations, and timestamp events across several panels. Consolidation preserves inspectability while making the first screen answer the student's actual question: what should I fix next, and what words prove it? |
 
 ### Data flow (target)
 
@@ -241,7 +275,10 @@ days. Use what is already under the code:
 | Risk | Likelihood | Impact | Mitigation | Owner |
 |---|---|---|---|---|
 | LLM API fails during the live pitch | Medium | **Fatal** | AD-3 fallback + A5 cache + D2 recovery line + E3 offline laptop | Demo owner |
+| AI spend or provider traffic exceeds the demo boundary | Low | High | Paid routes require an attested production rate-limit boundary; model/prompt versions are explicit in cache keys; the Gateway key has a hard budget and expiry | Integration |
 | Venue wifi drops | High | High | Run from localhost on the demo laptop; phone hotspot as backup; no external resources (gate-enforced) | Demo owner |
+| Camera/microphone permission, browser dictation, or landmark loading fails | Medium | Medium | Multimodal capture is separately consented and optional; same-origin pinned assets avoid runtime CDN fetches; typed/manual transcript analysis remains available | Interface |
+| On-device landmark tracking causes mobile jank or a long first load | Medium | Medium | Tracking is opt-in, sampled at a bounded rate, and excluded from rubric verdicts; rehearse on the actual demo phone/laptop and use transcript-only mode if performance is poor | Demo owner |
 | Semantic mapping is not ready by Day 3 | Medium | Medium | It is behind a flag. Ship deterministic and say so honestly — that is what we did in the proposal and it scored 91.64 | Lead |
 | Overrun on the 7-minute limit | Medium | High | Hard cut is enforced by the organisers. D1 times to 6:30 with 30s of slack | Pitch owner |
 | Someone breaks `main` at 2am | Medium | High | `pnpm check` is the merge permission; E2 nightly known-good tag to fall back to | Integration |

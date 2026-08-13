@@ -43,6 +43,27 @@
       "when": 1786524559927,
       "tag": "0005_early_raider",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786551405835,
+      "tag": "0006_tense_abomination",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786586750826,
+      "tag": "0007_right_echo",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786618230262,
+      "tag": "0008_flat_frank_castle",
+      "breakpoints": true
     }
   ]
 }

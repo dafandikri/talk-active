@@ -1,104 +1,386 @@
-.production-shell {
-  min-height: 100vh;
-  background: var(--canvas);
-  color: var(--text-primary);
-}
-
+.production-shell { min-height: 100vh; overflow-x: clip; color: var(--text-primary); background-color: var(--canvas); background-image: var(--canvas-grain); }
+.skip-link { position: fixed; top: var(--space-2); left: var(--space-2); z-index: 1000; padding: var(--space-3) var(--space-4); color: var(--brand-contrast); background: var(--brand); border-radius: var(--radius-sm); transform: translateY(-160%); }
+.skip-link:focus { transform: translateY(0); }
 .production-shell__nav,
 .production-shell__hero,
-.production-shell__status {
-  width: min(100% - 2 * var(--space-5), 72rem);
-  margin-inline: auto;
-}
+.production-shell__loop,
+.production-shell__use-cases,
+.production-shell__final,
+.production-shell__footer { width: min(100% - 2 * var(--space-5), 76rem); margin-inline: auto; }
+.production-shell__nav { display: flex; align-items: center; gap: var(--space-5); padding-block: var(--space-4); border-bottom: 1px solid var(--border); }
+.production-shell .brand-wordmark-accent { color: var(--brand); }
+.production-shell__brand { min-height: 44px; }
+.production-shell__hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(22rem, .95fr); gap: var(--space-8); align-items: center; min-height: 44rem; padding-block: var(--space-9); }
+.production-shell__hero-copy { min-width: 0; }
+.production-shell__eyebrow { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); color: var(--brand); font-size: var(--step-0); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+.production-shell__eyebrow > span { width: var(--space-2); height: var(--space-2); display: inline-block; background: var(--accent-sun); border-radius: var(--radius-full); }
+.production-shell__title { max-width: 13ch; margin-bottom: var(--space-5); font-size: var(--step-6); line-height: var(--leading-tight); }
+.production-shell__lede { max-width: 58ch; margin-bottom: 0; color: var(--text-secondary); font-size: var(--step-1); line-height: var(--leading-normal); }
+.production-shell__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-block: var(--space-6) var(--space-4); }
+.production-shell__action, .production-shell__secondary-action { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); padding: var(--space-3) var(--space-5); border-radius: var(--radius-full); font-weight: var(--weight-heavy); text-decoration: none; }
+.production-shell__action { color: var(--brand-contrast); background: var(--brand); border: 2px solid var(--brand); }
+.production-shell__action:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
+.production-shell__secondary-action { color: var(--text-primary); background: var(--surface); border: 2px solid var(--border-strong); }
+.production-shell__demo { position: relative; min-width: 0; padding: var(--space-6); background: var(--surface); border: 2px solid var(--text-primary); border-radius: var(--radius-lg); box-shadow: var(--space-3) var(--space-3) 0 var(--accent-sky); }
+.production-shell__demo-topline { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding-bottom: var(--space-4); border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-bold); }
+.production-shell__evidence-engine { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); }
+.production-shell__evidence-engine i { width: var(--space-2); height: var(--space-2); background: var(--evidence); border-radius: var(--radius-full); }
+.production-shell__evidence-criterion { margin-block: var(--space-5) var(--space-3); color: var(--evidence-strong); font-size: var(--step-0); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+.production-shell__demo blockquote { margin: 0; color: var(--text-primary); font-family: var(--font-voice); font-size: var(--step-3); line-height: var(--leading-snug); }
+.production-shell__citation { margin-block: var(--space-3) var(--space-5); color: var(--text-muted); font-size: var(--step-0); }
+.production-shell__gap { display: grid; gap: var(--space-1); padding: var(--space-3) var(--space-4); background: var(--absence-wash); border-left: 3px solid var(--absence); border-radius: var(--radius-sm); }
+.production-shell__gap span, .production-shell__question span { font-size: var(--step-0); font-weight: var(--weight-heavy); text-transform: uppercase; }
+.production-shell__gap strong { font-size: var(--step-0); }
+.production-shell__question { display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); align-items: start; margin-top: var(--space-4); padding: var(--space-4); color: var(--text-on-inverse); background: var(--surface-inverse); border-radius: var(--radius-md); }
+.production-shell__question span { width: var(--space-6); height: var(--space-6); display: grid; place-items: center; color: var(--surface-inverse); background: var(--inverse-accent); border-radius: var(--radius-full); }
+.production-shell__question p { margin: 0; }
+.production-shell__demo > img { position: absolute; right: calc(-1 * var(--space-6)); bottom: calc(-1 * var(--space-7)); width: 7rem; height: auto; transform: rotate(4deg); }
+.production-shell__loop, .production-shell__use-cases { padding-block: var(--space-9); }
+.production-shell__section-intro { max-width: 46rem; margin-bottom: var(--space-7); }
+.production-shell__section-intro h2 { max-width: 24ch; font-size: var(--step-4); }
+.production-shell__section-intro > p:last-child { max-width: var(--measure); margin-top: var(--space-3); color: var(--text-secondary); }
+.production-shell__loop ol { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.production-shell__loop li { min-height: 15rem; padding: var(--space-5); background: var(--surface); border: 2px solid var(--text-primary); border-radius: var(--radius-md); }
+.production-shell__loop li:nth-child(2) { background: var(--accent-sun-wash); }
+.production-shell__loop .production-shell__evidence-step { background: var(--evidence-wash); }
+.production-shell__loop li > span, .production-shell__use-cases article > span { display: block; margin-bottom: var(--space-6); color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); }
+.production-shell__loop h3 { margin-bottom: var(--space-3); }
+.production-shell__loop li p { color: var(--text-secondary); font-size: var(--step-0); }
+.production-shell__use-cases > div:last-child { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 2px solid var(--text-primary); border-bottom: 2px solid var(--text-primary); }
+.production-shell__use-cases article { padding: var(--space-6); border-right: 1px solid var(--border-strong); }
+.production-shell__use-cases article:last-child { border-right: 0; }
+.production-shell__use-cases article > span { margin-bottom: var(--space-5); color: var(--brand); }
+.production-shell__use-cases h3 { margin-bottom: var(--space-3); }
+.production-shell__use-cases article p { color: var(--text-secondary); }
+.production-shell__final { display: flex; align-items: center; justify-content: center; padding-block: var(--space-9); }
+.production-shell__footer { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); padding-block: var(--space-5); border-top: 1px solid var(--border); color: var(--text-muted); font-size: var(--step-0); }
+.production-shell__footer p { margin: 0; }
+.production-not-found .production-shell__hero { grid-template-columns: 1fr; }
 
-.production-shell__nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-block: var(--space-5);
-}
-
-.production-shell__brand {
-  color: inherit;
-  font-size: var(--step-1);
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.production-shell__hero {
-  display: grid;
-  align-content: center;
-  min-height: 62vh;
-  padding-block: var(--space-8);
-}
-
-.production-shell__eyebrow,
-.production-shell__boundary,
-.production-shell__status p {
-  color: var(--text-muted);
-}
-
-.production-shell__title {
-  max-width: 16ch;
-  margin-block: var(--space-3);
-  font-size: var(--step-5);
-  line-height: 1.02;
-}
-
-.production-shell__lede {
-  max-width: 56ch;
-  font-size: var(--step-1);
-  line-height: 1.6;
-}
-
-.production-shell__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-block: var(--space-5);
-}
-
-.production-shell__action {
-  display: inline-flex;
-  min-height: 2.75rem;
-  align-items: center;
-  padding: var(--space-3) var(--space-5);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-full);
-  background: var(--brand);
-  color: var(--brand-contrast);
-  font-weight: 750;
-  text-decoration: none;
-}
-
-.production-shell__boundary {
-  max-width: 66ch;
-  font-size: var(--step-0);
-  line-height: 1.55;
-}
-
-.production-shell__status {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-  padding-block: var(--space-7);
-  border-top: 1px solid var(--border);
-}
-
-.production-shell__status article {
-  padding: var(--space-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
+@media (max-width: 64rem) {
+  .production-shell__hero { grid-template-columns: 1fr 1fr; gap: var(--space-6); }
+  .production-shell__loop ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .production-shell__loop li:last-child { grid-column: 1 / -1; min-height: auto; }
+  .production-shell__use-cases > div:last-child { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .production-shell__use-cases article:nth-child(2n) { border-right: 0; }
+  .production-shell__use-cases article:nth-child(-n+2) { border-bottom: 1px solid var(--border-strong); }
 }
 
 @media (max-width: 42rem) {
-  .production-shell__status {
-    grid-template-columns: 1fr;
-  }
+  .production-shell__hero { grid-template-columns: 1fr; min-height: auto; padding-block: var(--space-8); }
+  .production-shell__title { font-size: var(--step-5); }
+  .production-shell__demo { margin-right: var(--space-3); padding: var(--space-5); }
+  .production-shell__demo > img { display: none; }
+  .production-shell__loop ol, .production-shell__use-cases > div:last-child { grid-template-columns: 1fr; }
+  .production-shell__loop li { min-height: auto; }
+  .production-shell__loop li:last-child { grid-column: auto; }
+  .production-shell__use-cases article { border-right: 0; border-bottom: 1px solid var(--border-strong); }
+  .production-shell__use-cases article:last-child { border-bottom: 0; }
+  .production-shell__footer { align-items: flex-start; flex-direction: column; }
 }
 
+/* ---------------------------------------------------------------------------
+   Experimental multimodal rehearsal. The dark camera stage is intentionally
+   theatrical; the surrounding measurements remain plain, inspectable paper.
+--------------------------------------------------------------------------- */
+.multimodal-studio {
+  margin-bottom: var(--space-5);
+  padding: var(--space-5);
+  color: var(--text-on-inverse);
+  background: var(--surface-inverse);
+  border: 2px solid var(--text-primary);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.capture-layer-chips > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  color: var(--accent-sky);
+  font-size: var(--step-0);
+  font-weight: var(--weight-bold);
+  background: var(--accent-sky-wash);
+  border-radius: var(--radius-full);
+}
+
+.studio-heading,
+.studio-controls,
+.studio-hud,
+.voice-meter {
+  display: flex;
+  align-items: center;
+}
+
+.studio-heading { justify-content: space-between; gap: var(--space-4); }
+.studio-heading h3 { margin-top: var(--space-1); font-size: var(--step-3); }
+.studio-heading p:not(.overline) { max-width: 56ch; margin: var(--space-2) 0 0; color: var(--text-on-inverse-muted); font-size: var(--step-0); }
+.studio-heading .overline { color: var(--inverse-accent); }
+.studio-live { gap: var(--space-2); flex: 0 0 auto; padding: var(--space-2) var(--space-3); color: var(--text-on-inverse-muted); background: var(--inverse-raised); border-radius: var(--radius-full); font-size: var(--step-0); font-variant-numeric: tabular-nums; font-weight: var(--weight-heavy); }
+.studio-live i { width: var(--space-2); height: var(--space-2); background: var(--absence); border-radius: 50%; }
+.studio-live.is-live { color: var(--text-on-inverse); }
+.studio-live.is-live i { background: var(--inverse-accent); box-shadow: 0 0 0 var(--space-2) var(--inverse-raised); }
+
+.studio-consent { display: grid; gap: var(--space-2); margin: 0 0 var(--space-4); padding: var(--space-4); border: 1px solid var(--inverse-raised); border-radius: var(--radius-md); }
+.studio-consent legend { padding-inline: var(--space-2); color: var(--text-on-inverse); font-size: var(--step-0); font-weight: var(--weight-heavy); }
+.studio-consent label { min-height: 52px; display: grid; grid-template-columns: 24px 1fr; gap: var(--space-3); align-items: start; margin: 0; padding: var(--space-2); color: var(--text-on-inverse); border-radius: var(--radius-sm); cursor: pointer; }
+.studio-consent label:hover { background: var(--inverse-raised); }
+.studio-consent input { width: 20px; height: 20px; margin-top: var(--space-1); accent-color: var(--inverse-accent); }
+.studio-consent strong, .studio-consent small { display: block; }
+.studio-consent small { margin-top: var(--space-1); color: var(--text-on-inverse-muted); font-size: var(--step-0); font-weight: var(--weight-regular); line-height: var(--leading-snug); }
+.studio-consent legend small { display: inline; margin-left: var(--space-1); color: var(--text-on-inverse-muted); font-weight: var(--weight-regular); }
+.studio-permission-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
+.studio-consent .studio-permission-chip,
+.studio-consent .studio-recording-consent.studio-permission-chip {
+  min-height: 48px; display: flex; align-items: center; gap: var(--space-2);
+  margin: 0; padding: var(--space-2) var(--space-3); color: var(--text-on-inverse);
+  background: transparent; border: 1px solid var(--inverse-raised); border-radius: var(--radius-full);
+  font-size: var(--step-0); cursor: pointer;
+}
+.studio-consent .studio-permission-chip:hover { background: var(--inverse-raised); }
+.studio-consent .studio-permission-chip:active { filter: brightness(.94); }
+.studio-consent .studio-permission-chip:has(input:checked) {
+  color: var(--text-primary); background: var(--inverse-accent); border-color: var(--inverse-accent);
+}
+.studio-consent .studio-permission-chip input { width: 18px; height: 18px; flex: none; margin: 0; }
+.studio-consent .studio-permission-chip { touch-action: manipulation; }
+.studio-consent .studio-permission-chip strong { color: inherit; font-size: var(--step-0); line-height: var(--leading-snug); }
+.studio-permission-boundary { margin: var(--space-2) 0 0; color: var(--text-on-inverse-muted); font-size: var(--step-0); line-height: var(--leading-normal); }
+
+.studio-stage { position: relative; aspect-ratio: 16 / 9; min-height: 260px; background: var(--text-primary); border: 1px solid var(--inverse-raised); border-radius: var(--radius-md); overflow: hidden; }
+.studio-stage video, .studio-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.studio-stage canvas { z-index: 2; pointer-events: none; }
+.studio-camera-empty { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: var(--space-2); padding: var(--space-5); color: var(--text-on-inverse); text-align: center; background: radial-gradient(circle at 50% 42%, var(--inverse-raised), var(--text-primary) 60%); }
+.studio-camera-empty > span { width: var(--space-8); height: var(--space-8); display: grid; place-items: center; color: var(--inverse-accent); border: 1px solid var(--inverse-accent); border-radius: 50%; font-size: var(--step-3); }
+.studio-camera-empty svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.studio-camera-empty small { color: var(--text-on-inverse-muted); }
+.studio-hud { position: absolute; z-index: 3; inset: var(--space-3) var(--space-3) auto; justify-content: space-between; gap: var(--space-3); pointer-events: none; }
+.studio-hud span { padding: var(--space-2) var(--space-3); color: var(--text-on-inverse); background: var(--text-primary); border-radius: var(--radius-full); font-size: var(--step-0); font-weight: var(--weight-heavy); }
+.studio-hud i { width: var(--space-2); height: var(--space-2); display: inline-block; margin-right: var(--space-2); background: var(--inverse-accent); border-radius: 50%; }
+.studio-hud i.good { background: var(--accent-leaf-bright); }
+.voice-meter { position: absolute; z-index: 3; inset: auto var(--space-3) var(--space-3); gap: var(--space-3); padding: var(--space-2) var(--space-3); color: var(--text-on-inverse); background: var(--text-primary); border-radius: var(--radius-full); font-size: var(--step-0); font-weight: var(--weight-heavy); }
+.voice-meter > i { height: var(--space-2); flex: 1; background: var(--inverse-raised); border-radius: var(--radius-full); overflow: hidden; }
+.voice-meter > i b { height: 100%; display: block; background: var(--inverse-accent); border-radius: inherit; transition: width var(--duration-fast) var(--ease); }
+.voice-meter small { min-width: 4.5rem; color: var(--text-on-inverse-muted); text-align: right; }
+.voice-meter em { color: var(--inverse-accent); font-size: var(--step-0); font-style: normal; white-space: nowrap; }
+
+.studio-controls { justify-content: space-between; gap: var(--space-4); margin-top: var(--space-4); }
+.studio-controls label { display: grid; gap: var(--space-1); margin: 0; color: var(--text-on-inverse-muted); font-size: var(--step-0); }
+.studio-controls select { min-width: 11rem; color: var(--text-on-inverse); background: var(--inverse-raised); border-color: var(--inverse-raised); }
+.studio-record, .studio-stop { width: auto; min-width: 15rem; margin: 0; }
+.studio-record svg, .studio-stop svg { width: 20px; height: 20px; margin-right: var(--space-2); fill: currentColor; stroke: none; }
+.studio-status { min-height: 1.25rem; margin: var(--space-3) 0 0; color: var(--text-on-inverse-muted); font-size: var(--step-0); }
+
+.multimodal-review { margin-top: var(--space-5); padding: var(--space-6); border: 2px solid var(--text-primary); }
+.multimodal-review-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); }
+.multimodal-review-heading h2 { max-width: 30ch; font-size: var(--step-3); }
+.multimodal-review-heading p:last-child { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); }
+.review-delivery-boundary { max-width: var(--measure); margin: var(--space-3) 0 0; color: var(--text-secondary); font-size: var(--step-0); }
+.review-retake-strip { display: grid; grid-template-columns: minmax(13rem, .55fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; margin-top: var(--space-5); padding: var(--space-4); background: var(--absence-wash); border-left: 4px solid var(--absence); border-radius: var(--radius-md); }
+.review-retake-strip ul { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.review-retake-strip li { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3); background: var(--surface); border-radius: var(--radius-sm); }
+.review-retake-strip li span { min-width: 0; font-size: var(--step-0); font-weight: var(--weight-bold); }
+.review-retake-strip .button { flex: none; }
+.review-unified-timeline { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
+.review-unified-timeline > .attempt-timeline { margin-top: var(--space-3); padding-top: 0; border-top: 0; }
+/* The rubric lanes are labelled with criterion names, so they keep the wider
+   label column and sentence case from the base rule. They used to be a single
+   lane called "RUBRIC", which is what the narrow uppercase override was for. */
+.timeline-legend-observation i { background: var(--accent-orange); }
+.review-exception-summary { display: grid; grid-template-columns: minmax(13rem, .5fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; margin-top: var(--space-5); padding: var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-md); }
+.review-exception-head > span { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+.review-exception-summary h4 { margin: var(--space-1) 0 0; font-size: var(--step-1); line-height: var(--leading-snug); }
+.review-exception-head > p { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); line-height: var(--leading-snug); }
+.review-exception-unmeasured strong { color: var(--text-secondary); }
+/* The bands sit on the panel's own surface, so they read as one chart set
+   rather than a stack of cards inside a card. */
+.review-exception-summary .metric-band-list { gap: var(--space-3); }
+.review-exception-summary .metric-band { padding: var(--space-3); background: var(--surface); }
+/* Nothing left its band: the good news gets the full width instead of sitting
+   beside an empty column. */
+.review-exception-summary > :only-child { grid-column: 1 / -1; }
+.review-disclosure { margin-top: var(--space-4); overflow: clip; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.review-disclosure > summary { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-4); background: var(--surface); font-weight: var(--weight-heavy); cursor: pointer; }
+.review-disclosure > summary:hover { background: var(--surface-sunken); }
+.review-disclosure > summary small { display: block; margin-bottom: var(--space-1); color: var(--text-muted); font-size: var(--step-0); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+.review-disclosure > summary strong { flex: none; color: var(--text-muted); font-size: var(--step-0); font-variant-numeric: tabular-nums; }
+.review-disclosure[open] > summary { border-bottom: 1px solid var(--border); }
+.review-disclosure-body { padding: var(--space-5); }
+.review-timeline-text { display: grid; gap: var(--space-2); margin: var(--space-3) 0 var(--space-5); padding: 0; list-style: none; }
+.review-timeline-text li { min-width: 0; display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: var(--space-3); padding: var(--space-3); background: var(--surface-sunken); border-left: 3px solid var(--accent-orange); border-radius: var(--radius-sm); }
+.review-timeline-text li[data-evidence="found"], .review-timeline-text li[data-evidence="reused"] { background: var(--evidence-wash); border-left-color: var(--evidence); }
+.review-timeline-text li[data-evidence="absent"] { border-left-color: var(--absence); }
+.review-timeline-text time { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); font-variant-numeric: tabular-nums; }
+.review-timeline-text strong, .review-timeline-text q, .review-timeline-text small { display: block; }
+.review-timeline-text q, .review-timeline-text small { margin-top: var(--space-1); color: var(--text-secondary); font-size: var(--step-0); }
+.review-transcript-evidence { padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.review-transcript-evidence > p { font-size: var(--step-1); line-height: var(--leading-normal); white-space: pre-wrap; }
+.review-transcript-evidence mark { padding: 0.1em 0.25em; color: var(--text-primary); background: var(--evidence-wash); border-bottom: 2px solid var(--evidence); border-radius: var(--radius-sm); }
+.review-transcript-evidence button { padding: 0; background: none; border: 0; font: inherit; text-align: left; cursor: pointer; }
+.review-transcript-evidence mark small { display: inline-block; margin-left: var(--space-2); color: var(--evidence-strong); font-size: var(--step-0); font-weight: var(--weight-bold); }
+.review-transcript-evidence > small { color: var(--text-muted); font-size: var(--step-0); }
+.review-replay-disclosure { margin-top: var(--space-5); border-color: var(--border-strong); }
+.review-replay-disclosure .recording-player { margin-top: 0; }
+.review-replay-disclosure .recording-sync-status { margin-top: var(--space-3); }
+.review-full-reading { margin-top: var(--space-5); border-color: var(--text-primary); }
+.review-full-reading .reading-composition { margin-bottom: var(--space-4); }
+.review-raw-summary, .review-audio-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--space-2); margin: var(--space-5) 0 0; }
+.review-raw-summary > div, .review-audio-summary > div { padding: var(--space-3); background: var(--surface-sunken); border-radius: var(--radius-sm); }
+.review-raw-summary dt, .review-audio-summary dt { color: var(--text-muted); font-size: var(--step-0); }
+.review-raw-summary dd, .review-audio-summary dd { margin: var(--space-1) 0 0; font-size: var(--step-1); font-weight: var(--weight-heavy); font-variant-numeric: tabular-nums; }
+.review-limitations { margin-top: var(--space-5); padding: var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--text-secondary); border-radius: var(--radius-sm); }
+.review-limitations h3 { font-size: var(--step-1); }
+.review-limitations p { margin: var(--space-2) 0 0; color: var(--text-secondary); font-size: var(--step-0); }
+.review-limitations ul { display: grid; gap: var(--space-1); margin: var(--space-2) 0 0; padding-left: var(--space-5); color: var(--text-muted); font-size: var(--step-0); }
+.review-mode-chip { padding: var(--space-2) var(--space-3); color: var(--text-primary); background: var(--accent-sun); border-radius: var(--radius-full); font-size: var(--step-0); font-weight: var(--weight-heavy); text-transform: uppercase; }
+.observation-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); margin: var(--space-4) 0 var(--space-6); }
+.observation-summary-grid > div { min-width: 0; padding: var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-md); }
+.observation-summary-grid dt { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+.observation-summary-grid dd { margin: var(--space-2) 0 0; font-size: var(--step-2); font-weight: var(--weight-heavy); }
+.observation-details { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+.observation-details h3 { margin-bottom: var(--space-3); font-size: var(--step-2); }
+.observation-details ul { display: grid; gap: var(--space-2); padding: 0; list-style: none; }
+.observation-details li { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-3); background: var(--surface-sunken); border-radius: var(--radius-sm); }
+.observation-details li span strong, .observation-details li span small { display: block; }
+.observation-details li span strong { font-size: var(--step-0); }
+.observation-details li span small { margin-top: var(--space-1); color: var(--text-muted); font-size: var(--step-0); }
+.observation-details li > b { flex: 0 0 8rem; align-self: center; font-size: var(--step-0); text-align: right; }
+.event-timeline { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.event-timeline > span, .event-timeline > h4 { margin: 0; color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+.event-timeline p { display: grid; grid-template-columns: 3.5rem 1fr; gap: var(--space-2); margin: var(--space-2) 0 0; font-size: var(--step-0); }
+.event-timeline time { color: var(--accent-sky); font-variant-numeric: tabular-nums; font-weight: var(--weight-heavy); }
+.transcript-cue-list p { grid-template-columns: 5rem 1fr; }
+.speech-disruption-list ul { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
+.speech-disruption-list li { display: grid; grid-template-columns: 3.5rem 1fr; gap: var(--space-2); padding: 0; background: transparent; font-size: var(--step-0); }
+.speech-disruption-list strong, .speech-disruption-list small { display: block; }
+.speech-disruption-list small { margin-top: var(--space-1); color: var(--text-muted); }
+/* Both empty-state class names are live: the review surface renamed its own
+   while the observation panel kept the original. Dropping either leaves one
+   empty state unstyled. */
+.metrics-boundary, .observation-empty, .performance-empty { margin: var(--space-5) 0 0; color: var(--text-muted); font-size: var(--step-0); }
+
+/* ---------------------------------------------------------------------------
+   THE REHEARSAL READING
+   The composite figure, drawn as the arithmetic that produced it: each block is
+   as WIDE as the share it carried and as FULL as it scored. A block that had to
+   be excluded is not drawn at all — the remaining widths change instead, which
+   is what actually happened to the number.
+
+   The two hues are the product invariant made visible. Rubric evidence is the
+   headline, so it keeps the one reserved saturated hue; both delivery signals
+   share a single quieter one and are told apart by their labels. Three
+   competing colours would have said "these are peers", which is exactly what
+   the invariant denies. Verified with the palette validator: the pair holds
+   ΔE 18.8 under protanopia against a 8.0 target.
+
+   The score grid this replaces had no stylesheet entry at all — three bare
+   <article> elements and two default-bulleted lists, stacked. It was not a
+   weak visualisation; it was unstyled markup.
+   ------------------------------------------------------------------------ */
+.reading-composition { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-6); align-items: center; margin-bottom: var(--space-4); padding: var(--space-5); background: var(--surface-sunken); border-radius: var(--radius-md); }
+.reading-total { display: grid; justify-items: center; align-content: center; }
+.reading-total strong { font-size: var(--step-5); font-weight: var(--weight-heavy); line-height: var(--leading-tight); font-variant-numeric: tabular-nums; }
+.reading-total > span { color: var(--text-muted); font-size: var(--step-1); font-weight: var(--weight-bold); }
+.reading-total small { margin-top: var(--space-1); color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+.reading-bar-wrap { min-width: 0; --reading-track-height: 5rem; }
+.reading-bar { position: relative; display: flex; gap: var(--space-1); align-items: stretch; }
+.reading-segment { min-width: 0; display: grid; grid-template-rows: var(--reading-track-height) auto; gap: var(--space-2); }
+/* The composite's own level, drawn across the blocks it was computed from. */
+.reading-average { position: absolute; inset-inline: 0; height: 0; border-top: 2px dashed var(--text-primary); pointer-events: none; }
+.reading-segment-track { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.reading-segment-fill { position: absolute; inset-inline: 0; bottom: 0; }
+/* Reserved-hue rule: the substance block is literally the rubric evidence
+   reading, so it is the one place in this chart entitled to evidence blue. */
+.reading-segment-evidence .reading-segment-fill { background: var(--evidence); }
+.reading-segment-delivery .reading-segment-fill { background: var(--accent-orange); }
+.reading-segment-label { min-width: 0; display: grid; gap: var(--space-1); }
+.reading-segment-label b { font-size: var(--step-2); font-weight: var(--weight-heavy); line-height: var(--leading-tight); font-variant-numeric: tabular-nums; }
+.reading-segment-label small { color: var(--text-secondary); font-size: var(--step-0); overflow-wrap: anywhere; }
+.reading-weighting { margin: var(--space-4) 0 0; color: var(--text-secondary); font-size: var(--step-0); font-weight: var(--weight-bold); }
+.reading-legend { display: flex; align-items: center; gap: var(--space-2); margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); }
+.reading-legend-rule { flex: none; width: var(--space-5); border-top: 2px dashed var(--text-primary); }
+.reading-unmeasured { display: grid; gap: var(--space-1); margin: var(--space-2) 0 0; padding: 0; list-style: none; }
+.reading-unmeasured li { padding-left: var(--space-3); border-left: 2px solid var(--absence-border); color: var(--text-muted); font-size: var(--step-0); }
+
+/* ---------------------------------------------------------------------------
+   METRIC BANDS
+   A bullet chart per observation: the configured practice band as a shaded
+   zone, the observed value as a marker on the same axis. The list this replaces
+   printed "178 words/min" beside "105–165 words/min practice band" and left the
+   comparison — and the size of the gap, which is the actionable part — to the
+   reader.
+   ------------------------------------------------------------------------ */
+.metric-band-list { display: grid; gap: var(--space-4); margin: 0; padding: 0; list-style: none; }
+.metric-band { min-width: 0; padding: var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-sm); }
+.metric-band-topline { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); }
+.metric-band-topline strong { font-size: var(--step-1); }
+.metric-band-topline b { flex: none; font-size: var(--step-1); font-weight: var(--weight-heavy); font-variant-numeric: tabular-nums; }
+.metric-band-topline b.is-absent { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-bold); }
+.metric-band-track { position: relative; height: var(--space-5); margin-top: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.metric-band-zone { position: absolute; inset-block: 0; background: var(--accent-orange-wash); border-inline: 1px solid var(--accent-orange); }
+/* The marker is an ink tick, not a coloured dot: it has to stay legible where
+   it overlaps the shaded zone and where it sits on bare track. */
+.metric-band-marker { position: absolute; inset-block: calc(-1 * var(--space-1)); width: 3px; background: var(--text-primary); border-radius: var(--radius-full); transform: translateX(-50%); }
+.metric-band-marker[data-inside="no"]::after { content: ""; position: absolute; left: 50%; bottom: calc(-1 * var(--space-2)); width: var(--space-2); height: var(--space-2); background: var(--text-primary); border-radius: var(--radius-full); transform: translateX(-50%); }
+.metric-band-axis { display: flex; justify-content: space-between; gap: var(--space-2); margin: var(--space-3) 0 0; color: var(--text-muted); font-size: var(--step-0); font-variant-numeric: tabular-nums; }
+.metric-band-target { color: var(--text-secondary); font-weight: var(--weight-bold); text-align: center; }
+.metric-band-note { display: block; margin-top: var(--space-2); color: var(--text-muted); font-size: var(--step-0); }
+.metric-band-absent { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); }
+.metric-band[data-measured="no"] { border: 1px dashed var(--absence-border); background: transparent; }
+.metric-band[data-measured="no"] .metric-band-note { display: none; }
+
+.performance-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-6); margin-top: var(--space-6); }
+.performance-details > div { min-width: 0; }
+.performance-details h3 { margin-bottom: var(--space-4); font-size: var(--step-2); }
+.raw-observation-list { display: grid; gap: var(--space-2); margin: var(--space-4) 0 0; padding: 0; list-style: none; }
+.raw-observation-list li { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-3); background: var(--surface-sunken); border-radius: var(--radius-sm); font-size: var(--step-0); }
+.raw-observation-list li span strong, .raw-observation-list li span small { display: block; }
+.raw-observation-list li span small { margin-top: var(--space-1); color: var(--text-muted); }
+.raw-observation-list li > b { flex: none; align-self: center; font-variant-numeric: tabular-nums; }
+
 @media (max-width: 760px) {
+  .multimodal-studio, .multimodal-review { padding: var(--space-4); }
+  .multimodal-studio,
+  .studio-consent,
+  .studio-stage,
+  .studio-controls,
+  .studio-controls > *,
+  .studio-controls select { min-width: 0; max-width: 100%; }
+  .studio-consent label { grid-template-columns: 20px minmax(0, 1fr); }
+  .studio-permission-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .studio-consent span, .studio-consent strong, .studio-consent small,
+  .studio-status { min-width: 0; overflow-wrap: anywhere; }
+  .multimodal-review-heading { align-items: stretch; flex-direction: column; }
+  .studio-heading, .studio-controls { align-items: stretch; flex-direction: column; }
+  .studio-live { align-self: flex-start; }
+  .observation-summary-grid, .observation-details, .performance-details, .review-retake-strip, .review-exception-summary { grid-template-columns: 1fr; }
+  /* The bar keeps its proportions on a phone — the widths ARE the weighting, so
+     stacking the segments would delete the thing the chart exists to show. Only
+     the height and the label size give way. */
+  .reading-composition { grid-template-columns: 1fr; gap: var(--space-4); justify-items: start; }
+  .reading-bar-wrap { width: 100%; --reading-track-height: 3.5rem; }
+  .studio-stage { min-height: 0; }
+  .studio-record, .studio-stop { width: 100%; min-width: 0; }
+  .studio-controls select { width: 100%; }
+  .observation-details li { display: grid; }
+  .observation-details li > b { text-align: left; }
+  .multimodal-review { overflow: hidden; }
+  .multimodal-review > * { min-width: 0; }
+  .review-retake-strip li { align-items: stretch; flex-direction: column; }
+  .review-retake-strip .button { width: 100%; }
+  .review-disclosure > summary { align-items: flex-start; }
+  .review-disclosure-body { padding: var(--space-4); }
+  .review-timeline-text li { grid-template-columns: 3.5rem minmax(0, 1fr); gap: var(--space-2); }
+  .production-source-quote { grid-column: 2 / 4; }
+  .voice-meter em { display: none; }
+}
+
+@media (max-width: 420px) {
+  .studio-permission-strip { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px), (max-height: 560px) and (max-width: 1050px) {
   .workspace {
     padding-bottom: calc(var(--space-8) + var(--space-7) + env(safe-area-inset-bottom));
   }
@@ -122,8 +404,13 @@
     font-size: var(--step-0);
     font-weight: var(--weight-bold);
   }
-  .mobile-nav a span { font-size: var(--step-1); }
-  .mobile-nav a.is-active { color: var(--brand); }
+  .mobile-nav a .nav-icon { width: 20px; height: 20px; }
+  .mobile-nav a.is-active { color: var(--brand); background: var(--brand-wash); box-shadow: inset 0 3px 0 var(--brand); }
+  .studio-permission-boundary, .review-delivery-boundary,
+  .review-exception-summary > p {
+    font-size: var(--step-1);
+    line-height: var(--leading-normal);
+  }
 }
 
 .production-confirm {
@@ -138,14 +425,20 @@
 }
 
 .production-confirm > span { margin-right: auto; }
-.production-confirm .button { min-height: 34px; padding-inline: var(--space-3); }
+.production-confirm .button { min-height: 44px; padding-inline: var(--space-3); }
+@media (max-width: 760px), (max-height: 560px) and (max-width: 1050px) {
+  .production-confirm .button { min-width: 44px; }
+}
 .production-confirm .is-selected { color: var(--brand-contrast); background: var(--brand); }
 .production-confirm small { flex-basis: 100%; color: var(--text-muted); }
 
 .nav-item, .sidebar-project, .mobile-nav a { text-decoration: none; }
 
+/* An imported criterion has to keep saying where it came from. The row is three
+   columns now, so the quote spans all of them on its own line rather than
+   sitting in a column that no longer exists. */
 .production-source-quote {
-  grid-column: 2 / 4;
+  grid-column: 1 / -1;
   margin: 0;
   color: var(--text-muted);
   font-family: var(--font-voice);
@@ -236,11 +529,9 @@
 }
 
 .rubric-template-list strong,
-.rubric-template-list span,
-.rubric-template-list small { display: block; }
+.rubric-template-list span { display: block; }
 .rubric-template-list strong { font-size: var(--step-0); }
 .rubric-template-list span { margin-top: var(--space-1); color: var(--text-secondary); font-size: var(--step-0); line-height: var(--leading-snug); }
-.rubric-template-list small { margin-top: var(--space-2); color: var(--brand); font-size: var(--step-0); font-weight: var(--weight-bold); }
 
 .production-boundary-note {
   color: var(--text-muted);
@@ -274,7 +565,13 @@
 .attempt-diff-evidence { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); margin-top: var(--space-4); }
 .attempt-diff-side { min-width: 0; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-sm); }
 .attempt-diff-side > strong { display: block; margin-top: var(--space-2); }
-.attempt-diff-side blockquote { margin-top: var(--space-3); color: var(--text-primary); font-family: var(--font-voice); font-size: var(--step-evidence); line-height: var(--leading-snug); }
+/* The voice serif stays — these are still the speaker's own words, and the
+   typeface is what says so. The hero SIZE does not: "evidence is the hero"
+   earns its place on the review screen, where the quote is the finding. Here
+   the finding is the difference between two quotes, and setting both at
+   29–37px in a half-width column made the comparison the tallest card on the
+   page while saying nothing extra. */
+.attempt-diff-side blockquote { margin-top: var(--space-3); color: var(--text-primary); font-family: var(--font-voice); font-size: var(--step-2); line-height: var(--leading-snug); }
 .attempt-diff-side > p:not(.overline) { margin-top: var(--space-3); color: var(--text-secondary); font-size: var(--step-0); }
 .attempt-diff-absent { color: var(--text-muted); }
 
@@ -332,10 +629,15 @@
   border-radius: var(--radius-sm);
 }
 
+/* One rule across this page: the review screen's quote is the hero, because
+   there the quote IS the finding. Every quote on the progress page is
+   retrospective — proof attached to a pattern rather than the pattern itself —
+   so it keeps the voice serif and gives up the hero size. The pattern is what
+   the reader came for, and at 29–37px a historical citation outranked it. */
 .recurring-evidence blockquote {
   color: var(--text-primary);
   font-family: var(--font-voice);
-  font-size: var(--step-evidence);
+  font-size: var(--step-2);
   line-height: var(--leading-snug);
 }
 
@@ -387,60 +689,41 @@
 }
 
 /* ---------------------------------------------------------------------------
-   The entry screen.
-
-   Two ways in, side by side rather than one behind the other: a sign-in that
-   looks like a sign-in, and a name field that is one field and one button. The
-   guest path is not hidden behind "advanced" — at a booth it is the path most
-   people want, and burying it would cost the visit.
+   The entry screen. The default path is one local name and one action.
+   Cross-device sync stays secondary and routes to the real auth surface.
 --------------------------------------------------------------------------- */
 .entry-gate {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
-  gap: clamp(1.5rem, 4vw, 3.5rem);
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+  gap: var(--space-8);
   align-items: center;
-  padding: clamp(1.5rem, 4vw, 3rem);
+  padding: clamp(1.5rem, 5vw, 5rem);
   background: var(--surface-sunken);
 }
 
 .entry-panel {
-  width: min(30rem, 100%);
+  width: min(32rem, 100%);
   margin-left: auto;
-  padding: clamp(1.5rem, 3vw, 2.25rem);
+  padding: clamp(1.5rem, 4vw, 3rem);
   background: var(--surface);
   border: 2px solid var(--text-primary);
   border-radius: var(--radius-lg);
   box-shadow: var(--space-2) var(--space-2) 0 var(--accent-sun);
 }
 
-.entry-brand img { width: 132px; height: auto; display: block; margin-bottom: var(--space-4); mix-blend-mode: multiply; }
-
-.entry-tabs {
-  display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-1);
-  padding: var(--space-1); margin-bottom: var(--space-4);
-  background: var(--surface-sunken); border-radius: var(--radius-full);
+.entry-brand img { width: 132px; height: auto; display: block; margin-bottom: var(--space-6); mix-blend-mode: multiply; }
+.entry-back {
+  display: inline-flex; min-height: 44px; align-items: center;
+  margin: calc(var(--space-3) * -1) 0 var(--space-5);
+  color: var(--brand); font-size: var(--step-0); font-weight: var(--weight-heavy);
+  text-decoration: none;
 }
-.entry-tab {
-  min-height: 44px; padding: var(--space-2) var(--space-3);
-  color: var(--text-secondary); background: transparent;
-  border: 0; border-radius: var(--radius-full);
-  font: inherit; font-weight: var(--weight-heavy); cursor: pointer;
-}
-.entry-tab.is-active { color: var(--text-on-inverse); background: var(--brand); }
-.entry-tab:focus-visible { outline: 2px solid var(--accent-sun); outline-offset: 2px; }
-
-.entry-title { margin-bottom: var(--space-3); font-size: var(--step-3); }
-
-.entry-disclosure {
-  margin: 0 0 var(--space-4); padding: var(--space-3);
-  color: var(--text-secondary); font-size: var(--step-0);
-  background: var(--surface-sunken); border-radius: var(--radius-md);
-  border-left: 3px solid var(--accent-sun);
-}
-.entry-disclosure strong { color: var(--text-primary); }
-
-.entry-form, .entry-guest { display: grid; gap: var(--space-3); }
+.entry-back:hover { text-decoration: underline; text-underline-offset: 3px; }
+.entry-kicker { margin-bottom: var(--space-2); color: var(--brand); font-size: var(--step-0); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+.entry-title { max-width: 14ch; margin-bottom: var(--space-3); font-size: var(--step-4); }
+.entry-intro { margin-bottom: var(--space-5); color: var(--text-secondary); }
+.entry-guest { display: grid; gap: var(--space-3); }
 .entry-field { display: grid; gap: var(--space-1); }
 .entry-field > span { font-size: var(--step-0); font-weight: var(--weight-heavy); }
 .entry-field input {
@@ -451,17 +734,6 @@
 }
 .entry-field input:focus-visible { outline: 2px solid var(--accent-sun); outline-offset: 1px; }
 
-.entry-switch { margin: var(--space-2) 0 0; color: var(--text-secondary); font-size: var(--step-0); }
-
-.entry-divider {
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
-  gap: var(--space-3); margin: var(--space-4) 0;
-  color: var(--text-muted); font-size: var(--step-0);
-}
-.entry-divider::before, .entry-divider::after {
-  content: ''; height: 2px; background: var(--border-strong);
-}
-
 .entry-error {
   margin: var(--space-3) 0 0; padding: var(--space-2) var(--space-3);
   color: var(--text-primary); font-size: var(--step-0);
@@ -470,15 +742,22 @@
 
 .entry-skip { margin: var(--space-3) 0 0; text-align: center; font-size: var(--step-0); }
 
-.entry-aside { display: grid; justify-items: center; gap: var(--space-2); text-align: center; }
-.entry-aside img { width: min(320px, 70%); height: auto; }
-.entry-aside p { max-width: 26ch; margin: 0; font-size: var(--step-2); font-weight: var(--weight-heavy); }
-.entry-aside small { color: var(--text-muted); }
+.entry-sync { display: grid; gap: var(--space-3); margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
+.entry-sync p { margin: var(--space-1) 0 0; color: var(--text-muted); font-size: var(--step-0); }
+.entry-sync .button { justify-self: start; text-decoration: none; }
+
+.entry-aside { position: relative; width: min(38rem, 100%); min-height: 34rem; display: grid; align-content: start; overflow: hidden; padding: var(--space-7); color: var(--text-on-inverse); background: var(--surface-inverse); border-radius: var(--radius-lg); }
+.entry-aside-copy { position: relative; z-index: 1; max-width: 22rem; }
+.entry-aside-copy > span { color: var(--inverse-accent); font-size: var(--step-0); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+.entry-aside-copy p { margin: var(--space-4) 0 var(--space-2); font-size: var(--step-3); font-weight: var(--weight-heavy); }
+.entry-aside-copy small { color: var(--text-on-inverse-muted); }
+.entry-aside img { position: absolute; right: calc(-1 * var(--space-8)); bottom: calc(-1 * var(--space-8)); width: min(24rem, 70%); height: auto; }
+.entry-aside ul { position: absolute; left: var(--space-7); bottom: var(--space-7); z-index: 1; display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; color: var(--text-on-inverse-muted); font-size: var(--step-0); }
+.entry-aside li::before { content: '✓'; margin-right: var(--space-2); color: var(--inverse-accent); font-weight: var(--weight-heavy); }
 
 @media (max-width: 860px) {
   .entry-gate { grid-template-columns: 1fr; }
   .entry-panel { margin: 0 auto; }
-  /* The mascot is decoration. On a phone the form is the whole job. */
   .entry-aside { display: none; }
 }
 
@@ -495,3 +774,138 @@
   font-size: var(--step-0);
 }
 .delivery-filler-list span { color: var(--text-secondary); }
+
+/* Attempt timeline. Identity is the lane, so the marks are one hue: the obvious
+   warm/green pair for voice-versus-camera separates at ΔE 4.2 under protanopia,
+   which is no separation at all for a red-green colourblind reader. */
+.attempt-timeline { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
+.timeline-duration { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-bold); }
+.timeline-lane { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: var(--space-3); align-items: center; margin-top: var(--space-3); }
+.timeline-lane-label { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+.timeline-track { position: relative; height: 2rem; background: var(--surface-sunken); border-radius: var(--radius-sm); }
+/* Rounded data-ends, and a 2px surface gap so two adjacent cues never read as
+   one long one. The hit target is taller than the mark on purpose. */
+.timeline-mark { position: absolute; top: 0; height: 2rem; min-width: 10px; padding: 0; background: var(--accent-orange); border: 2px solid var(--surface-sunken); border-radius: var(--radius-sm); cursor: pointer; touch-action: manipulation; }
+/* The plotted bar stays proportional while its button receives a 44×44 hit
+   region. A pseudo-element belongs to the same accessible control and is hit
+   tested with it, so the chart gains no duplicate focus stops. */
+.timeline-mark::after { content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
+.timeline-mark:disabled { cursor: default; }
+.timeline-mark:hover:not(:disabled), .timeline-mark:focus-visible { background: var(--accent-orange-strong); }
+/* Rubric lanes on the same clock as the delivery lanes. The state colours are
+   the evidence map's, deliberately: one idea must not grow two vocabularies,
+   and a reader who learned "filled means cited" upstairs should not relearn it
+   here. An empty lane keeps its row — the gap is the finding. */
+.timeline-legend { display: flex; flex-wrap: wrap; gap: var(--space-4); margin: var(--space-4) 0 var(--space-2); color: var(--text-muted); font-size: var(--step-0); }
+.timeline-legend span { display: inline-flex; align-items: center; gap: var(--space-2); }
+.timeline-legend i { width: var(--space-3); height: var(--space-3); background: var(--absence); border-radius: var(--radius-full); }
+.timeline-legend span[data-evidence="found"] i { background: var(--evidence); }
+.timeline-legend span[data-evidence="reused"] i { background: transparent; border: 2px solid var(--evidence); }
+.timeline-legend-cut i { width: 0; height: var(--space-4); background: transparent; border-radius: 0; border-left: 2px dashed var(--text-secondary); }
+.timeline-lane.is-rubric { grid-template-columns: 9rem minmax(0, 1fr); }
+.timeline-lane.is-rubric .timeline-lane-label { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: normal; font-weight: var(--weight-bold); }
+.timeline-lane.is-rubric .timeline-track[data-evidence="absent"] { border: 1px dashed var(--absence); }
+.timeline-mark.is-evidence { background: var(--evidence); }
+.timeline-mark.is-evidence:hover:not(:disabled), .timeline-mark.is-evidence:focus-visible { background: var(--evidence-strong); }
+/* The track is a fixed height, so a note that outgrows it was being sliced
+   through the middle of a word on narrow screens. Truncate on purpose instead;
+   the track's aria-label and the text-equivalent disclosure below both carry
+   the complete reading. */
+.timeline-lane-note { position: absolute; inset: 0; display: flex; align-items: center; padding-inline: var(--space-3); color: var(--text-muted); font-size: var(--step-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.timeline-lane-note[data-evidence="absent"] { color: var(--text-secondary); font-weight: var(--weight-bold); }
+.timeline-cutline { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed var(--text-secondary); pointer-events: none; }
+.timeline-rubric-summary { margin: var(--space-3) 0 var(--space-4); color: var(--text-secondary); font-size: var(--step-0); }
+.timeline-bell-note { margin-top: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--step-0); }
+
+/* The transcript with its cited spans marked in place. These are the student's
+   own words rendered as text nodes; the marks only locate them. */
+.transcript-evidence { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
+.transcript-evidence-body { margin-top: var(--space-4); font-size: var(--step-1); line-height: var(--leading-relaxed); white-space: pre-wrap; }
+.transcript-evidence-body mark { padding: 0.1em 0.25em; color: var(--text-primary); background: var(--evidence-wash); border-bottom: 2px solid var(--evidence); border-radius: var(--radius-sm); }
+.transcript-evidence-mark { padding: 0; background: none; border: 0; font: inherit; text-align: left; cursor: pointer; }
+.transcript-evidence-mark:hover mark, .transcript-evidence-mark:focus-visible mark { background: var(--evidence-border); }
+.transcript-evidence-mark small, .transcript-evidence-static small { display: inline-block; margin-left: var(--space-2); color: var(--evidence-strong); font-size: var(--step-0); font-weight: var(--weight-bold); }
+
+/* Answering one criterion again, without another full take. */
+.criterion-retake { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
+.criterion-retake-list { display: grid; gap: var(--space-2); margin-top: var(--space-4); padding: 0; list-style: none; }
+.criterion-retake-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--absence); border-radius: var(--radius-sm); }
+/* An in-progress input, not a citation — so it borrows the attention accent
+   rather than the reserved evidence hue. */
+.criterion-retake-panel { margin: var(--space-4) 0; padding: var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--accent-sun); border-radius: var(--radius-sm); }
+.criterion-retake-panel textarea { width: 100%; margin: var(--space-3) 0; }
+
+/* The rubric shown as a target while the attempt is still running. */
+.attempt-target-list { display: grid; gap: var(--space-2); margin: var(--space-3) 0; padding: 0; list-style: none; }
+.attempt-target-list li { display: flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); font-size: var(--step-0); }
+.attempt-target-list i { width: var(--space-3); height: var(--space-3); flex: none; background: var(--absence); border-radius: var(--radius-full); }
+
+/* Per-criterion coaching, nested inside the evidence card it belongs to. It
+   sits below the verdict because it explains the verdict rather than
+   competing with it: the cited quote stays the largest thing on the card. */
+.coach-trigger { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); margin: var(--space-4) 0; padding: var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-sm); }
+.coach-trigger strong { display: block; font-size: var(--step-1); }
+.coach-trigger p { margin-top: var(--space-2); color: var(--text-secondary); font-size: var(--step-0); }
+.coach-trigger button { flex: none; }
+.criterion-coaching { margin-top: var(--space-4); border-top: 1px solid var(--border); }
+.criterion-coaching > summary { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) 0; color: var(--text-primary); font-size: var(--step-0); font-weight: var(--weight-bold); cursor: pointer; list-style: none; }
+.criterion-coaching > summary::-webkit-details-marker { display: none; }
+.criterion-coaching > summary::after { content: '+'; width: 1.75rem; height: 1.75rem; display: grid; flex: none; place-items: center; margin-left: auto; color: var(--text-muted); background: var(--surface-sunken); border-radius: var(--radius-full); }
+.criterion-coaching[open] > summary::after { content: '−'; }
+.criterion-coaching > summary strong { flex: none; color: var(--text-muted); font-size: var(--step-0); font-variant-numeric: tabular-nums; }
+.criterion-coaching-body { padding: var(--space-2) 0 var(--space-3); }
+/* A claim with its support IS a citation, so it uses the evidence channel.
+   An unbacked claim is NOT a failing mark — it is the next thing to rehearse
+   — so it takes the neutral absence tone, the same one an uncovered criterion
+   uses everywhere else. Red here would reassert the grade we do not give. */
+.claim-citation-list { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.claim-citation-list li { padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--absence); border-radius: var(--radius-sm); }
+.claim-citation-list li[data-supported="true"] { border-left-color: var(--evidence); }
+.claim-quote { display: block; color: var(--text-primary); font-family: var(--font-voice); font-size: var(--step-1); line-height: var(--leading-snug); }
+.claim-support, .claim-gap { margin-top: var(--space-2); font-size: var(--step-0); }
+.claim-support { color: var(--text-secondary); }
+.claim-gap { color: var(--text-primary); }
+.criterion-coaching-empty, .criterion-coaching-note { margin-top: var(--space-2); color: var(--text-secondary); font-size: var(--step-0); }
+.criterion-wording { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; margin-top: var(--space-3); color: var(--text-secondary); font-size: var(--step-0); }
+.criterion-wording strong { color: var(--text-primary); }
+.criterion-wording span { padding: var(--space-1) var(--space-2); background: var(--surface-sunken); border-radius: var(--radius-sm); }
+.stronger-form { margin-top: var(--space-4); }
+.stronger-form blockquote { margin: var(--space-2) 0 0; padding: var(--space-3) var(--space-4); color: var(--text-primary); background: var(--surface-sunken); border-radius: var(--radius-sm); font-size: var(--step-1); line-height: var(--leading-relaxed); }
+.stronger-form-blanks { margin-top: var(--space-3); font-size: var(--step-0); }
+.stronger-form-blanks span { display: block; color: var(--text-secondary); }
+.stronger-form-blanks ol { margin: var(--space-2) 0 0; padding-left: var(--space-5); color: var(--text-secondary); }
+
+/* Wording that invites the next question, listed with that question. */
+.wording-cue-block { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.wording-cue-list { display: grid; gap: var(--space-2); margin-top: var(--space-3); padding: 0; list-style: none; }
+.wording-cue-list li { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: var(--space-3); align-items: baseline; padding: var(--space-2) var(--space-3); background: var(--surface-sunken); border-radius: var(--radius-sm); }
+.wording-cue-list li strong { font-size: var(--step-0); }
+.wording-cue-list li span { color: var(--text-muted); font-size: var(--step-0); }
+.wording-cue-list li small { color: var(--text-secondary); font-size: var(--step-0); }
+
+/* The live chip counts down when a limit is set, and says so as it closes. */
+.studio-live small { margin-left: var(--space-2); font-size: var(--step-0); font-weight: var(--weight-bold); }
+.studio-live.is-closing { color: var(--caution); }
+.studio-limit-note { margin-top: var(--space-2); color: var(--text-secondary); font-size: var(--step-0); }
+
+.timeline-axis { display: flex; justify-content: space-between; margin: var(--space-2) 0 0 calc(5rem + var(--space-3)); color: var(--text-muted); font-size: var(--step-0); }
+
+@media (max-width: 40rem) {
+  .timeline-lane { grid-template-columns: 3.5rem minmax(0, 1fr); gap: var(--space-2); }
+  /* A criterion name needs more than 3.5rem to be recognisable, but less than
+     the desktop 9rem, so the note beside it keeps somewhere to live. */
+  .timeline-lane.is-rubric { grid-template-columns: 6.5rem minmax(0, 1fr); }
+  .timeline-lane.is-rubric .timeline-lane-label { max-width: 6.5rem; }
+  .timeline-axis { margin-left: calc(3.5rem + var(--space-2)); }
+}
+/* Saved review keeps the plot primary and exposes its complete text equivalent
+   on demand immediately beneath it. */
+.saved-attempt-timeline { margin: var(--space-5) 0 0; padding-top: 0; border-top: 0; }
+
+@media (max-width: 760px), (max-height: 560px) and (max-width: 1050px) {
+  .timeline-rubric-summary, .timeline-bell-note, .studio-limit-note,
+  .production-boundary-note {
+    font-size: var(--step-1);
+    line-height: var(--leading-normal);
+  }
+}

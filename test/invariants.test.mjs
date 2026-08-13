@@ -162,31 +162,21 @@ test('INV-2 the product never overclaims what the analyzer does', () => {
   }
 });
 
-// This guard used to ban account vocabulary outright, because the vanilla
-// build had nothing behind it. The Next build has two things behind it: real
-// Better Auth on /account, and a deliberate demonstration sign-in on /enter.
-// A ban would now be wrong, so the rule became the one that actually protects
-// the user — wherever the interface asks for a password it cannot check, it
-// has to say so on the same screen.
-test('INV-2 a sign-in the build cannot check discloses that it cannot', () => {
+// The entry route is the fast guest path. It must not imitate authentication:
+// passwords belong only to the Better Auth-backed account route. This removes
+// the ambiguity instead of trying to explain a fake sign-in after the fact.
+test('INV-2 the guest entry never collects credentials and routes sync to real auth', () => {
   const gate = read('apps/web/components/entry-gate.tsx');
   if (!gate) return;
 
-  assert.match(
-    gate,
-    /demonstration sign-in/iu,
-    'the entry screen collects a password it never verifies; it must say so where the user can read it',
-  );
-  assert.match(
-    gate,
-    /No account is created/iu,
-    'the disclosure must state that no account is created',
-  );
-  assert.doesNotMatch(
-    gate,
-    /\b(?:secure|encrypted|protected|safe)\b/iu,
-    'a demonstration form must not borrow the vocabulary of security it does not provide',
-  );
+  assert.doesNotMatch(gate, /type=["']password["']/iu,
+    'the local guest route must never collect a password');
+  assert.doesNotMatch(gate, /authClient\.(?:signIn|signUp)/u,
+    'authentication calls belong to the real account surface');
+  assert.match(gate, /href=["']\/account["']/u,
+    'the optional sync path must route to the Better Auth-backed account surface');
+  assert.match(gate, /stay in this browser/iu,
+    'the guest path must state its local-storage boundary');
 });
 
 const AUTHENTICATION_CLAIMS = [
@@ -207,7 +197,9 @@ test('INV-2 account language stays on the screens that own it', () => {
     'apps/web/app/(auth)/enter/page.tsx',
     'apps/web/app/(workspace)/account/page.tsx',
   ]);
-  for (const relative of PRODUCT_SURFACES.filter((file) => !owners.has(file))) {
+  for (const relative of PRODUCT_SURFACES) {
+    const ownerPath = relative.replaceAll('\\', '/');
+    if (owners.has(ownerPath)) continue;
     const source = read(relative);
     if (!source) continue;
     for (const [number, line] of source.split(/\r?\n/u).entries()) {
