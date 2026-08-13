@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-import mascot from '../../../../../src/assets/mascot/kato-macaw-reading.svg';
+import katoAlert from '../../../../../src/assets/mascot/kato-macaw-alert.svg';
+import katoQuestioning from '../../../../../src/assets/mascot/kato-macaw-questioning.svg';
+import katoReading from '../../../../../src/assets/mascot/kato-macaw-reading.svg';
 import { DEFAULT_RUBRIC, parseRubric } from '@/lib/analyzer';
 import type { SavedSession } from '@/lib/contracts';
 import { parseSavedSessions, PRODUCTION_SESSIONS_KEY } from '@/lib/progress';
@@ -76,6 +78,16 @@ export default function WorkspaceHomePage() {
       ? 'That result describes one saved transcript, not confidence or speaking ability. Rehearse again to see whether the evidence holds.'
       : `The latest saved transcript recorded ${coverageLabel(latestSession.evidenceScore)} explicit rubric coverage. Open Progress to inspect its retained quote or missing cues before rehearsing again.`;
 
+  // Kato's pose reports the state of the work rather than decorating it, so the
+  // dashboard is readable from across a booth before anyone reads a word. Each
+  // pose is a different drawing with its own dimensions; carrying them through
+  // keeps the swap from shifting the layout.
+  const coach = !latestSession
+    ? { art: katoQuestioning, state: 'waiting', bubble: 'Ready for the hard question?' }
+    : latestIsComplete
+      ? { art: katoReading, state: 'supported', bubble: 'Every criterion is supported. Raise the bar?' }
+      : { art: katoAlert, state: 'gap', bubble: `One gap is still open: ${latestSession.weakest}.` };
+
   return (
     <section className="view is-visible" aria-labelledby="homeTitle">
       <header className="page-header home-header">
@@ -93,8 +105,8 @@ export default function WorkspaceHomePage() {
           </div>
         </div>
         <aside className="focus-coach" aria-label="Talk-Active rehearsal guide">
-          <img className="focus-mascot" src={mascot.src} alt="" width="1254" height="1254" />
-          <p className="coach-bubble">Ready for the hard question?</p>
+          <img className="focus-mascot" data-coach={coach.state} src={coach.art.src} alt="" width={coach.art.width} height={coach.art.height} />
+          <p className="coach-bubble">{coach.bubble}</p>
         </aside>
         <div className="focus-stats">
           <div className="focus-stat"><span>Last evidence coverage</span><strong>{latestCoverage === null ? '—' : coverageLabel(latestCoverage)}</strong><small>{latestSession ? `Saved ${sessionDate(latestSession.createdAt).label}` : 'No reviewed attempt saved yet'}</small></div>

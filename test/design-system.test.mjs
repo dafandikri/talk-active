@@ -609,3 +609,49 @@ test('every semantic token is documented with its intent', () => {
     .filter((name) => !doc.includes(name));
   assert.deepEqual(undocumented, [], `these tokens carry the product thesis and must be explained in the design system doc: ${undocumented.join(', ')}`);
 });
+
+// Kato is the only illustration on the dashboard, so he is either carrying
+// information or taking up space. These pin him to the first.
+const WORKSPACE_PAGE = read('apps/web/app/(workspace)/workspace/page.tsx');
+
+test('the mascot pose is chosen by the state of the work, not fixed', () => {
+  for (const pose of ['kato-macaw-alert', 'kato-macaw-questioning', 'kato-macaw-reading']) {
+    assert.ok(WORKSPACE_PAGE.includes(pose), `${pose} is drawn but never used, so a state has no face`);
+  }
+  for (const state of ['waiting', 'supported', 'gap']) {
+    assert.match(WORKSPACE_PAGE, new RegExp(`state: '${state}'`, 'u'), `no pose reports the ${state} state`);
+  }
+  assert.match(
+    WORKSPACE_PAGE,
+    /data-coach=\{coach\.state\}/u,
+    'the state must reach the DOM, or styling cannot respond to it',
+  );
+});
+
+test('swapping pose cannot shift the layout', () => {
+  // The three drawings are 392x489, 544x535, and 454x624. A single hardcoded
+  // size would be wrong for at least two of them and would move the card.
+  assert.match(WORKSPACE_PAGE, /width=\{coach\.art\.width\}/u);
+  assert.match(WORKSPACE_PAGE, /height=\{coach\.art\.height\}/u);
+  assert.ok(
+    !/className="focus-mascot"[^>]*width="\d+"/u.test(WORKSPACE_PAGE),
+    'a literal width brings back the layout shift these attributes exist to prevent',
+  );
+});
+
+test('the mascot reads as two planes at different depths', () => {
+  // Depth comes from parallax between the figure and the plate behind it. One
+  // plane moving alone reads as a sticker sliding around.
+  assert.match(STYLES, /\.focus-coach\s*\{[^}]*perspective:/u, 'the container needs a perspective for any Z to matter');
+  assert.match(STYLES, /@keyframes mascot-greet[^}]*\{[\s\S]*?translate3d[\s\S]*?rotateY/u);
+  assert.match(STYLES, /@keyframes coach-plate[\s\S]*?translateZ\(-90px\)/u);
+  assert.match(STYLES, /\.focus-coach::before[\s\S]*?animation:\s*coach-plate/u);
+});
+
+test('reduced motion stops the movement and keeps the meaning', () => {
+  const reduced = STYLES.slice(STYLES.indexOf('@media (prefers-reduced-motion: reduce)'));
+  assert.match(reduced, /\.focus-mascot\s*\{\s*animation:\s*none !important;\s*\}/u);
+  assert.match(reduced, /\.focus-coach::before\s*\{\s*animation:\s*none !important;\s*\}/u);
+  // The pose itself is chosen in the component, so it survives this media query
+  // by construction. That is the point: motion is decoration, pose is content.
+});

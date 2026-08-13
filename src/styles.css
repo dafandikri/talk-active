@@ -352,10 +352,28 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .focus-coach {
   position: relative; min-height: 360px; overflow: hidden;
   background: var(--brand); border-left: 2px solid var(--text-primary);
+  perspective: 900px; perspective-origin: 50% 45%;
 }
+/* A second plane behind Kato, pushed back in Z and turning against him. Two
+   planes at different depths is what reads as dimensional; one plane moving on
+   its own only ever reads as a sticker sliding around. Its tint is the state,
+   so the card is legible from across a booth before anyone reads the words. */
+.focus-coach::before {
+  content: ""; position: absolute; z-index: 0; inset: 16% 10% 6%;
+  background: var(--accent-sun-wash); border-radius: var(--radius-lg);
+  transform: translateZ(-90px);
+  animation: coach-plate 4.8s var(--ease) infinite;
+}
+.focus-coach:has(.focus-mascot[data-coach="gap"])::before { background: var(--absence-wash); }
+/* Deliberately not --evidence-wash. That hue is reserved for cited spans and
+   verdicts; spending it on a mascot backdrop is how a reserved colour stops
+   meaning anything. */
+.focus-coach:has(.focus-mascot[data-coach="supported"])::before { background: var(--accent-leaf-wash); }
 .focus-mascot {
+  position: relative; z-index: 1;
   width: 100%; height: 100%; display: block; object-fit: contain; object-position: center bottom;
-  transform-origin: 54% 80%; animation: mascot-greet 4.8s var(--ease) infinite;
+  transform-origin: 54% 80%; transform-style: preserve-3d; will-change: transform;
+  animation: mascot-greet 4.8s var(--ease) infinite;
 }
 .coach-bubble {
   position: absolute; z-index: 2; inset: var(--space-4) var(--space-4) auto;
@@ -373,9 +391,15 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   transform: rotate(45deg);
 }
 @keyframes mascot-greet {
-  0%, 100% { transform: translateY(0) rotate(0); }
-  45% { transform: translateY(-7px) rotate(-1deg); }
-  52% { transform: translateY(-7px) rotate(1deg); }
+  0%, 100% { transform: translate3d(0, 0, 0) rotateY(-7deg) rotateX(1deg); }
+  45% { transform: translate3d(0, -9px, 30px) rotateY(5deg) rotateX(-2deg); }
+  52% { transform: translate3d(0, -9px, 30px) rotateY(9deg) rotateX(-2deg); }
+}
+/* Counter-motion. The plate turns the other way and stays behind, which is what
+   sells the depth: parallax between the two planes, not motion on either. */
+@keyframes coach-plate {
+  0%, 100% { transform: translateZ(-90px) rotateY(4deg) scale(1); }
+  48% { transform: translateZ(-90px) rotateY(-3deg) scale(1.03); }
 }
 @keyframes coach-bubble-in {
   from { opacity: 0; transform: translateY(5px) scale(.98); }
@@ -1372,4 +1396,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
     transition-duration: .01ms !important;
   }
   .focus-mascot { animation: none !important; }
+  /* The pose still changes with the state — that is information, not motion.
+     Only the movement stops. */
+  .focus-coach::before { animation: none !important; }
 }
