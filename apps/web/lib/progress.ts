@@ -3,6 +3,8 @@ import {
   RecurringWeaknessSchema,
   SavedSessionSchema,
   type AttemptComparison,
+  type ProgressPoint,
+  type RehearsalFormat,
   type RecurringWeakness,
   type SavedCriterionResult,
   type SavedSession,
@@ -24,10 +26,101 @@ export function parseSavedSessions(serialized: string | null): SavedSession[] {
   }
 }
 
+export type ProgressHistoryEntry =
+  | {
+      source: 'synced';
+      id: string;
+      createdAt: string;
+      evidenceScore: number;
+      rehearsalFormat: RehearsalFormat;
+      attempt: ProgressPoint;
+    }
+  | {
+      source: 'browser';
+      id: string;
+      createdAt: string;
+      evidenceScore: number;
+      rehearsalFormat: RehearsalFormat;
+      session: SavedSession;
+    };
+
+/**
+ * Combines the selected project's durable attempts with its browser summaries.
+ *
+ * A presentation is written to both places on the happy path, so the server
+ * attempt wins an ID collision. An interview currently has no durable attempt
+ * row; its unmatched aggregate stays visible as an explicitly browser-only
+ * entry instead of disappearing as soon as the SQL request succeeds.
+ */
+export function mergeProgressHistory(
+  syncedAttempts: readonly ProgressPoint[],
+  browserSessions: readonly SavedSession[],
+): ProgressHistoryEntry[] {
+  const byId = new Map<string, ProgressHistoryEntry>();
+  for (const session of browserSessions) {
+    byId.set(session.id, {
+      source: 'browser',
+      id: session.id,
+      createdAt: session.createdAt,
+      evidenceScore: session.evidenceScore,
+      rehearsalFormat: session.rehearsalFormat,
+      session,
+    });
+  }
+  for (const attempt of syncedAttempts) {
+    byId.set(attempt.attemptId, {
+      source: 'synced',
+      id: attempt.attemptId,
+      createdAt: attempt.createdAt,
+      evidenceScore: Math.round(attempt.coverage * 100),
+      // Durable attempts predate interview persistence and still represent the
+      // continuous presentation path. Browser-only interview summaries retain
+      // their own format above instead of being folded into this series.
+      rehearsalFormat: 'presentation',
+      attempt,
+    });
+  }
+  return [...byId.values()].sort((left, right) =>
+    left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id));
+}
+
+/**
+ * Returns the chronological coverage series compatible with the newest entry.
+ *
+ * The archive may mix a five-question interview subset with full-rubric
+ * presentations. Connecting those percentages would compare different
+ * denominators, so the visible line follows one rehearsal format at a time
+ * while the complete mixed archive remains available below it.
+ */
+export function latestCompatibleProgressHistory(
+  entries: readonly ProgressHistoryEntry[],
+): ProgressHistoryEntry[] {
+  const ordered = [...entries].sort((left, right) =>
+    left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id));
+  const latestFormat = ordered.at(-1)?.rehearsalFormat;
+  return latestFormat
+    ? ordered.filter((entry) => entry.rehearsalFormat === latestFormat)
+    : [];
+}
+
+/** Applies the same latest-format boundary to browser-only progress math. */
+export function latestCompatibleSavedSessions(
+  sessions: readonly SavedSession[],
+): SavedSession[] {
+  const ordered = [...sessions].sort((left, right) =>
+    left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id));
+  const latestFormat = ordered.at(-1)?.rehearsalFormat;
+  return latestFormat
+    ? ordered.filter((session) => session.rehearsalFormat === latestFormat)
+    : [];
+}
+
 interface ComparableAttempt {
   id: string;
   createdAt: string;
   projectId?: string | null;
+  /** Missing on SQL and legacy rows, which are presentation attempts. */
+  rehearsalFormat?: RehearsalFormat;
   criteria: SavedCriterionResult[];
 }
 
@@ -71,13 +164,18 @@ function compareAdjacentAttempts(
 }
 
 export function compareAttemptEvidence(attempts: ComparableAttempt[]): AttemptComparison[] {
-  const byProject = new Map<string, ComparableAttempt[]>();
+  const byCompatibleSeries = new Map<string, ComparableAttempt[]>();
   for (const attempt of attempts.filter((item) => item.criteria.length > 0)) {
     const projectKey = attempt.projectId ?? 'local';
-    byProject.set(projectKey, [...(byProject.get(projectKey) ?? []), attempt]);
+    const rehearsalFormat = attempt.rehearsalFormat ?? 'presentation';
+    const seriesKey = JSON.stringify([projectKey, rehearsalFormat]);
+    byCompatibleSeries.set(seriesKey, [
+      ...(byCompatibleSeries.get(seriesKey) ?? []),
+      attempt,
+    ]);
   }
   const comparisons: AttemptComparison[] = [];
-  for (const projectAttempts of byProject.values()) {
+  for (const projectAttempts of byCompatibleSeries.values()) {
     const detailed = projectAttempts.sort((left, right) =>
       left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id));
     for (let index = 1; index < detailed.length; index += 1) {

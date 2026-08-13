@@ -1,4 +1,4 @@
-.production-shell { min-height: 100vh; color: var(--text-primary); background-color: var(--canvas); background-image: var(--canvas-grain); }
+.production-shell { min-height: 100vh; overflow-x: clip; color: var(--text-primary); background-color: var(--canvas); background-image: var(--canvas-grain); }
 .skip-link { position: fixed; top: var(--space-2); left: var(--space-2); z-index: 1000; padding: var(--space-3) var(--space-4); color: var(--brand-contrast); background: var(--brand); border-radius: var(--radius-sm); transform: translateY(-160%); }
 .skip-link:focus { transform: translateY(0); }
 .production-shell__nav,
@@ -8,6 +8,8 @@
 .production-shell__final,
 .production-shell__footer { width: min(100% - 2 * var(--space-5), 76rem); margin-inline: auto; }
 .production-shell__nav { display: flex; align-items: center; gap: var(--space-5); padding-block: var(--space-4); border-bottom: 1px solid var(--border); }
+.production-shell .brand-wordmark-accent { color: var(--brand); }
+.production-shell__brand { min-height: 44px; }
 .production-shell__hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(22rem, .95fr); gap: var(--space-8); align-items: center; min-height: 44rem; padding-block: var(--space-9); }
 .production-shell__hero-copy { min-width: 0; }
 .production-shell__eyebrow { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); color: var(--brand); font-size: var(--step-0); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
@@ -120,15 +122,6 @@
 .studio-live.is-live { color: var(--text-on-inverse); }
 .studio-live.is-live i { background: var(--inverse-accent); box-shadow: 0 0 0 var(--space-2) var(--inverse-raised); }
 
-.studio-mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin: var(--space-5) 0 var(--space-3); }
-.studio-mode-tabs button { min-height: 48px; padding: var(--space-3) var(--space-4); color: var(--text-on-inverse-muted); background: transparent; border: 1px solid var(--inverse-raised); border-radius: var(--radius-md); text-align: left; cursor: pointer; }
-.studio-mode-tabs button:disabled { cursor: not-allowed; opacity: .55; }
-.studio-mode-tabs button strong, .studio-mode-tabs button span { display: block; }
-.studio-mode-tabs button strong { color: var(--text-on-inverse); font-size: var(--step-1); }
-.studio-mode-tabs button span { margin-top: var(--space-1); font-size: var(--step-0); }
-.studio-mode-tabs button.is-active { color: var(--text-primary); background: var(--inverse-accent); border-color: var(--inverse-accent); }
-.studio-mode-tabs button.is-active strong { color: var(--text-primary); }
-
 .studio-consent { display: grid; gap: var(--space-2); margin: 0 0 var(--space-4); padding: var(--space-4); border: 1px solid var(--inverse-raised); border-radius: var(--radius-md); }
 .studio-consent legend { padding-inline: var(--space-2); color: var(--text-on-inverse); font-size: var(--step-0); font-weight: var(--weight-heavy); }
 .studio-consent label { min-height: 52px; display: grid; grid-template-columns: 24px 1fr; gap: var(--space-3); align-items: start; margin: 0; padding: var(--space-2); color: var(--text-on-inverse); border-radius: var(--radius-sm); cursor: pointer; }
@@ -136,6 +129,24 @@
 .studio-consent input { width: 20px; height: 20px; margin-top: var(--space-1); accent-color: var(--inverse-accent); }
 .studio-consent strong, .studio-consent small { display: block; }
 .studio-consent small { margin-top: var(--space-1); color: var(--text-on-inverse-muted); font-size: var(--step-0); font-weight: var(--weight-regular); line-height: var(--leading-snug); }
+.studio-consent legend small { display: inline; margin-left: var(--space-1); color: var(--text-on-inverse-muted); font-weight: var(--weight-regular); }
+.studio-permission-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
+.studio-consent .studio-permission-chip,
+.studio-consent .studio-recording-consent.studio-permission-chip {
+  min-height: 48px; display: flex; align-items: center; gap: var(--space-2);
+  margin: 0; padding: var(--space-2) var(--space-3); color: var(--text-on-inverse);
+  background: transparent; border: 1px solid var(--inverse-raised); border-radius: var(--radius-full);
+  font-size: var(--step-0); cursor: pointer;
+}
+.studio-consent .studio-permission-chip:hover { background: var(--inverse-raised); }
+.studio-consent .studio-permission-chip:active { filter: brightness(.94); }
+.studio-consent .studio-permission-chip:has(input:checked) {
+  color: var(--text-primary); background: var(--inverse-accent); border-color: var(--inverse-accent);
+}
+.studio-consent .studio-permission-chip input { width: 18px; height: 18px; flex: none; margin: 0; }
+.studio-consent .studio-permission-chip { touch-action: manipulation; }
+.studio-consent .studio-permission-chip strong { color: inherit; font-size: var(--step-0); line-height: var(--leading-snug); }
+.studio-permission-boundary { margin: var(--space-2) 0 0; color: var(--text-on-inverse-muted); font-size: var(--step-0); line-height: var(--leading-normal); }
 
 .studio-stage { position: relative; aspect-ratio: 16 / 9; min-height: 260px; background: var(--text-primary); border: 1px solid var(--inverse-raised); border-radius: var(--radius-md); overflow: hidden; }
 .studio-stage video, .studio-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
@@ -162,9 +173,65 @@
 .studio-status { min-height: 1.25rem; margin: var(--space-3) 0 0; color: var(--text-on-inverse-muted); font-size: var(--step-0); }
 
 .multimodal-review { margin-top: var(--space-5); padding: var(--space-6); border: 2px solid var(--text-primary); }
-.multimodal-review-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); margin-bottom: var(--space-4); }
-.multimodal-review-heading h2 { font-size: var(--step-3); }
+.multimodal-review-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); }
+.multimodal-review-heading h2 { max-width: 30ch; font-size: var(--step-3); }
 .multimodal-review-heading p:last-child { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); }
+.review-delivery-boundary { max-width: var(--measure); margin: var(--space-3) 0 0; color: var(--text-secondary); font-size: var(--step-0); }
+.review-retake-strip { display: grid; grid-template-columns: minmax(13rem, .55fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; margin-top: var(--space-5); padding: var(--space-4); background: var(--absence-wash); border-left: 4px solid var(--absence); border-radius: var(--radius-md); }
+.review-retake-strip ul { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.review-retake-strip li { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3); background: var(--surface); border-radius: var(--radius-sm); }
+.review-retake-strip li span { min-width: 0; font-size: var(--step-0); font-weight: var(--weight-bold); }
+.review-retake-strip .button { flex: none; }
+.review-unified-timeline { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
+.review-unified-timeline > .attempt-timeline { margin-top: var(--space-3); padding-top: 0; border-top: 0; }
+.review-attempt-timeline .timeline-lane.is-rubric { grid-template-columns: 5rem minmax(0, 1fr); }
+.review-attempt-timeline .timeline-lane.is-rubric .timeline-lane-label { max-width: none; text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+.timeline-legend-observation i { background: var(--accent-orange); }
+.review-exception-summary { display: grid; grid-template-columns: minmax(13rem, .5fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; margin-top: var(--space-5); padding: var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-md); }
+.review-exception-head > span { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+.review-exception-summary h4 { margin: var(--space-1) 0 0; font-size: var(--step-1); line-height: var(--leading-snug); }
+.review-exception-head > p { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); line-height: var(--leading-snug); }
+.review-exception-unmeasured strong { color: var(--text-secondary); }
+/* The bands sit on the panel's own surface, so they read as one chart set
+   rather than a stack of cards inside a card. */
+.review-exception-summary .metric-band-list { gap: var(--space-3); }
+.review-exception-summary .metric-band { padding: var(--space-3); background: var(--surface); }
+/* Nothing left its band: the good news gets the full width instead of sitting
+   beside an empty column. */
+.review-exception-summary > :only-child { grid-column: 1 / -1; }
+.review-disclosure { margin-top: var(--space-4); overflow: clip; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.review-disclosure > summary { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-4); background: var(--surface); font-weight: var(--weight-heavy); cursor: pointer; }
+.review-disclosure > summary:hover { background: var(--surface-sunken); }
+.review-disclosure > summary small { display: block; margin-bottom: var(--space-1); color: var(--text-muted); font-size: var(--step-0); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+.review-disclosure > summary strong { flex: none; color: var(--text-muted); font-size: var(--step-0); font-variant-numeric: tabular-nums; }
+.review-disclosure[open] > summary { border-bottom: 1px solid var(--border); }
+.review-disclosure-body { padding: var(--space-5); }
+.review-timeline-text { display: grid; gap: var(--space-2); margin: var(--space-3) 0 var(--space-5); padding: 0; list-style: none; }
+.review-timeline-text li { min-width: 0; display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: var(--space-3); padding: var(--space-3); background: var(--surface-sunken); border-left: 3px solid var(--accent-orange); border-radius: var(--radius-sm); }
+.review-timeline-text li[data-evidence="found"], .review-timeline-text li[data-evidence="reused"] { background: var(--evidence-wash); border-left-color: var(--evidence); }
+.review-timeline-text li[data-evidence="absent"] { border-left-color: var(--absence); }
+.review-timeline-text time { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); font-variant-numeric: tabular-nums; }
+.review-timeline-text strong, .review-timeline-text q, .review-timeline-text small { display: block; }
+.review-timeline-text q, .review-timeline-text small { margin-top: var(--space-1); color: var(--text-secondary); font-size: var(--step-0); }
+.review-transcript-evidence { padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.review-transcript-evidence > p { font-size: var(--step-1); line-height: var(--leading-normal); white-space: pre-wrap; }
+.review-transcript-evidence mark { padding: 0.1em 0.25em; color: var(--text-primary); background: var(--evidence-wash); border-bottom: 2px solid var(--evidence); border-radius: var(--radius-sm); }
+.review-transcript-evidence button { padding: 0; background: none; border: 0; font: inherit; text-align: left; cursor: pointer; }
+.review-transcript-evidence mark small { display: inline-block; margin-left: var(--space-2); color: var(--evidence-strong); font-size: var(--step-0); font-weight: var(--weight-bold); }
+.review-transcript-evidence > small { color: var(--text-muted); font-size: var(--step-0); }
+.review-replay-disclosure { margin-top: var(--space-5); border-color: var(--border-strong); }
+.review-replay-disclosure .recording-player { margin-top: 0; }
+.review-replay-disclosure .recording-sync-status { margin-top: var(--space-3); }
+.review-full-reading { margin-top: var(--space-5); border-color: var(--text-primary); }
+.review-full-reading .reading-composition { margin-bottom: var(--space-4); }
+.review-raw-summary, .review-audio-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--space-2); margin: var(--space-5) 0 0; }
+.review-raw-summary > div, .review-audio-summary > div { padding: var(--space-3); background: var(--surface-sunken); border-radius: var(--radius-sm); }
+.review-raw-summary dt, .review-audio-summary dt { color: var(--text-muted); font-size: var(--step-0); }
+.review-raw-summary dd, .review-audio-summary dd { margin: var(--space-1) 0 0; font-size: var(--step-1); font-weight: var(--weight-heavy); font-variant-numeric: tabular-nums; }
+.review-limitations { margin-top: var(--space-5); padding: var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--text-secondary); border-radius: var(--radius-sm); }
+.review-limitations h3 { font-size: var(--step-1); }
+.review-limitations p { margin: var(--space-2) 0 0; color: var(--text-secondary); font-size: var(--step-0); }
+.review-limitations ul { display: grid; gap: var(--space-1); margin: var(--space-2) 0 0; padding-left: var(--space-5); color: var(--text-muted); font-size: var(--step-0); }
 .review-mode-chip { padding: var(--space-2) var(--space-3); color: var(--text-primary); background: var(--accent-sun); border-radius: var(--radius-full); font-size: var(--step-0); font-weight: var(--weight-heavy); text-transform: uppercase; }
 .observation-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); margin: var(--space-4) 0 var(--space-6); }
 .observation-summary-grid > div { min-width: 0; padding: var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-md); }
@@ -275,18 +342,18 @@
   .multimodal-studio, .multimodal-review { padding: var(--space-4); }
   .multimodal-studio,
   .studio-consent,
-  .studio-mode-tabs,
   .studio-stage,
   .studio-controls,
   .studio-controls > *,
   .studio-controls select { min-width: 0; max-width: 100%; }
   .studio-consent label { grid-template-columns: 20px minmax(0, 1fr); }
+  .studio-permission-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .studio-consent span, .studio-consent strong, .studio-consent small,
   .studio-status { min-width: 0; overflow-wrap: anywhere; }
   .multimodal-review-heading { align-items: stretch; flex-direction: column; }
   .studio-heading, .studio-controls { align-items: stretch; flex-direction: column; }
   .studio-live { align-self: flex-start; }
-  .studio-mode-tabs, .observation-summary-grid, .observation-details, .performance-details { grid-template-columns: 1fr; }
+  .observation-summary-grid, .observation-details, .performance-details, .review-retake-strip, .review-exception-summary { grid-template-columns: 1fr; }
   /* The bar keeps its proportions on a phone — the widths ARE the weighting, so
      stacking the segments would delete the thing the chart exists to show. Only
      the height and the label size give way. */
@@ -299,11 +366,21 @@
   .observation-details li > b { text-align: left; }
   .multimodal-review { overflow: hidden; }
   .multimodal-review > * { min-width: 0; }
+  .review-retake-strip li { align-items: stretch; flex-direction: column; }
+  .review-retake-strip .button { width: 100%; }
+  .review-disclosure > summary { align-items: flex-start; }
+  .review-disclosure-body { padding: var(--space-4); }
+  .review-attempt-timeline .timeline-lane.is-rubric { grid-template-columns: 3.5rem minmax(0, 1fr); }
+  .review-timeline-text li { grid-template-columns: 3.5rem minmax(0, 1fr); gap: var(--space-2); }
   .production-source-quote { grid-column: 2 / 4; }
   .voice-meter em { display: none; }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 420px) {
+  .studio-permission-strip { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px), (max-height: 560px) and (max-width: 1050px) {
   .workspace {
     padding-bottom: calc(var(--space-8) + var(--space-7) + env(safe-area-inset-bottom));
   }
@@ -328,7 +405,12 @@
     font-weight: var(--weight-bold);
   }
   .mobile-nav a .nav-icon { width: 20px; height: 20px; }
-  .mobile-nav a.is-active { color: var(--brand); }
+  .mobile-nav a.is-active { color: var(--brand); background: var(--brand-wash); box-shadow: inset 0 3px 0 var(--brand); }
+  .studio-permission-boundary, .review-delivery-boundary,
+  .review-exception-summary > p {
+    font-size: var(--step-1);
+    line-height: var(--leading-normal);
+  }
 }
 
 .production-confirm {
@@ -344,6 +426,9 @@
 
 .production-confirm > span { margin-right: auto; }
 .production-confirm .button { min-height: 44px; padding-inline: var(--space-3); }
+@media (max-width: 760px), (max-height: 560px) and (max-width: 1050px) {
+  .production-confirm .button { min-width: 44px; }
+}
 .production-confirm .is-selected { color: var(--brand-contrast); background: var(--brand); }
 .production-confirm small { flex-basis: 100%; color: var(--text-muted); }
 
@@ -628,6 +713,13 @@
 }
 
 .entry-brand img { width: 132px; height: auto; display: block; margin-bottom: var(--space-6); mix-blend-mode: multiply; }
+.entry-back {
+  display: inline-flex; min-height: 44px; align-items: center;
+  margin: calc(var(--space-3) * -1) 0 var(--space-5);
+  color: var(--brand); font-size: var(--step-0); font-weight: var(--weight-heavy);
+  text-decoration: none;
+}
+.entry-back:hover { text-decoration: underline; text-underline-offset: 3px; }
 .entry-kicker { margin-bottom: var(--space-2); color: var(--brand); font-size: var(--step-0); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
 .entry-title { max-width: 14ch; margin-bottom: var(--space-3); font-size: var(--step-4); }
 .entry-intro { margin-bottom: var(--space-5); color: var(--text-secondary); }
@@ -683,21 +775,6 @@
 }
 .delivery-filler-list span { color: var(--text-secondary); }
 
-/* The consent group carries the privacy boundary, so the band labels are
-   structure rather than decoration: everything above the second band is
-   measured and thrown away, everything below it is kept. */
-.studio-consent-band { margin: var(--space-3) 0 var(--space-1); color: var(--text-on-inverse-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
-.studio-consent-band:first-of-type { margin-top: 0; }
-.studio-consent-band.is-kept { padding-top: var(--space-3); border-top: 1px solid var(--inverse-raised); color: var(--accent-sun); }
-.studio-consent .studio-mode-tabs { margin: var(--space-2) 0 var(--space-1) var(--space-6); }
-/* Inside the consent group the replay control is a peer of the other three, not
-   a card imported from a light surface. The band label above it already carries
-   the distinction, so the only marker it needs is the accent rule down its edge. */
-.studio-consent .studio-recording-consent { min-height: 52px; grid-template-columns: 24px 1fr; margin: 0; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3); color: var(--text-on-inverse); background: transparent; border: 0; border-left: 2px solid var(--accent-sun); border-radius: var(--radius-sm); font-size: var(--step-0); }
-.studio-consent .studio-recording-consent:hover { background: var(--inverse-raised); }
-.studio-consent .studio-recording-consent strong { color: var(--text-on-inverse); font-size: var(--step-0); }
-.studio-consent .studio-recording-consent small { color: var(--text-on-inverse-muted); font-size: var(--step-0); }
-
 /* Attempt timeline. Identity is the lane, so the marks are one hue: the obvious
    warm/green pair for voice-versus-camera separates at ΔE 4.2 under protanopia,
    which is no separation at all for a red-green colourblind reader. */
@@ -708,15 +785,119 @@
 .timeline-track { position: relative; height: 2rem; background: var(--surface-sunken); border-radius: var(--radius-sm); }
 /* Rounded data-ends, and a 2px surface gap so two adjacent cues never read as
    one long one. The hit target is taller than the mark on purpose. */
-.timeline-mark { position: absolute; top: 0; height: 2rem; min-width: 10px; padding: 0; background: var(--accent-orange); border: 2px solid var(--surface-sunken); border-radius: var(--radius-sm); cursor: pointer; }
+.timeline-mark { position: absolute; top: 0; height: 2rem; min-width: 10px; padding: 0; background: var(--accent-orange); border: 2px solid var(--surface-sunken); border-radius: var(--radius-sm); cursor: pointer; touch-action: manipulation; }
+/* The plotted bar stays proportional while its button receives a 44×44 hit
+   region. A pseudo-element belongs to the same accessible control and is hit
+   tested with it, so the chart gains no duplicate focus stops. */
+.timeline-mark::after { content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%); }
 .timeline-mark:disabled { cursor: default; }
 .timeline-mark:hover:not(:disabled), .timeline-mark:focus-visible { background: var(--accent-orange-strong); }
+/* Rubric lanes on the same clock as the delivery lanes. The state colours are
+   the evidence map's, deliberately: one idea must not grow two vocabularies,
+   and a reader who learned "filled means cited" upstairs should not relearn it
+   here. An empty lane keeps its row — the gap is the finding. */
+.timeline-legend { display: flex; flex-wrap: wrap; gap: var(--space-4); margin: var(--space-4) 0 var(--space-2); color: var(--text-muted); font-size: var(--step-0); }
+.timeline-legend span { display: inline-flex; align-items: center; gap: var(--space-2); }
+.timeline-legend i { width: var(--space-3); height: var(--space-3); background: var(--absence); border-radius: var(--radius-full); }
+.timeline-legend span[data-evidence="found"] i { background: var(--evidence); }
+.timeline-legend span[data-evidence="reused"] i { background: transparent; border: 2px solid var(--evidence); }
+.timeline-legend-cut i { width: 0; height: var(--space-4); background: transparent; border-radius: 0; border-left: 2px dashed var(--text-secondary); }
+.timeline-lane.is-rubric { grid-template-columns: 9rem minmax(0, 1fr); }
+.timeline-lane.is-rubric .timeline-lane-label { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: normal; font-weight: var(--weight-bold); }
+.timeline-lane.is-rubric .timeline-track[data-evidence="absent"] { border: 1px dashed var(--absence); }
+.timeline-mark.is-evidence { background: var(--evidence); }
+.timeline-mark.is-evidence:hover:not(:disabled), .timeline-mark.is-evidence:focus-visible { background: var(--evidence-strong); }
+.timeline-lane-note { position: absolute; inset: 0; display: flex; align-items: center; padding-left: var(--space-3); color: var(--text-muted); font-size: var(--step-0); }
+.timeline-lane-note[data-evidence="absent"] { color: var(--text-secondary); font-weight: var(--weight-bold); }
+.timeline-cutline { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed var(--text-secondary); pointer-events: none; }
+.timeline-rubric-summary { margin: var(--space-3) 0 var(--space-4); color: var(--text-secondary); font-size: var(--step-0); }
+.timeline-bell-note { margin-top: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--step-0); }
+
+/* The transcript with its cited spans marked in place. These are the student's
+   own words rendered as text nodes; the marks only locate them. */
+.transcript-evidence { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
+.transcript-evidence-body { margin-top: var(--space-4); font-size: var(--step-1); line-height: var(--leading-relaxed); white-space: pre-wrap; }
+.transcript-evidence-body mark { padding: 0.1em 0.25em; color: var(--text-primary); background: var(--evidence-wash); border-bottom: 2px solid var(--evidence); border-radius: var(--radius-sm); }
+.transcript-evidence-mark { padding: 0; background: none; border: 0; font: inherit; text-align: left; cursor: pointer; }
+.transcript-evidence-mark:hover mark, .transcript-evidence-mark:focus-visible mark { background: var(--evidence-border); }
+.transcript-evidence-mark small, .transcript-evidence-static small { display: inline-block; margin-left: var(--space-2); color: var(--evidence-strong); font-size: var(--step-0); font-weight: var(--weight-bold); }
+
+/* Answering one criterion again, without another full take. */
+.criterion-retake { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
+.criterion-retake-list { display: grid; gap: var(--space-2); margin-top: var(--space-4); padding: 0; list-style: none; }
+.criterion-retake-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--absence); border-radius: var(--radius-sm); }
+/* An in-progress input, not a citation — so it borrows the attention accent
+   rather than the reserved evidence hue. */
+.criterion-retake-panel { margin: var(--space-4) 0; padding: var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--accent-sun); border-radius: var(--radius-sm); }
+.criterion-retake-panel textarea { width: 100%; margin: var(--space-3) 0; }
+
+/* The rubric shown as a target while the attempt is still running. */
+.attempt-target-list { display: grid; gap: var(--space-2); margin: var(--space-3) 0; padding: 0; list-style: none; }
+.attempt-target-list li { display: flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); font-size: var(--step-0); }
+.attempt-target-list i { width: var(--space-3); height: var(--space-3); flex: none; background: var(--absence); border-radius: var(--radius-full); }
+
+/* Per-criterion coaching, nested inside the evidence card it belongs to. It
+   sits below the verdict because it explains the verdict rather than
+   competing with it: the cited quote stays the largest thing on the card. */
+.coach-trigger { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); margin: var(--space-4) 0; padding: var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-sm); }
+.coach-trigger strong { display: block; font-size: var(--step-1); }
+.coach-trigger p { margin-top: var(--space-2); color: var(--text-secondary); font-size: var(--step-0); }
+.coach-trigger button { flex: none; }
+.criterion-coaching { margin-top: var(--space-4); border-top: 1px solid var(--border); }
+.criterion-coaching > summary { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) 0; color: var(--text-primary); font-size: var(--step-0); font-weight: var(--weight-bold); cursor: pointer; list-style: none; }
+.criterion-coaching > summary::-webkit-details-marker { display: none; }
+.criterion-coaching > summary::after { content: '+'; width: 1.75rem; height: 1.75rem; display: grid; flex: none; place-items: center; margin-left: auto; color: var(--text-muted); background: var(--surface-sunken); border-radius: var(--radius-full); }
+.criterion-coaching[open] > summary::after { content: '−'; }
+.criterion-coaching > summary strong { flex: none; color: var(--text-muted); font-size: var(--step-0); font-variant-numeric: tabular-nums; }
+.criterion-coaching-body { padding: var(--space-2) 0 var(--space-3); }
+/* A claim with its support IS a citation, so it uses the evidence channel.
+   An unbacked claim is NOT a failing mark — it is the next thing to rehearse
+   — so it takes the neutral absence tone, the same one an uncovered criterion
+   uses everywhere else. Red here would reassert the grade we do not give. */
+.claim-citation-list { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.claim-citation-list li { padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--absence); border-radius: var(--radius-sm); }
+.claim-citation-list li[data-supported="true"] { border-left-color: var(--evidence); }
+.claim-quote { display: block; color: var(--text-primary); font-family: var(--font-voice); font-size: var(--step-1); line-height: var(--leading-snug); }
+.claim-support, .claim-gap { margin-top: var(--space-2); font-size: var(--step-0); }
+.claim-support { color: var(--text-secondary); }
+.claim-gap { color: var(--text-primary); }
+.criterion-coaching-empty, .criterion-coaching-note { margin-top: var(--space-2); color: var(--text-secondary); font-size: var(--step-0); }
+.criterion-wording { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; margin-top: var(--space-3); color: var(--text-secondary); font-size: var(--step-0); }
+.criterion-wording strong { color: var(--text-primary); }
+.criterion-wording span { padding: var(--space-1) var(--space-2); background: var(--surface-sunken); border-radius: var(--radius-sm); }
+.stronger-form { margin-top: var(--space-4); }
+.stronger-form blockquote { margin: var(--space-2) 0 0; padding: var(--space-3) var(--space-4); color: var(--text-primary); background: var(--surface-sunken); border-radius: var(--radius-sm); font-size: var(--step-1); line-height: var(--leading-relaxed); }
+.stronger-form-blanks { margin-top: var(--space-3); font-size: var(--step-0); }
+.stronger-form-blanks span { display: block; color: var(--text-secondary); }
+.stronger-form-blanks ol { margin: var(--space-2) 0 0; padding-left: var(--space-5); color: var(--text-secondary); }
+
+/* Wording that invites the next question, listed with that question. */
+.wording-cue-block { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.wording-cue-list { display: grid; gap: var(--space-2); margin-top: var(--space-3); padding: 0; list-style: none; }
+.wording-cue-list li { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: var(--space-3); align-items: baseline; padding: var(--space-2) var(--space-3); background: var(--surface-sunken); border-radius: var(--radius-sm); }
+.wording-cue-list li strong { font-size: var(--step-0); }
+.wording-cue-list li span { color: var(--text-muted); font-size: var(--step-0); }
+.wording-cue-list li small { color: var(--text-secondary); font-size: var(--step-0); }
+
+/* The live chip counts down when a limit is set, and says so as it closes. */
+.studio-live small { margin-left: var(--space-2); font-size: var(--step-0); font-weight: var(--weight-bold); }
+.studio-live.is-closing { color: var(--caution); }
+.studio-limit-note { margin-top: var(--space-2); color: var(--text-secondary); font-size: var(--step-0); }
+
 .timeline-axis { display: flex; justify-content: space-between; margin: var(--space-2) 0 0 calc(5rem + var(--space-3)); color: var(--text-muted); font-size: var(--step-0); }
 
 @media (max-width: 40rem) {
   .timeline-lane { grid-template-columns: 3.5rem minmax(0, 1fr); gap: var(--space-2); }
   .timeline-axis { margin-left: calc(3.5rem + var(--space-2)); }
 }
-/* The saved review already lists every cue as text below, so the plotted lanes
-   are the second reading of the same data rather than the only one. */
-.saved-attempt-timeline { margin: 0 0 var(--space-5); padding-top: 0; border-top: 0; }
+/* Saved review keeps the plot primary and exposes its complete text equivalent
+   on demand immediately beneath it. */
+.saved-attempt-timeline { margin: var(--space-5) 0 0; padding-top: 0; border-top: 0; }
+
+@media (max-width: 760px), (max-height: 560px) and (max-width: 1050px) {
+  .timeline-rubric-summary, .timeline-bell-note, .studio-limit-note,
+  .production-boundary-note {
+    font-size: var(--step-1);
+    line-height: var(--leading-normal);
+  }
+}

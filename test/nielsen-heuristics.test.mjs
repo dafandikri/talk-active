@@ -24,7 +24,11 @@ const PRACTICE = read('apps/web/components/practice-room.tsx');
 const PROGRESS = read('apps/web/components/progress-view.tsx');
 const RUBRIC = read('apps/web/components/rubric-editor.tsx');
 const FRAME = read('apps/web/components/workspace-frame.tsx');
+const ENTRY = read('apps/web/components/entry-gate.tsx');
+const LANDING = read('apps/web/components/production-shell.tsx');
+const WORKSPACE = read('apps/web/app/(workspace)/workspace/page.tsx');
 const STUDIO = read('apps/web/components/multimodal-studio.tsx');
+const MULTIMODAL_REVIEW = read('apps/web/components/multimodal-review.tsx');
 const TOAST = read('apps/web/components/toast.tsx');
 const STYLES = read('src/styles.css');
 const SHELL_STYLES = read('apps/web/app/shell.css');
@@ -78,6 +82,40 @@ test('H-3 every stage of the practice flow has a marked exit', () => {
   assert.match(PRACTICE, /Revise transcript/u, 'review must be able to return to the attempt');
   assert.match(PRACTICE, /Back to attempt review/u, 'the Q&A drill must be able to go back');
   assert.match(STUDIO, /Finish &amp; assemble review/u, 'a running capture must be stoppable by the user');
+  assert.match(ENTRY, /Back to landing/u, 'the entry decision must offer a visible return to the landing page');
+  assert.match(FRAME, /Back to Talk-Active landing page/u, 'workspace chrome must always return to the landing page');
+});
+
+test('H-3 the attempt step opens on writing, and capture is a choice the user makes', () => {
+  // The step used to open with the camera panel already mounted, so "start an
+  // attempt" and "hand over a camera and a microphone" were one decision. They
+  // are two now: writing is the default, live capture is a labelled switch, and
+  // the studio is not on the page — not merely idle — until it is chosen.
+  assert.match(
+    PRACTICE,
+    /useState<CaptureMode>\('write'\)/u,
+    'the attempt step must default to the typed transcript',
+  );
+  assert.match(
+    PRACTICE,
+    /\{captureMode === 'record' && <MultimodalStudio/u,
+    'the capture panel must be absent until live capture is chosen',
+  );
+  for (const label of ['Write or paste', 'Record live']) {
+    assert.ok(PRACTICE.includes(label), `both capture routes must be named on screen: ${label}`);
+  }
+  // Choosing capture is not consenting to any signal within it. The checklist
+  // states that in the words the user reads, before anything is requested.
+  assert.match(
+    STUDIO,
+    /Choose what this rehearsal may observe/u,
+    'live capture must present its observation checklist before Start',
+  );
+  assert.match(
+    STUDIO,
+    /every signal starts off/u,
+    'the checklist must say that nothing is enabled by default',
+  );
 });
 
 test('H-3 an irreversible action says so before it is taken', () => {
@@ -171,7 +209,11 @@ test('H-6 a chart explains its own encoding in place', () => {
 test('H-7 the workspace serves a returning user as well as a first-time one', () => {
   assert.match(FRAME, /skip-link|Skip to workspace content/u, 'a keyboard user must be able to skip the chrome');
   assert.match(PROGRESS, /project-switcher/u, 'a returning user with several projects must be able to choose one');
-  assert.match(PRACTICE, /href="\/rubric"/u, 'the active rubric must be reachable from the practice flow');
+  assert.match(
+    PRACTICE,
+    /href=\{`\/rubric\$\{projectQuery\}`\}/u,
+    'the selected project rubric must be reachable without losing its identity',
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -191,6 +233,11 @@ test('H-8 a control with one option is not shown at all', () => {
     PROGRESS,
     /projects\.length > 1 && <div className="project-switcher"/u,
     'a dropdown holding a single option promises a choice the product cannot offer',
+  );
+  assert.match(
+    WORKSPACE,
+    /projects\.length > 1 && <div className="project-switcher"/u,
+    'the workspace project chooser must also disappear when there is nothing to choose',
   );
 });
 
@@ -229,10 +276,12 @@ test('H-9 an error is never signalled by colour alone', () => {
 //  10. Help and documentation
 // ---------------------------------------------------------------------------
 test('H-10 the limits of the analysis are documented in the product, not a manual', () => {
-  assert.match(FRAME, /How it works/u, 'an explanation must be reachable from every workspace page');
+  assert.match(FRAME, /Landing page/u, 'the public landing page must be reachable from every workspace page');
+  assert.doesNotMatch(FRAME, /How it works/u, 'workspace navigation must not add a redundant help destination');
+  assert.doesNotMatch(LANDING, /How it works/u, 'the landing page must not restore the removed explanatory section');
   assert.match(PRACTICE, /not confidence or speaking ability/u, 'the review must state what it is not');
   assert.match(
-    STUDIO,
+    MULTIMODAL_REVIEW,
     /describes one rehearsal attempt, not your ability/u,
     'the summary figure must carry its own boundary beside it',
   );
@@ -254,6 +303,10 @@ test('the heuristics needing a rendered page are covered in the browser suite', 
     ],
     'e2e/production-ui/progress-charts.spec.ts': [
       'never draws a chart it has no history for', // H-8: an empty state instead of an empty axis
+    ],
+    'e2e/production-ui/navigation-history.spec.ts': [
+      'predictable browser-back path', // H-3: route choices unwind in the order the user made them
+      'How it works', // H-8: the removed explanatory detour stays absent at mobile size
     ],
   };
   for (const [file, needles] of Object.entries(browserChecks)) {

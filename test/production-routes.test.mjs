@@ -21,6 +21,7 @@ const routeFiles = [
   'apps/web/app/api/rubrics/parse/route.ts',
   'apps/web/app/api/projects/route.ts',
   'apps/web/app/api/projects/current/route.ts',
+  'apps/web/app/api/projects/[id]/route.ts',
   'apps/web/app/api/projects/[id]/rubric/route.ts',
   'apps/web/app/api/projects/[id]/sources/route.ts',
   'apps/web/app/api/projects/[id]/sources/[sourceId]/route.ts',
@@ -188,6 +189,11 @@ test('M-9 recovers only one identity-owned project with its rubric and source me
   const capabilities = await readFile('apps/web/app/api/capabilities/route.ts', 'utf8');
   assert.match(capabilities, /persistence: databaseAvailable && userId \? 'neon' : 'local'/u);
   assert.match(capabilities, /sourceDocuments:[\s\S]+databaseAvailable && userId/u);
+  assert.match(
+    capabilities,
+    /coach:[\s\S]+AI_COACH_MODEL[\s\S]+\|\| process\.env\.AI_EVIDENCE_MODEL/u,
+    'claim coaching must be advertised when its documented evidence-model fallback is configured',
+  );
   const service = await readFile('apps/web/lib/services/workspace.ts', 'utf8');
   assert.match(service, /getCurrentOwnedProject[\s\S]+if \(!userId\)[\s\S]+identity: 'guest'[\s\S]+current: null/gu);
   assert.match(service, /innerJoin\(rubrics[\s\S]+rubrics\.confirmedAt[\s\S]+where\(eq\(projects\.userId, userId\)\)[\s\S]+orderBy\(desc\(projects\.updatedAt\)/gu);

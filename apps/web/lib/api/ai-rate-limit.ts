@@ -6,7 +6,7 @@ import { Redis } from '@upstash/redis';
 
 import { ApiProblem } from './problem.ts';
 
-export type AiRateLimitRoute = 'rubric' | 'analysis' | 'evidence' | 'question' | 'defense' | 'confirmation';
+export type AiRateLimitRoute = 'rubric' | 'analysis' | 'evidence' | 'question' | 'defense' | 'confirmation' | 'coach';
 
 export interface AiRateLimitResult {
   success: boolean;
@@ -43,6 +43,8 @@ export const AI_RATE_LIMIT_ROUTE_COST: Readonly<Record<AiRateLimitRoute, number>
   // Stateless rejection performs one corrective re-judge and may use two
   // schema/grounding attempts to refresh its question.
   confirmation: 3,
+  // One coaching pass per criterion, each with one corrective retry.
+  coach: 40,
 };
 
 const MODEL_ENVIRONMENT: Readonly<Record<AiRateLimitRoute, readonly string[]>> = {
@@ -52,6 +54,7 @@ const MODEL_ENVIRONMENT: Readonly<Record<AiRateLimitRoute, readonly string[]>> =
   question: ['AI_QUESTION_MODEL'],
   defense: ['AI_DEFENSE_MODEL', 'AI_EVIDENCE_MODEL'],
   confirmation: ['AI_EVIDENCE_MODEL', 'AI_QUESTION_MODEL'],
+  coach: ['AI_COACH_MODEL', 'AI_EVIDENCE_MODEL'],
 };
 
 const DEFAULT_REFILL_TOKENS = 20;
@@ -97,6 +100,20 @@ export function statelessAnalysisRateLimitCost(
     : 0;
   const questionCalls = configuredValue(environment, 'AI_QUESTION_MODEL') ? 2 : 0;
   return Math.max(1, evidenceCalls + questionCalls);
+}
+
+export function coachRateLimitCost(
+  criterionCount: number,
+  environment: NodeJS.ProcessEnv = process.env,
+): number {
+  if (!Number.isSafeInteger(criterionCount) || criterionCount < 1 || criterionCount > 20) {
+    throw new Error('criterionCount must be an integer between 1 and 20.');
+  }
+  // One coaching call per criterion, each entitled to one corrective retry.
+  return configuredValue(environment, 'AI_COACH_MODEL')
+    || configuredValue(environment, 'AI_EVIDENCE_MODEL')
+    ? criterionCount * 2
+    : 1;
 }
 
 export function evidenceRateLimitCost(

@@ -18,9 +18,13 @@ import {
   parseSavedSessions,
   buildCriterionTrails,
   compareAttemptEvidence,
+  latestCompatibleProgressHistory,
+  latestCompatibleSavedSessions,
+  mergeProgressHistory,
   PRODUCTION_SESSIONS_KEY,
   summarizeRecurringWeaknesses,
 } from '@/lib/progress';
+import { writeProjectToCurrentUrl } from '@/lib/project-route';
 import { CoverageTrend, CriterionSparkline } from './progress-charts';
 import { useOwnedProjects } from './use-owned-projects';
 
@@ -39,6 +43,17 @@ function historyLabel(state: SyncState): string {
   if (state === 'loading') return 'Checking synced history…';
   if (state === 'unavailable') return 'Local history · sync unavailable';
   return 'Local browser history';
+}
+
+function trendHistoryLabel(
+  state: SyncState,
+  rehearsalFormat: SavedSession['rehearsalFormat'] | null,
+): string {
+  if (rehearsalFormat === 'interview') return 'Interview answer aggregates only';
+  if (rehearsalFormat === 'presentation') return state === 'synced'
+    ? 'Synced presentation attempts'
+    : 'Presentation attempts only';
+  return historyLabel(state);
 }
 
 function WeaknessEvidence({ weakness }: Readonly<{ weakness: RecurringWeakness }>) {
@@ -113,17 +128,62 @@ export function ProgressView() {
   const [sessions, setSessions] = useState<SavedSession[]>([]);
   const [synced, setSynced] = useState<ProgressResponse | null>(null);
   const [syncState, setSyncState] = useState<SyncState>('local');
-  const { projects } = useOwnedProjects();
+  const { projects, loading: projectsLoading } = useOwnedProjects();
   // Null means "whatever the newest saved attempt belongs to". Set once the
   // user picks, so switching projects does not fight the default.
   const [chosenProjectId, setChosenProjectId] = useState<string | null>(null);
+  const [selectionHydrated, setSelectionHydrated] = useState(false);
+  const [selectionNotice, setSelectionNotice] = useState<string | null>(null);
 
   useEffect(() => {
     setSessions(parseSavedSessions(localStorage.getItem(PRODUCTION_SESSIONS_KEY)));
+    setChosenProjectId(new URLSearchParams(window.location.search).get('project'));
+    setSelectionHydrated(true);
+
+    function restoreProjectFromHistory(): void {
+      setSelectionNotice(null);
+      setChosenProjectId(new URLSearchParams(window.location.search).get('project'));
+    }
+    window.addEventListener('popstate', restoreProjectFromHistory);
+    return () => window.removeEventListener('popstate', restoreProjectFromHistory);
   }, []);
 
-  const defaultProjectId = latestRemoteProjectId(sessions) ?? projects[0]?.project.id ?? null;
-  const progressProjectId = chosenProjectId ?? defaultProjectId;
+  function writeProjectToUrl(projectId: string | null, mode: 'push' | 'replace'): void {
+    writeProjectToCurrentUrl(projectId, mode);
+  }
+
+  function chooseProject(projectId: string): void {
+    if (projectId === chosenProjectId) return;
+    setSelectionNotice(null);
+    setChosenProjectId(projectId);
+    writeProjectToUrl(projectId, 'push');
+  }
+
+  useEffect(() => {
+    if (!selectionHydrated || projectsLoading) return;
+    if (projects.length === 0) {
+      if (chosenProjectId) {
+        setChosenProjectId(null);
+        setSelectionNotice('That synced project is not available in this session. Local history is shown instead.');
+        writeProjectToUrl(null, 'replace');
+      }
+      return;
+    }
+    if (chosenProjectId && projects.some((summary) => summary.project.id === chosenProjectId)) return;
+
+    const savedProjectId = latestRemoteProjectId(sessions);
+    const fallback = projects.find((summary) => summary.project.id === savedProjectId)
+      ?? projects[0]!;
+    if (chosenProjectId) {
+      setSelectionNotice(`That project is not available. ${fallback.project.title} is shown instead.`);
+    }
+    setChosenProjectId(fallback.project.id);
+    writeProjectToUrl(fallback.project.id, 'replace');
+  }, [chosenProjectId, projects, projectsLoading, selectionHydrated, sessions]);
+
+  const progressProjectId = projects.some((summary) => summary.project.id === chosenProjectId)
+    ? chosenProjectId
+    : null;
 
   useEffect(() => {
     if (!progressProjectId) {
@@ -149,30 +209,48 @@ export function ProgressView() {
   // With more than one project that label is simply wrong, and it was already
   // wrong for anyone practising against a rubric of their own.
   const activeProjectTitle = projects.find((summary) => summary.project.id === progressProjectId)
-    ?.project.title ?? LOCAL_WORKSPACE_LABEL;
+    ?.project.title
+    ?? sessions.find((session) => session.projectId === progressProjectId)?.projectTitle
+    ?? LOCAL_WORKSPACE_LABEL;
 
   const scopedSessions = useMemo(() => sessions.filter((session) =>
     progressProjectId ? session.projectId === progressProjectId : session.projectId === null),
   [sessions, progressProjectId]);
-  const localWeaknesses = useMemo(() => summarizeRecurringWeaknesses(scopedSessions), [scopedSessions]);
-  const localComparisons = useMemo(() => compareAttemptEvidence(scopedSessions), [scopedSessions]);
+  const compatibleScopedSessions = useMemo(
+    () => latestCompatibleSavedSessions(scopedSessions),
+    [scopedSessions],
+  );
+  const localWeaknesses = useMemo(
+    () => summarizeRecurringWeaknesses(compatibleScopedSessions),
+    [compatibleScopedSessions],
+  );
+  const localComparisons = useMemo(
+    () => compareAttemptEvidence(compatibleScopedSessions),
+    [compatibleScopedSessions],
+  );
   const recurringWeaknesses = syncState === 'synced'
     ? synced?.recurringWeaknesses ?? []
     : localWeaknesses;
-  const trendPoints = syncState === 'synced'
-    ? (synced?.attempts ?? []).map((attempt) => ({
-      id: attempt.attemptId,
-      createdAt: attempt.createdAt,
-      evidenceScore: Math.round(attempt.coverage * 100),
-    }))
-    : scopedSessions.map((session) => ({
-      id: session.id,
-      createdAt: session.createdAt,
-      evidenceScore: session.evidenceScore,
-    }));
+  const historyEntries = useMemo(() => mergeProgressHistory(
+    syncState === 'synced' ? synced?.attempts ?? [] : [],
+    scopedSessions,
+  ), [scopedSessions, syncState, synced?.attempts]);
+  const browserOnlyCount = syncState === 'synced'
+    ? historyEntries.filter((entry) => entry.source === 'browser').length
+    : 0;
+  const compatibleHistoryEntries = useMemo(
+    () => latestCompatibleProgressHistory(historyEntries),
+    [historyEntries],
+  );
+  const trendPoints = compatibleHistoryEntries.map((entry) => ({
+    id: entry.id,
+    createdAt: entry.createdAt,
+    evidenceScore: entry.evidenceScore,
+  }));
   const latest = trendPoints.at(-1);
   const previous = trendPoints.at(-2);
   const delta = latest && previous ? latest.evidenceScore - previous.evidenceScore : null;
+  const latestTrendFormat = compatibleHistoryEntries.at(-1)?.rehearsalFormat ?? null;
   const primaryWeakness = recurringWeaknesses[0];
   const comparisons = syncState === 'synced' ? synced?.attemptComparisons ?? [] : localComparisons;
   const latestComparison = comparisons.at(-1);
@@ -182,8 +260,6 @@ export function ProgressView() {
     () => new Map(buildCriterionTrails(comparisons).map((trail) => [trail.criterionId, trail])),
     [comparisons],
   );
-  const syncedArchive = synced?.attempts ?? [];
-
   return <section className="view is-visible" aria-labelledby="progressTitle">
     <header className="page-header compact-header"><div className="workflow-heading"><img className="workflow-mark" src={logo.src} alt="" /><div><p className="overline">Practice history</p><h1 id="progressTitle">See what changed between attempts.</h1><p className="page-lede">Track explicit evidence and recurring weak claims without inventing a universal speaking score.</p></div></div></header>
 
@@ -193,19 +269,23 @@ export function ProgressView() {
         operate a control with one option in it. */}
     {projects.length > 1 && <div className="project-switcher">
       <label htmlFor="progressProject">Project</label>
-      <select id="progressProject" value={progressProjectId ?? ''} onChange={(event) => setChosenProjectId(event.target.value)}>
+      <select id="progressProject" value={progressProjectId ?? ''} onChange={(event) => chooseProject(event.target.value)}>
         {projects.map((summary) => <option key={summary.project.id} value={summary.project.id}>{summary.project.title}</option>)}
       </select>
       <span className="project-switcher-meta">{(() => {
         const active = projects.find((summary) => summary.project.id === progressProjectId);
         if (!active) return 'Showing locally saved history.';
+        if (browserOnlyCount > 0) {
+          return `${active.attemptCount} synced ${active.attemptCount === 1 ? 'attempt' : 'attempts'} · ${browserOnlyCount} browser-only ${browserOnlyCount === 1 ? 'summary' : 'summaries'}`;
+        }
         if (active.attemptCount === 0) return 'No attempts saved to this project yet.';
         return `${active.attemptCount} saved ${active.attemptCount === 1 ? 'attempt' : 'attempts'} · last on ${attemptDate(active.lastAttemptAt ?? active.project.updatedAt)}`;
       })()}</span>
     </div>}
+    {selectionNotice && <p className="empty-list" role="status">{selectionNotice}</p>}
 
     <div className="progress-stats">
-      <article className="surface"><span>Sessions</span><strong>{trendPoints.length}</strong><small>{syncState === 'synced' ? 'saved to this project' : 'saved in this browser'}</small></article>
+      <article className="surface"><span>Sessions</span><strong>{historyEntries.length}</strong><small>{syncState === 'synced' ? browserOnlyCount > 0 ? 'synced attempts + browser-only summaries' : 'saved to this project' : 'saved in this browser'}</small></article>
       <article className="surface"><span>Latest coverage</span><strong>{latest ? `${latest.evidenceScore}%` : '—'}</strong><small>{delta === null ? 'No comparison yet' : `${delta >= 0 ? '+' : ''}${delta} points from prior attempt`}</small></article>
       <article className="surface"><span>Most recurring gap</span><strong className="stat-word">{primaryWeakness?.criterionName ?? '—'}</strong><small>{primaryWeakness ? `${primaryWeakness.gapCount} incomplete ${primaryWeakness.gapCount === 1 ? 'attempt' : 'attempts'}` : 'No repeated criterion gap yet'}</small></article>
     </div>
@@ -237,26 +317,40 @@ export function ProgressView() {
         </article>)}</div>}
     </section>
 
-    <section className="surface progress-chart-card"><div className="section-title-row"><div><p className="overline">Evidence trend</p><h2 id="coverageTrendTitle">Rubric coverage by attempt</h2></div><span className="session-status">{historyLabel(syncState)}</span></div><CoverageTrend points={trendPoints} labelledBy="coverageTrendTitle" /></section>
+    <section className="surface progress-chart-card"><div className="section-title-row"><div><p className="overline">Evidence trend</p><h2 id="coverageTrendTitle">Rubric coverage by attempt</h2></div><span className="session-status">{trendHistoryLabel(syncState, latestTrendFormat)}</span></div><CoverageTrend points={trendPoints} labelledBy="coverageTrendTitle" /></section>
 
-    {syncState === 'synced'
-      ? <section className="surface history-card"><div className="section-title-row"><div><p className="overline">Session archive</p><h2>Every synced attempt</h2></div></div><div className="session-list full-session-list">{syncedArchive.length === 0
-        ? <p className="empty-list">No attempts have been saved to this project yet.</p>
-        : [...syncedArchive].reverse().map((attempt) => {
-          const date = new Date(attempt.createdAt);
+    <section className="surface history-card">
+      <div className="section-title-row"><div><p className="overline">Session archive</p><h2>{syncState === 'synced' ? 'Saved attempts and browser summaries' : 'Every locally saved attempt'}</h2></div></div>
+      <div className="session-list full-session-list">{historyEntries.length === 0
+        ? <p className="empty-list">{syncState === 'synced' ? 'No attempts or browser summaries have been saved to this project yet.' : 'No sessions saved in the production guest workspace yet.'}</p>
+        : [...historyEntries].reverse().map((entry) => {
+          const date = new Date(entry.createdAt);
+          if (entry.source === 'browser') {
+            const session = entry.session;
+            return <article className="session-row browser-only-session" key={entry.id}>
+              <span className="session-date">{date.getDate()}<br />{date.toLocaleString('en', { month: 'short' })}</span>
+              <span><strong>{activeProjectTitle}</strong><small>{session.rehearsalFormat === 'interview' ? 'Interview answer aggregate' : syncState === 'synced' ? 'Browser-only presentation' : 'Presentation'} · Focus: {session.weakest}</small></span>
+              <span className="session-score"><span className="score-track"><i style={{ width: `${entry.evidenceScore}%` }} /></span>{entry.evidenceScore}%</span>
+              <span className="session-status">{syncState === 'synced' ? 'browser only' : session.defenseStatus ?? 'review only'}</span>
+              <span aria-hidden="true">·</span>
+            </article>;
+          }
+          const attempt = entry.attempt;
           const reviewable = attempt.hasDeliveryReview || attempt.recordingStatus !== null;
           const row = <>
             <span className="session-date">{date.getDate()}<br />{date.toLocaleString('en', { month: 'short' })}</span>
             <span><strong>{activeProjectTitle}</strong><small>{attempt.hasDeliveryReview ? 'Delivery observations and rubric evidence saved' : 'Rubric evidence saved'}</small></span>
-            <span className="session-score"><span className="score-track"><i style={{ width: `${Math.round(attempt.coverage * 100)}%` }} /></span>{Math.round(attempt.coverage * 100)}%</span>
+            <span className="session-score"><span className="score-track"><i style={{ width: `${entry.evidenceScore}%` }} /></span>{entry.evidenceScore}%</span>
             <span className="session-status">{attempt.recordingStatus ? `replay ${attempt.recordingStatus}` : attempt.hasDeliveryReview ? 'review saved' : 'rubric only'}</span>
             <span aria-hidden="true">{reviewable ? '→' : '·'}</span>
           </>;
           return reviewable
-            ? <Link className="session-row saved-attempt-link" href={`/attempts/${encodeURIComponent(attempt.attemptId)}`} key={attempt.attemptId} aria-label={`Review saved attempt from ${attemptDate(attempt.createdAt)}`}>{row}</Link>
-            : <article className="session-row" key={attempt.attemptId}>{row}</article>;
-        })}</div></section>
-      : <section className="surface history-card"><div className="section-title-row"><div><p className="overline">Session archive</p><h2>Every locally saved attempt</h2></div></div><div className="session-list full-session-list">{scopedSessions.length === 0 ? <p className="empty-list">No sessions saved in the production guest workspace yet.</p> : [...scopedSessions].reverse().map((session) => { const date = new Date(session.createdAt); return <article className="session-row" key={session.id}><span className="session-date">{date.getDate()}<br />{date.toLocaleString('en', { month: 'short' })}</span><span><strong>{activeProjectTitle}</strong><small>Focus: {session.weakest}</small></span><span className="session-score"><span className="score-track"><i style={{ width: `${session.evidenceScore}%` }} /></span>{session.evidenceScore}%</span><span className="session-status">{session.defenseStatus ?? 'review only'}</span><span aria-hidden="true">·</span></article>; })}</div></section>}
-    <p className="production-boundary-note">Synced progress is aggregated from saved verdict rows with zero model calls. Older local summaries remain labelled when their original criterion evidence was never retained.</p>
+            ? <Link className="session-row saved-attempt-link" href={`/attempts/${encodeURIComponent(attempt.attemptId)}${progressProjectId ? `?project=${encodeURIComponent(progressProjectId)}` : ''}`} key={entry.id} aria-label={`Review saved attempt from ${attemptDate(attempt.createdAt)}`}>{row}</Link>
+            : <article className="session-row" key={entry.id}>{row}</article>;
+        })}</div>
+    </section>
+    <p className="production-boundary-note">{syncState === 'synced'
+      ? 'Recurring gaps and exact attempt comparisons use synced verdict rows only, with zero model calls. Project-scoped browser summaries appear only in the session count, coverage trend, and archive; separate interview answers remain page-local.'
+      : 'Local recurring gaps and comparisons use only criterion evidence retained in this browser. Older summaries stay labelled when their original quote or missing-cue list was never retained.'}</p>
   </section>;
 }

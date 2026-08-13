@@ -30,7 +30,7 @@ export async function requestContract<T>(
   return schema.parse(body);
 }
 
-export function jsonRequest(method: 'POST' | 'PUT' | 'DELETE', body?: unknown): RequestInit {
+export function jsonRequest(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', body?: unknown): RequestInit {
   return {
     method,
     headers: { 'content-type': 'application/json' },

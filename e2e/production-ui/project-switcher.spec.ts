@@ -8,12 +8,13 @@ import { expect, test, type Page } from '@playwright/test';
 
 const CREATED = '2026-08-10T08:00:00.000Z';
 
-function project(id: string, title: string, attemptCount: number) {
+function project(id: string, title: string, attemptCount: number, language: 'id-ID' | 'en-US' = 'id-ID') {
   return {
     project: {
       id,
       userId: 'user-switcher',
       title,
+      language,
       eventContext: null,
       deadline: null,
       createdAt: CREATED,
@@ -84,7 +85,7 @@ test('with one project there is no switcher to operate', async ({ page }) => {
 test('a second project brings a switcher, and switching changes the history shown', async ({ page }) => {
   await mockWorkspace(page, [
     project('p-finals', 'Talk-Active · RISTEK Finals', 3),
-    project('p-thesis', 'Thesis defence · Semester 7', 1),
+    project('p-thesis', 'Thesis defence · Semester 7', 1, 'en-US'),
   ]);
   await page.goto('/progress');
 
@@ -99,11 +100,58 @@ test('a second project brings a switcher, and switching changes the history show
 
   await switcher.locator('select').selectOption('p-thesis');
 
+  await expect(page).toHaveURL('/progress?project=p-thesis');
+  await expect(page.locator('.main-nav a').filter({ hasText: 'Home' }))
+    .toHaveAttribute('href', '/workspace?project=p-thesis');
+  await expect(page.locator('.mobile-nav a').filter({ hasText: 'Rubric' }))
+    .toHaveAttribute('href', '/rubric?project=p-thesis');
   await expect(page.locator('.full-session-list')).toContainText('Thesis defence · Semester 7');
   await expect(page.locator('.full-session-list')).not.toContainText('RISTEK Finals');
   // Switching has to refetch, not just relabel. A page that renames the header
   // while showing the previous project's numbers is worse than no switcher.
   await expect(page.locator('.coverage-trend-latest')).toContainText('40%');
+
+  await page.goBack();
+  await expect(page).toHaveURL('/progress?project=p-finals');
+  await expect(switcher.locator('select')).toHaveValue('p-finals');
+  await expect(page.locator('.coverage-trend-latest')).toContainText('80%');
+});
+
+test('a project-specific progress deep link survives reload', async ({ page }) => {
+  await mockWorkspace(page, [
+    project('p-finals', 'Talk-Active · RISTEK Finals', 3),
+    project('p-thesis', 'Thesis defence · Semester 7', 1, 'en-US'),
+  ]);
+  await page.goto('/progress?project=p-thesis');
+
+  await expect(page.locator('.project-switcher select')).toHaveValue('p-thesis');
+  await expect(page.locator('.full-session-list')).toContainText('Thesis defence · Semester 7');
+  await expect(page.locator('.coverage-trend-latest')).toContainText('40%');
+
+  await page.reload();
+  await expect(page).toHaveURL('/progress?project=p-thesis');
+  await expect(page.locator('.project-switcher select')).toHaveValue('p-thesis');
+  await expect(page.locator('.coverage-trend-latest')).toContainText('40%');
+});
+
+test('the workspace project choice carries its identity into practice and survives reload', async ({ page }) => {
+  await mockWorkspace(page, [
+    project('p-finals', 'Talk-Active · RISTEK Finals', 3),
+    project('p-thesis', 'Thesis defence · Semester 7', 1, 'en-US'),
+  ]);
+  await page.goto('/workspace');
+
+  const switcher = page.locator('.project-switcher');
+  await expect(switcher).toBeVisible();
+  await switcher.locator('select').selectOption('p-thesis');
+  await expect(page.locator('.project-kicker')).toContainText('Thesis defence · Semester 7');
+  await expect(page.getByRole('link', { name: 'Continue practising' }))
+    .toHaveAttribute('href', '/practice?project=p-thesis');
+  await expect(page).toHaveURL(/\/workspace\?project=p-thesis$/u);
+
+  await page.reload();
+  await expect(switcher.locator('select')).toHaveValue('p-thesis');
+  await expect(page.locator('.project-kicker')).toContainText('Thesis defence · Semester 7');
 });
 
 test('the switcher reports what each project actually holds', async ({ page }) => {
@@ -111,10 +159,22 @@ test('the switcher reports what each project actually holds', async ({ page }) =
     project('p-finals', 'Talk-Active · RISTEK Finals', 3),
     project('p-empty', 'Grant pitch · not started', 0),
   ]);
+  await page.addInitScript(() => localStorage.setItem('talkactive.production.sessions.v1', JSON.stringify([{
+    id: 'browser-interview-summary',
+    createdAt: '2026-08-11T08:00:00.000Z',
+    evidenceScore: 80,
+    weakest: 'Impact evidence',
+    defenseStatus: null,
+    projectId: 'p-finals',
+    projectTitle: 'Talk-Active · RISTEK Finals',
+    projectLanguage: 'id-ID',
+    criteria: [],
+  }])));
   await page.goto('/progress');
 
   const switcher = page.locator('.project-switcher');
-  await expect(switcher.locator('.project-switcher-meta')).toContainText('3 saved attempts');
+  await expect(switcher.locator('.project-switcher-meta'))
+    .toHaveText('3 synced attempts · 1 browser-only summary');
 
   await switcher.locator('select').selectOption('p-empty');
   await expect(switcher.locator('.project-switcher-meta')).toContainText('No attempts saved to this project yet');
@@ -123,13 +183,15 @@ test('the switcher reports what each project actually holds', async ({ page }) =
 test('the sidebar lists every owned project instead of one written-in name', async ({ page }) => {
   await mockWorkspace(page, [
     project('p-finals', 'Talk-Active · RISTEK Finals', 3),
-    project('p-thesis', 'Thesis defence · Semester 7', 1),
+    project('p-thesis', 'Thesis defence · Semester 7', 1, 'en-US'),
   ]);
   await page.goto('/progress');
 
   const sidebar = page.locator('.sidebar-project-list');
   await expect(sidebar.locator('.sidebar-project')).toHaveCount(2);
   await expect(sidebar).toContainText('Thesis defence · Semester 7');
+  await expect(sidebar.getByRole('link', { name: /Talk-Active · RISTEK Finals/i }))
+    .toHaveAttribute('aria-current', 'true');
 });
 
 test('a signed-out visitor asks for no project list and keeps its local workspace', async ({ page }) => {

@@ -6,3 +6,4 @@
 *.wasm binary
 apps/web/public/mediapipe/wasm/*.js -whitespace
 robots.txt text eol=lf
+apps/web/public/mediapipe/LICENSE-APACHE-2.0.txt text eol=lf

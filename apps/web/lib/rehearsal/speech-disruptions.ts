@@ -292,6 +292,15 @@ export class InterimFillerTracker {
     this.detected.length = 0;
   }
 
+  /**
+   * Starts a fresh recognition hypothesis without discarding observations
+   * already recorded on the session clock. Interview answers need a clean
+   * count baseline, but their final review spans every answer.
+   */
+  beginUtterance(): void {
+    this.previousCounts.clear();
+  }
+
   events(): SpeechDisruptionEvent[] {
     return this.detected.map((event) => ({ ...event }));
   }

@@ -113,6 +113,9 @@ export function CoverageTrend({
         </span>
         <span>{points.length > 1 ? dateLabel(latest?.createdAt ?? '') : 'first attempt'}</span>
       </figcaption>
+      <p className="sr-only">
+        Complete series: {points.map((point, index) => `attempt ${index + 1}, ${dateLabel(point.createdAt)}, ${point.evidenceScore}%`).join('; ')}.
+      </p>
     </figure>
   );
 }

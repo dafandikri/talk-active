@@ -37,8 +37,13 @@ test.afterEach(async ({ page }) => {
   expect((page as typeof page & { externalRequests?: string[] }).externalRequests ?? []).toEqual([]);
 });
 
-test('production guest completes attempt → evidence → defense → progress', async ({ page }) => {
-  await page.goto('/workspace');
+test('cold-start guest completes landing → attempt → evidence → defense → saved reload', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Rehearse the claim a judge will challenge next.' })).toBeVisible();
+  await page.getByRole('link', { name: /^Start practicing\b/i }).first().click();
+  await expect(page).toHaveURL(/\/enter$/u);
+  await page.getByRole('button', { name: 'Continue without a name' }).click();
+  await expect(page).toHaveURL(/\/workspace$/u);
   await expect(page.getByRole('heading', { name: 'Make your next answer harder to challenge.' })).toBeVisible();
   await expect(page.locator('.focus-mascot')).toHaveJSProperty('complete', true);
   await expectVisibleControlsHitTest(page);
@@ -49,6 +54,7 @@ test('production guest completes attempt → evidence → defense → progress',
   await page.getByRole('button', { name: /Begin this attempt/i }).click();
   await expect(page.getByLabel('Practice transcript')).toBeVisible();
   await expectVisibleControlsHitTest(page);
+  const reviewedDraft = await page.getByLabel('Practice transcript').inputValue();
   await page.getByRole('button', { name: /Review this attempt/i }).click();
 
   await expect(page.getByRole('heading', { name: 'What your transcript actually supports' })).toBeVisible();
@@ -56,7 +62,19 @@ test('production guest completes attempt → evidence → defense → progress',
   await expect(page.locator('.evidence-provenance')).toHaveCount(4);
   await expect(page.locator('.production-confirm')).toHaveCount(4);
   await expect(page.getByText(/not confidence or speaking ability/i)).toBeVisible();
+  await expect(page.getByText(/Equal mean of 4 criterion readings/i)).toBeVisible();
+  await expect(page.getByText(/Each criterion has the same weight/i)).toBeVisible();
   await expectVisibleControlsHitTest(page);
+
+  // Practice is one URL but several real screens. Browser Back/Forward must
+  // traverse those screens without discarding the draft or the completed
+  // review, just like the visible Back controls do.
+  await page.goBack();
+  await expect(page.locator('.capture-header h2')).toBeFocused();
+  await expect(page.getByLabel('Practice transcript')).toHaveValue(reviewedDraft);
+  await page.goForward();
+  await expect(page.getByRole('heading', { name: /One claim needs your attention/i })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'What your transcript actually supports' })).toBeVisible();
 
   // Matched by pattern, not by exact string. The visible button says only
   // "Yes"/"No", so the accessible name has to name the criterion AND what
@@ -72,6 +90,10 @@ test('production guest completes attempt → evidence → defense → progress',
   })).toBe(2);
 
   await page.getByRole('button', { name: /Practise my answer/i }).click();
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: /One claim needs your attention/i })).toBeFocused();
+  await page.goForward();
+  await expect(page.getByRole('heading', { name: 'Defend the weakest claim' })).toBeFocused();
   await page.getByLabel('Your answer').fill(
     'Compared with competitors, our unique logic keeps every verdict traceable to the evaluator rubric.',
   );
@@ -92,6 +114,14 @@ test('production guest completes attempt → evidence → defense → progress',
   await expect(page.getByRole('heading', { name: 'The criteria that keep returning' })).toBeVisible();
   await expect(page.getByText(/before Talk-Active calls any gap recurring/i)).toBeVisible();
   await expectVisibleControlsHitTest(page);
+
+  // INV-8 is a persistence path, not merely a navigation path. A reload must
+  // reconstruct the saved evidence summary from browser storage without a
+  // blank card, console error, or invented placeholder value.
+  await page.reload();
+  await expect(page.locator('.coverage-trend-dot')).toHaveCount(1);
+  await expect(page.locator('.full-session-list .session-status').getByText('defensible', { exact: true })).toBeVisible();
+  await expect(page.getByText(/before Talk-Active calls any gap recurring/i)).toBeVisible();
 });
 
 test('workspace keeps one practice action above the fold at 720p', async ({ page }) => {

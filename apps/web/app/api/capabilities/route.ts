@@ -37,6 +37,9 @@ export async function GET(request: Request) {
       defense: semanticAvailable && Boolean(
         process.env.AI_DEFENSE_MODEL?.trim() || process.env.AI_EVIDENCE_MODEL?.trim(),
       ),
+      coach: semanticAvailable && Boolean(
+        process.env.AI_COACH_MODEL?.trim() || process.env.AI_EVIDENCE_MODEL?.trim(),
+      ),
     },
   }));
 }

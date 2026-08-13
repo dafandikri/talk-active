@@ -96,3 +96,27 @@ test('stop waits for the final recognition result emitted before onend', async (
   assert.deepEqual(emittedTranscript, stopTranscript);
   assert.ok(Number.isFinite(emittedObservedAtMs), 'each emitted snapshot carries its own reading');
 });
+
+test('the project locale reaches the native recognizer before capture starts', (context) => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { SpeechRecognition: FakeSpeechRecognition },
+  });
+  context.after(() => {
+    FakeSpeechRecognition.latest = null;
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+  });
+
+  const session = createSpeechRecognitionSession({ language: 'en-US', autoRestart: false });
+  assert.equal(session.start(), true);
+  assert.equal(FakeSpeechRecognition.latest?.lang, 'en-US');
+  assert.equal(session.language, 'en-US');
+  session.abort();
+
+  session.setLanguage('id-ID');
+  assert.equal(session.start(), true);
+  assert.equal(FakeSpeechRecognition.latest?.lang, 'id-ID');
+  assert.equal(session.language, 'id-ID');
+});

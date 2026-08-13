@@ -22,6 +22,11 @@ async function mockAttempt(page: Page, options: { recordingStatus: 'ready' | nul
     if (url.pathname === `/api/attempts/${ATTEMPT_ID}/review`) {
       return json({
         contractVersion: 2,
+        project: {
+          id: '019ff7f4-e54b-7aaa-baba-00000000000c', userId: '019ff7f4-e54b-7aaa-baba-00000000000a',
+          title: 'RISTEK Finals Pitch', language: 'id-ID', eventContext: 'Innovation Week final',
+          deadline: '2026-08-13', createdAt: CREATED_AT, updatedAt: CREATED_AT,
+        },
         attempt: {
           id: ATTEMPT_ID, projectId: '019ff7f4-e54b-7aaa-baba-00000000000c', mode: 'dictated', status: 'review',
           transcript: 'We map every claim back to a criterion in the evaluator rubric.',
@@ -48,6 +53,10 @@ async function mockAttempt(page: Page, options: { recordingStatus: 'ready' | nul
           verdict: 'supported', coverageScore: 1,
           citedSpan: 'We map every claim back to a criterion in the evaluator rubric.',
           missingEvidence: [], engine: 'deterministic',
+        }, {
+          criterionId: '019ff7f4-e54b-7aaa-baba-00000000000f', criterionName: 'Measured impact',
+          verdict: 'unsupported', coverageScore: 0,
+          citedSpan: null, missingEvidence: ['measured outcome', 'cost'], engine: 'deterministic',
         }],
       });
     }
@@ -55,21 +64,56 @@ async function mockAttempt(page: Page, options: { recordingStatus: 'ready' | nul
   });
 }
 
-test('the saved review plots every cue in time, in its own lane', async ({ page }) => {
+test('the saved review leads with traceable evidence and a predictable way back', async ({ page }) => {
   await mockAttempt(page, { recordingStatus: 'ready' });
   await page.goto(`/attempts/${ATTEMPT_ID}`);
-  await expect(page.getByRole('link', { name: 'Back to progress' })).toHaveCount(0);
+
+  await expect(page.getByRole('link', { name: 'Back to progress' }))
+    .toHaveAttribute('href', '/progress?project=019ff7f4-e54b-7aaa-baba-00000000000c');
+  await expect(page.locator('.main-nav a[href="/progress"]')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByText('RISTEK Finals Pitch · Bahasa Indonesia', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '1 of 2 criteria cite your exact words' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Measured impact' }).first()).toBeVisible();
+  await expect(page.getByText('measured outcome', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('We map every claim back to a criterion in the evaluator rubric.', { exact: false }).first()).toBeVisible();
+  await expect(page.getByText(/not confidence, intelligence, or speaking ability/i)).toBeVisible();
+
+  const order = await page.locator('.saved-review').evaluate((root) => {
+    const children = [...root.querySelectorAll<HTMLElement>('.saved-rubric-card, .saved-timeline-card, .saved-replay-card, .saved-delivery-section')];
+    return children.map((child) => child.className);
+  });
+  expect(order[0]).toContain('saved-rubric-card');
+  expect(order[1]).toContain('saved-timeline-card');
+  expect(order[2]).toContain('saved-replay-card');
+  expect(order[3]).toContain('saved-delivery-section');
+
+  await page.reload();
+  await expect(page.getByText('RISTEK Finals Pitch · Bahasa Indonesia', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '1 of 2 criteria cite your exact words' })).toBeVisible();
+  await expect(page.getByText('We map every claim back to a criterion in the evaluator rubric.', { exact: false }).first()).toBeVisible();
+});
+
+test('the saved review plots every cue in its labelled lane on one accessible clock', async ({ page }) => {
+  await mockAttempt(page, { recordingStatus: 'ready' });
+  await page.goto(`/attempts/${ATTEMPT_ID}`);
 
   const timeline = page.locator('.saved-attempt-timeline');
   await expect(timeline).toBeVisible();
+  await expect(timeline).toHaveAttribute('aria-label', /timeline lasting 2:00 with rubric, voice, and camera lanes/i);
 
-  // Two lanes, because voice and camera cues are different observations.
-  await expect(timeline.locator('.timeline-lane')).toHaveCount(2);
+  // One shared clock: rubric context plus independently labelled voice and camera lanes.
+  await expect(timeline.locator('.timeline-lane')).toHaveCount(3);
+  await expect(timeline.getByText('Rubric', { exact: true })).toBeVisible();
   await expect(timeline.getByText('Voice', { exact: true })).toBeVisible();
   await expect(timeline.getByText('Camera', { exact: true })).toBeVisible();
 
   // Every event reaches the plot, none silently dropped.
   await expect(timeline.locator('.timeline-mark')).toHaveCount(4);
+  const hitTarget = await timeline.locator('.timeline-mark').first().evaluate((mark) => {
+    const pseudo = getComputedStyle(mark, '::after');
+    return { width: pseudo.width, height: pseudo.height };
+  });
+  expect(hitTarget).toEqual({ width: '44px', height: '44px' });
 
   // Position is the information. Read per lane, because marks are grouped by
   // lane and not by clock: the last mark in the document is the camera cue at
@@ -78,13 +122,13 @@ test('the saved review plots every cue in time, in its own lane', async ({ page 
     .locator('.timeline-mark')
     .evaluateAll((nodes) => nodes.map((node) => Number.parseFloat((node as HTMLElement).style.left)));
 
-  const voice = await leftsIn(0);
+  const voice = await leftsIn(1);
   expect(voice).toHaveLength(3);
   expect(voice[0]).toBeLessThan(10);                    // 8s of 120s
   expect(voice[voice.length - 1]).toBeGreaterThan(90);  // 112s of 120s
   expect([...voice]).toEqual([...voice].sort((a, b) => a - b));
 
-  const camera = await leftsIn(1);
+  const camera = await leftsIn(2);
   expect(camera).toHaveLength(1);
   expect(camera[0]).toBeGreaterThan(75);                // 95s of 120s
   expect(camera[0]).toBeLessThan(85);
@@ -104,11 +148,28 @@ test('without a replay the cues still plot, but cannot be played', async ({ page
   await expect(marks.first()).toHaveAttribute('aria-label', /cannot be played/);
 });
 
-test('the plotted cues and the written list describe the same events', async ({ page }) => {
+test('raw events are disclosed on demand and remain the chart text equivalent', async ({ page }) => {
   await mockAttempt(page, { recordingStatus: 'ready' });
   await page.goto(`/attempts/${ATTEMPT_ID}`);
 
-  // The list is the chart's text equivalent, so the two must not disagree.
+  const disclosure = page.getByText('Read every timeline observation', { exact: true });
+  await expect(page.locator('.saved-timeline-list')).not.toBeVisible();
+  await disclosure.click();
+  await expect(page.locator('.saved-timeline-list')).toBeVisible();
+
+  // The on-demand list is the chart's text equivalent, so the two must not disagree.
   await expect(page.locator('.saved-attempt-timeline .timeline-mark')).toHaveCount(4);
   await expect(page.locator('.saved-timeline-list li')).toHaveCount(4);
+});
+
+test('replay and delivery detail stay collapsed until requested', async ({ page }) => {
+  await mockAttempt(page, { recordingStatus: 'ready' });
+  await page.goto(`/attempts/${ATTEMPT_ID}`);
+
+  await expect(page.locator('.saved-replay-video')).not.toBeVisible();
+  await expect(page.locator('.saved-delivery-metrics')).not.toBeVisible();
+  await page.locator('.saved-replay-card > summary').click();
+  await expect(page.locator('.saved-replay-video')).toBeVisible();
+  await page.locator('.saved-delivery-summary > summary').click();
+  await expect(page.locator('.saved-delivery-metrics')).toBeVisible();
 });

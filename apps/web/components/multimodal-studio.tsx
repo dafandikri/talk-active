@@ -8,13 +8,12 @@ import {
   useState,
 } from 'react';
 
+import type { ProjectLanguage } from '@/lib/contracts';
 import {
   analyzeDeliveryMetrics,
   type DeliveryMetricsResult,
   type VisionObservations,
 } from '@/lib/delivery-metrics';
-import { summarizeRehearsalReading } from '@/lib/rehearsal-reading';
-import { MetricBand, ReadingComposition } from './delivery-charts';
 import {
   createAudioObserver,
   type AudioObservationSample,
@@ -39,6 +38,10 @@ import {
   type SpeechDisruptionEvent,
 } from '@/lib/rehearsal/speech-disruptions';
 import {
+  TranscriptTimingTracker,
+  type TranscriptTimingPoint,
+} from '@/lib/rehearsal/transcript-timing';
+import {
   createVisionSession,
   type BrowserVisionSession,
   type VisionFrameSnapshot,
@@ -51,12 +54,23 @@ export type CapturedTranscriptSource = 'typed' | 'web-speech';
 
 export interface MultimodalCapture {
   mode: VisionMode;
+  /** Answer time used for transcript-derived delivery metrics. */
   durationSeconds: number;
+  /** Full wall-clock capture time used to align camera events and an optional replay. */
+  sessionDurationSeconds: number;
   transcript: string;
   transcriptSource: CapturedTranscriptSource;
   visionSummary: VisionSessionSummary | null;
   audioSummary: AudioObservationSummary | null;
   speechDisruptions?: readonly SpeechDisruptionEvent[];
+  /**
+   * Dictation growth samples pairing transcript length with capture time.
+   * Present only when the transcript came from live dictation, so a typed
+   * transcript is never given a clock position it does not have.
+   */
+  transcriptTimingPoints?: readonly TranscriptTimingPoint[];
+  /** True when capture ended because the stated time limit ran out. */
+  stoppedAtLimit?: boolean;
   recording: RehearsalRecording | null;
 }
 
@@ -64,17 +78,98 @@ export interface MultimodalAttemptResult extends MultimodalCapture {
   metrics: DeliveryMetricsResult;
 }
 
+export interface MultimodalStudioStartOptions {
+  /**
+   * Starts the camera and optional replay while keeping dictation and acoustic
+   * observations gated until `resumeAnswerCapture` is called.
+   */
+  answerCapturePaused?: boolean;
+}
+
+export interface MultimodalStudioStopOptions {
+  /** Immutable answer-only text assembled by the interview coordinator. */
+  transcriptOverride?: string;
+  /** Sum of answer windows, excluding Kato narration and listening time. */
+  answerDurationSeconds?: number;
+}
+
+export interface MultimodalAnswerCheckpoint {
+  /** Milliseconds from the same monotonic origin used by replay and sensor events. */
+  elapsedMs: number;
+  /** Dictation captured since the most recent answer-capture resume. */
+  transcript: string;
+}
+
+export interface MultimodalSessionState {
+  active: boolean;
+  transitionBusy: boolean;
+  answerCapturePaused: boolean;
+  /** `performance.now()` value at the session origin, never a wall-clock timestamp. */
+  sessionStartedAtMs: number | null;
+  elapsedMs: number;
+}
+
+export interface MultimodalAnswerResumeOptions {
+  /** Clear the previous dictation segment before listening for the next answer. */
+  resetTranscript?: boolean;
+}
+
+export class MultimodalStudioSessionError extends Error {
+  readonly code: 'invalid-state' | 'transition-busy' | 'invalid-stop-options';
+
+  constructor(
+    code: 'invalid-state' | 'transition-busy' | 'invalid-stop-options',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'MultimodalStudioSessionError';
+    this.code = code;
+  }
+}
+
 export interface MultimodalStudioHandle {
-  stop: () => Promise<MultimodalCapture | null>;
+  start: (options?: MultimodalStudioStartOptions) => Promise<boolean>;
+  stop: (options?: MultimodalStudioStopOptions) => Promise<MultimodalAttemptResult | null>;
+  pauseAnswerCapture: () => Promise<MultimodalAnswerCheckpoint>;
+  resumeAnswerCapture: (
+    options?: MultimodalAnswerResumeOptions,
+  ) => Promise<MultimodalAnswerCheckpoint>;
+  getSessionState: () => MultimodalSessionState;
 }
 
 interface MultimodalStudioProps {
   transcript: string;
+  /** Inherited from project setup; capture must never invent its own locale. */
+  language: ProjectLanguage;
   durableRecordingAvailable?: boolean;
+  /**
+   * The stated time limit for this attempt. When set, the live chip counts
+   * down to it and capture stops itself at zero, the way an evaluator stops a
+   * pitch at the bell. Null leaves capture open-ended.
+   */
+  targetDurationMs?: number | null;
+  fixedMode?: VisionMode;
+  title?: string;
+  description?: string;
+  startLabel?: string;
+  stopLabel?: string;
+  startDisabled?: boolean;
+  startDisabledReason?: string;
+  resetToken?: string;
+  allowReplay?: boolean;
+  /** Keep the session running until an external coordinator calls `handle.stop()`. */
+  hideStopControl?: boolean;
+  /** The built-in Start button opens a session with answer sources gated. */
+  startWithAnswerCapturePaused?: boolean;
   onTranscriptChange: (value: string) => void;
   onResult: (result: MultimodalAttemptResult | null) => void;
   /** Lets the surrounding step disable its own controls while capture holds the devices. */
   onBusyChange?: (busy: boolean) => void;
+  /**
+   * Separates a long-running active session from its short start/stop/pause
+   * transitions, so an interview coordinator may advance while capture stays on.
+   */
+  onSessionStateChange?: (state: MultimodalSessionState) => void;
 }
 
 const POSE_CONNECTIONS: ReadonlyArray<readonly [number, number]> = [
@@ -130,6 +225,52 @@ function alignVisionSummary(
       return { ...event, startMs, endMs, durationMs: endMs - startMs };
     }),
   };
+}
+
+function combineAudioSummaries(
+  summaries: readonly AudioObservationSummary[],
+): AudioObservationSummary | null {
+  if (summaries.length === 0) return null;
+  const pitchHzSamples = summaries.flatMap((summary) => [...summary.pitchHzSamples]);
+  const energyRmsSamples = summaries.flatMap((summary) => [...summary.energyRmsSamples]);
+  const meanPitchHz = pitchHzSamples.length > 0
+    ? pitchHzSamples.reduce((total, value) => total + value, 0) / pitchHzSamples.length
+    : null;
+  const pitchStandardDeviationHz = meanPitchHz !== null && pitchHzSamples.length > 1
+    ? Math.sqrt(
+      pitchHzSamples.reduce((total, value) => total + (value - meanPitchHz) ** 2, 0)
+        / (pitchHzSamples.length - 1),
+    )
+    : null;
+  return {
+    observedSeconds: summaries.reduce((total, summary) => total + summary.observedSeconds, 0),
+    quietSeconds: summaries.reduce((total, summary) => total + summary.quietSeconds, 0),
+    pauseSeconds: summaries.reduce((total, summary) => total + summary.pauseSeconds, 0),
+    pauseCount: summaries.reduce((total, summary) => total + summary.pauseCount, 0),
+    pitchSampleCount: pitchHzSamples.length,
+    meanPitchHz,
+    pitchStandardDeviationHz,
+    pitchRangeHz: pitchHzSamples.length > 0
+      ? Math.max(...pitchHzSamples) - Math.min(...pitchHzSamples)
+      : null,
+    pitchHzSamples,
+    energyRmsSamples,
+  };
+}
+
+function normalizedAnswerDuration(
+  options: MultimodalStudioStopOptions | undefined,
+  sessionDurationSeconds: number,
+): number {
+  const answerDurationSeconds = options?.answerDurationSeconds;
+  if (answerDurationSeconds === undefined) return sessionDurationSeconds;
+  if (!Number.isFinite(answerDurationSeconds) || answerDurationSeconds <= 0) {
+    throw new MultimodalStudioSessionError(
+      'invalid-stop-options',
+      'Answer duration must be a positive finite number of seconds.',
+    );
+  }
+  return answerDurationSeconds;
 }
 
 export function refreshMultimodalTranscript(
@@ -204,7 +345,27 @@ function drawOverlay(canvas: HTMLCanvasElement, frame: VisionFrameSnapshot): voi
 }
 
 export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStudioProps>(
-  function MultimodalStudio({ transcript, durableRecordingAvailable = false, onTranscriptChange, onResult, onBusyChange }, ref) {
+  function MultimodalStudio({
+    transcript,
+    language,
+    durableRecordingAvailable = false,
+    targetDurationMs = null,
+    fixedMode,
+    title = 'Rehearse the whole performance.',
+    description = 'Camera landmarks + acoustic observations + your active rubric, assembled into one review.',
+    startLabel = 'Start rehearsal',
+    stopLabel = 'Finish & assemble review',
+    startDisabled = false,
+    startDisabledReason = 'Wait for narration to finish',
+    resetToken,
+    allowReplay = true,
+    hideStopControl = false,
+    startWithAnswerCapturePaused = false,
+    onTranscriptChange,
+    onResult,
+    onBusyChange,
+    onSessionStateChange,
+  }, ref) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -213,22 +374,36 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
     const speechRef = useRef<SpeechRecognitionSession | null>(null);
     const recordingRef = useRef<RehearsalRecordingSession | null>(null);
     const startedAtRef = useRef(0);
+    const activeRef = useRef(false);
+    const loadingRef = useRef(false);
+    const answerCapturePausedRef = useRef(false);
+    const answerPausedAtElapsedMsRef = useRef<number | null>(null);
     const visionOffsetRef = useRef(0);
     const transcriptRef = useRef(transcript);
+    const elapsedMsRef = useRef(0);
+    const lastCaptureRef = useRef<MultimodalAttemptResult | null>(null);
+    const audioSegmentsRef = useRef<AudioObservationSummary[]>([]);
+    const audioSegmentOpenRef = useRef(false);
     const pitchSamplesRef = useRef<number[]>([]);
     const energySamplesRef = useRef<number[]>([]);
     const acousticDisruptionsRef = useRef(new SpeechDisruptionDetector({ ignoreBeforeMs: 3_000 }));
     const interimFillersRef = useRef(new InterimFillerTracker(3_000));
+    const transcriptTimingRef = useRef(new TranscriptTimingTracker());
+    // stopSession awaits the recorder before it clears `active`, so the bell
+    // timer and the Finish button can both enter it. This latch closes the
+    // door on the first caller; without it the second release runs against
+    // already-released media.
+    const stoppingRef = useRef(false);
+    const stoppedAtLimitRef = useRef(false);
 
-    const [mode, setMode] = useState<VisionMode>('presentation');
     // Four independent choices. None of them turns on another, and nothing is
     // requested from the browser until Start.
     const [captureCamera, setCaptureCamera] = useState(false);
     const [captureAcoustic, setCaptureAcoustic] = useState(false);
     const [captureDictation, setCaptureDictation] = useState(false);
-    const [language, setLanguage] = useState('id-ID');
     const [active, setActive] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [answerCapturePaused, setAnswerCapturePaused] = useState(false);
     const [elapsedMs, setElapsedMs] = useState(0);
     const [visionPhase, setVisionPhase] = useState<VisionPhase>('idle');
     const [speechState, setSpeechState] = useState<SpeechRecognitionState>('idle');
@@ -237,18 +412,92 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
     const [speechDisruptionCount, setSpeechDisruptionCount] = useState(0);
     const [saveReplay, setSaveReplay] = useState(false);
     const [recordingState, setRecordingState] = useState<'off' | 'recording' | 'failed'>('off');
-    const [status, setStatus] = useState('Pick the signals you want observed. Nothing is requested until you press Start.');
-    const [lastCapture, setLastCapture] = useState<MultimodalCapture | null>(null);
+    const [status, setStatus] = useState('Enable only the capture permissions you want, then start. Manual transcript entry remains available.');
+    const [, setLastCapture] = useState<MultimodalAttemptResult | null>(null);
+    const lastResetTokenRef = useRef(resetToken);
+    const effectiveMode = fixedMode ?? 'presentation';
+
+    function updateActive(next: boolean): void {
+      activeRef.current = next;
+      setActive(next);
+    }
+
+    function updateLoading(next: boolean): void {
+      loadingRef.current = next;
+      setLoading(next);
+    }
+
+    function updateAnswerCapturePaused(next: boolean): void {
+      answerCapturePausedRef.current = next;
+      setAnswerCapturePaused(next);
+    }
+
+    function sessionState(): MultimodalSessionState {
+      const sessionStartedAtMs = startedAtRef.current > 0 ? startedAtRef.current : null;
+      return {
+        active: activeRef.current,
+        transitionBusy: loadingRef.current,
+        answerCapturePaused: answerCapturePausedRef.current,
+        sessionStartedAtMs,
+        elapsedMs: sessionStartedAtMs !== null && activeRef.current
+          ? Math.max(0, performance.now() - sessionStartedAtMs)
+          : elapsedMsRef.current,
+      };
+    }
 
     useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
+
+    useEffect(() => {
+      if (resetToken === undefined || resetToken === lastResetTokenRef.current) return;
+      lastResetTokenRef.current = resetToken;
+      if (active || loading) return;
+      transcriptRef.current = transcript;
+      setLastCapture(null);
+      lastCaptureRef.current = null;
+      elapsedMsRef.current = 0;
+      setElapsedMs(0);
+      setFrame(null);
+      setAudioSample(null);
+      setSpeechDisruptionCount(0);
+      setStatus('Enable only the capture permissions you want, then start. Manual transcript entry remains available.');
+    }, [active, loading, resetToken, transcript]);
+
+    useEffect(() => {
+      if (!allowReplay) setSaveReplay(false);
+    }, [allowReplay]);
 
     useEffect(() => { onBusyChange?.(active || loading); }, [active, loading, onBusyChange]);
 
     useEffect(() => {
+      onSessionStateChange?.(sessionState());
+      // Elapsed time is available synchronously through `getSessionState`; this
+      // callback intentionally reports transitions rather than firing 4x/second.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [active, answerCapturePaused, loading, onSessionStateChange]);
+
+    useEffect(() => {
       if (!active) return;
-      const timer = window.setInterval(() => setElapsedMs(performance.now() - startedAtRef.current), 250);
+      const timer = window.setInterval(() => {
+        const nextElapsedMs = performance.now() - startedAtRef.current;
+        elapsedMsRef.current = nextElapsedMs;
+        setElapsedMs(nextElapsedMs);
+        // The bell. A presentation that runs past its limit is not a longer
+        // presentation — it is a presentation the evaluator stopped, so the
+        // capture stops itself the same way.
+        if (
+          targetDurationMs !== null
+          && targetDurationMs > 0
+          && nextElapsedMs >= targetDurationMs
+          && !loadingRef.current
+          && !stoppingRef.current
+        ) {
+          stoppedAtLimitRef.current = true;
+          void stopSession();
+        }
+      }, 250);
       return () => window.clearInterval(timer);
-    }, [active]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [active, targetDurationMs]);
 
     useEffect(() => {
       const canvas = canvasRef.current;
@@ -276,9 +525,133 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
       ).length);
     }
 
-    async function stopSession(): Promise<MultimodalCapture | null> {
-      if (!active) return lastCapture;
-      setLoading(true);
+    async function finishAudioSegment(): Promise<void> {
+      const audioObserver = audioRef.current;
+      if (!audioObserver || !audioSegmentOpenRef.current) return;
+      audioSegmentOpenRef.current = false;
+      await audioObserver.stop();
+      audioSegmentsRef.current.push(audioObserver.summary());
+    }
+
+    async function pauseAnswerCapture(): Promise<MultimodalAnswerCheckpoint> {
+      if (!activeRef.current) {
+        throw new MultimodalStudioSessionError(
+          'invalid-state',
+          'Start the multimodal session before pausing answer capture.',
+        );
+      }
+      if (loadingRef.current) {
+        throw new MultimodalStudioSessionError(
+          'transition-busy',
+          'Wait for the current capture transition to finish.',
+        );
+      }
+      if (answerCapturePausedRef.current) {
+        return {
+          elapsedMs: answerPausedAtElapsedMsRef.current ?? sessionState().elapsedMs,
+          transcript: speechRef.current?.snapshot().transcript.trim() ?? transcriptRef.current.trim(),
+        };
+      }
+
+      const answerEndedAtElapsedMs = sessionState().elapsedMs;
+      answerPausedAtElapsedMsRef.current = answerEndedAtElapsedMs;
+      updateLoading(true);
+      // Gate callbacks before awaiting the native recognizer. Its final `onend`
+      // event may arrive while Kato narration is already being prepared.
+      updateAnswerCapturePaused(true);
+      try {
+        const speech = speechRef.current;
+        const [snapshot] = await Promise.all([
+          speech?.stop() ?? Promise.resolve(null),
+          finishAudioSegment(),
+        ]);
+        const capturedTranscript = snapshot?.transcript.trim()
+          || speech?.snapshot().transcript.trim()
+          || transcriptRef.current.trim();
+        if (capturedTranscript) {
+          transcriptRef.current = capturedTranscript;
+          onTranscriptChange(capturedTranscript);
+        }
+        setStatus('Session is still running. Answer dictation and acoustic observations are paused; camera tracking and an optional replay continue.');
+        return { elapsedMs: answerEndedAtElapsedMs, transcript: capturedTranscript };
+      } finally {
+        updateLoading(false);
+      }
+    }
+
+    async function resumeAnswerCapture(
+      options: MultimodalAnswerResumeOptions = {},
+    ): Promise<MultimodalAnswerCheckpoint> {
+      if (!activeRef.current) {
+        throw new MultimodalStudioSessionError(
+          'invalid-state',
+          'Start the multimodal session before resuming answer capture.',
+        );
+      }
+      if (loadingRef.current) {
+        throw new MultimodalStudioSessionError(
+          'transition-busy',
+          'Wait for the current capture transition to finish.',
+        );
+      }
+      if (!answerCapturePausedRef.current) {
+        return {
+          elapsedMs: sessionState().elapsedMs,
+          transcript: speechRef.current?.snapshot().transcript.trim() ?? transcriptRef.current.trim(),
+        };
+      }
+
+      updateLoading(true);
+      const resetTranscript = options.resetTranscript ?? true;
+      try {
+        if (resetTranscript) {
+          transcriptRef.current = '';
+          interimFillersRef.current.beginUtterance();
+          speechRef.current?.clearTranscript();
+          onTranscriptChange('');
+        }
+        // The caller resumes only after narration has ended. Flip this gate
+        // immediately before the sources start so their first samples count.
+        updateAnswerCapturePaused(false);
+        const audioStarted = captureAcoustic && audioRef.current
+          ? await audioRef.current.start()
+          : false;
+        audioSegmentOpenRef.current = audioStarted;
+        if (captureDictation && speechRef.current?.supported) {
+          speechRef.current.start({ resetTranscript });
+        }
+        answerPausedAtElapsedMsRef.current = null;
+        setStatus('Answer capture is active. Camera tracking and an optional replay continue across the whole session.');
+        return {
+          elapsedMs: sessionState().elapsedMs,
+          transcript: speechRef.current?.snapshot().transcript.trim() ?? transcriptRef.current.trim(),
+        };
+      } catch (error) {
+        updateAnswerCapturePaused(true);
+        throw error;
+      } finally {
+        updateLoading(false);
+      }
+    }
+
+    async function stopSession(
+      options?: MultimodalStudioStopOptions,
+    ): Promise<MultimodalAttemptResult | null> {
+      if (!activeRef.current || stoppingRef.current) return lastCaptureRef.current;
+      if (loadingRef.current) {
+        throw new MultimodalStudioSessionError(
+          'transition-busy',
+          'Wait for the current capture transition to finish before stopping.',
+        );
+      }
+      // Validate before stopping any native source. A bad coordinator payload
+      // must not strand a live session half-closed.
+      const requestedAnswerDuration = options?.answerDurationSeconds === undefined
+        ? null
+        : normalizedAnswerDuration(options, 1);
+      stoppingRef.current = true;
+      updateLoading(true);
+      updateAnswerCapturePaused(true);
       const stoppedAtMs = performance.now();
       const elapsedDurationMs = Math.max(1_000, stoppedAtMs - startedAtRef.current);
       const recordingSession = recordingRef.current;
@@ -286,13 +659,16 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         ? recordingSession.stop().catch(() => null)
         : Promise.resolve(recordingSession?.lastRecording ?? null);
       const speech = speechRef.current;
-      speech?.stop();
-      const recognizedTranscript = speech?.snapshot().transcript.trim() ?? '';
-      const finalTranscript = recognizedTranscript || transcriptRef.current.trim();
+      const speechSnapshot = await speech?.stop();
+      const recognizedTranscript = speechSnapshot?.transcript.trim()
+        || speech?.snapshot().transcript.trim()
+        || '';
+      const finalTranscript = options?.transcriptOverride !== undefined
+        ? options.transcriptOverride.trim()
+        : recognizedTranscript || transcriptRef.current.trim();
       const transcriptSource: CapturedTranscriptSource = recognizedTranscript ? 'web-speech' : 'typed';
-      const audioObserver = audioRef.current;
-      await audioObserver?.stop();
-      const audioSummary = audioObserver?.summary() ?? null;
+      await finishAudioSegment();
+      const audioSummary = combineAudioSummaries(audioSegmentsRef.current);
       acousticDisruptionsRef.current.finish(elapsedDurationMs);
       const speechDisruptions = mergeSpeechDisruptionEvents(
         acousticDisruptionsRef.current.events(),
@@ -300,9 +676,10 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
       );
       const rawVisionSummary = visionRef.current?.stop() ?? null;
       const recording = await recordingPromise;
-      const durationMs = Math.max(1_000, recording?.durationMs ?? elapsedDurationMs);
-      const durationSeconds = durationMs / 1_000;
-      const visionSummary = alignVisionSummary(rawVisionSummary, visionOffsetRef.current, durationMs);
+      const sessionDurationMs = Math.max(1_000, recording?.durationMs ?? elapsedDurationMs);
+      const sessionDurationSeconds = sessionDurationMs / 1_000;
+      const durationSeconds = requestedAnswerDuration ?? sessionDurationSeconds;
+      const visionSummary = alignVisionSummary(rawVisionSummary, visionOffsetRef.current, sessionDurationMs);
       const metrics = finalTranscript
         ? analyzeDeliveryMetrics({
           durationSeconds,
@@ -316,45 +693,83 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         })
         : null;
       await releaseMedia();
-      setActive(false);
-      setLoading(false);
-      setElapsedMs(durationSeconds * 1_000);
-      setStatus(metrics ? 'Rehearsal captured. Review the three evidence layers below.' : 'No transcript was captured. You can type one and review again.');
+      updateActive(false);
+      updateLoading(false);
+      stoppingRef.current = false;
+      elapsedMsRef.current = sessionDurationMs;
+      setElapsedMs(sessionDurationMs);
+      const stoppedAtLimit = stoppedAtLimitRef.current;
+      setStatus(metrics
+        ? stoppedAtLimit
+          ? 'Time ran out and capture stopped itself, exactly as an evaluator would. Review the three evidence layers below.'
+          : fixedMode === 'interview'
+          ? 'Interview capture complete. Delivery observations stay hidden until the interview ends.'
+          : 'Rehearsal captured. Review the three evidence layers below.'
+        : 'No transcript was captured. You can type one and review again.');
       const capture: MultimodalCapture = {
-        mode,
+        mode: effectiveMode,
         durationSeconds,
+        sessionDurationSeconds,
         transcript: finalTranscript,
         transcriptSource,
         visionSummary,
         audioSummary,
         speechDisruptions,
+        // Timing describes dictated text only. A typed draft shares no clock
+        // with the recording, and guessing one would put marks at invented
+        // moments.
+        // A coordinator override (the interview flow) assembles several
+        // answer-local transcripts. The recognizer points describe only its
+        // current segment, so attaching them to that aggregate would invent
+        // word positions. Keep presentation dictation timing, but withhold it
+        // from an overridden transcript.
+        transcriptTimingPoints: transcriptSource === 'web-speech'
+          && options?.transcriptOverride === undefined
+          ? transcriptTimingRef.current.points()
+          : undefined,
+        stoppedAtLimit,
         recording,
       };
       if (finalTranscript) {
         transcriptRef.current = finalTranscript;
         onTranscriptChange(finalTranscript);
       }
-      setLastCapture(capture);
-      onResult(metrics ? { ...capture, metrics } : null);
-      return capture;
+      const result = metrics ? { ...capture, metrics } : null;
+      setLastCapture(result);
+      lastCaptureRef.current = result;
+      onResult(result);
+      return result;
     }
 
-    useImperativeHandle(ref, () => ({ stop: stopSession }));
+    useImperativeHandle(ref, () => ({
+      start: startSession,
+      stop: stopSession,
+      pauseAnswerCapture,
+      resumeAnswerCapture,
+      getSessionState: sessionState,
+    }));
 
     useEffect(() => () => { void releaseMedia(); }, []);
 
-    async function startSession(): Promise<void> {
-      if (active || loading) return;
+    async function startSession(
+      options: MultimodalStudioStartOptions = {},
+    ): Promise<boolean> {
+      if (activeRef.current || loadingRef.current) return false;
       if (!captureCamera && !captureAcoustic && !captureDictation && !saveReplay) {
-        setStatus('Choose at least one observation, dictation, or replay option before starting.');
-        return;
+        setStatus('Enable one capture permission, or use the manual transcript below.');
+        return false;
       }
       if (!navigator.mediaDevices?.getUserMedia) {
         setStatus('Camera and microphone capture are unavailable in this browser. Manual transcript review still works.');
-        return;
+        return false;
       }
-      setLoading(true);
+      const initiallyPaused = options.answerCapturePaused ?? false;
+      updateLoading(true);
+      updateAnswerCapturePaused(initiallyPaused);
+      answerPausedAtElapsedMsRef.current = initiallyPaused ? 0 : null;
       setLastCapture(null);
+      lastCaptureRef.current = null;
+      elapsedMsRef.current = 0;
       onResult(null);
       setElapsedMs(0);
       setFrame(null);
@@ -364,8 +779,13 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
       visionOffsetRef.current = 0;
       pitchSamplesRef.current = [];
       energySamplesRef.current = [];
+      audioSegmentsRef.current = [];
+      audioSegmentOpenRef.current = false;
       acousticDisruptionsRef.current = new SpeechDisruptionDetector({ ignoreBeforeMs: 3_000 });
       interimFillersRef.current = new InterimFillerTracker(3_000);
+      transcriptTimingRef.current = new TranscriptTimingTracker();
+      stoppedAtLimitRef.current = false;
+      stoppingRef.current = false;
       try {
         // A saved replay is camera plus microphone by definition, which is what
         // its own control says. Every other track is requested only because a
@@ -385,7 +805,7 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         if (wantsVideo && !video) throw new Error('Camera preview is not ready.');
 
         const vision = captureCamera ? createVisionSession({
-          mode,
+          mode: effectiveMode,
           maxFramesPerSecond: 8,
           onFrame: (nextFrame) => setFrame({
             ...nextFrame,
@@ -399,6 +819,7 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         const audio = captureAcoustic ? createAudioObserver(stream, {
           sampleIntervalMs: 100,
           onSample: (sample) => {
+            if (answerCapturePausedRef.current) return;
             const alignedSample = {
               ...sample,
               timestampMs: Math.max(0, performance.now() - startedAtRef.current),
@@ -417,6 +838,7 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
           language,
           onStateChange: setSpeechState,
           onTranscript: (snapshot) => {
+            if (answerCapturePausedRef.current) return;
             const emitted = interimFillersRef.current.addInterimTranscript(
               snapshot.interimTranscript,
               Math.max(0, snapshot.observedAtMs - startedAtRef.current),
@@ -424,6 +846,10 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
             if (emitted.length > 0) updateSpeechDisruptionCount();
             const next = snapshot.transcript.trim();
             if (!next) return;
+            transcriptTimingRef.current.addSnapshot(
+              next,
+              Math.max(0, snapshot.observedAtMs - startedAtRef.current),
+            );
             transcriptRef.current = next;
             onTranscriptChange(next);
           },
@@ -461,16 +887,27 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         }
         startedAtRef.current = originMs;
         visionOffsetRef.current = (vision?.startedAtMs ?? originMs) - originMs;
-        setActive(true);
-        if (audio) await audio.start();
-        if (speech?.supported) speech.start({ resetTranscript: true });
+        updateActive(true);
+        if (!initiallyPaused) {
+          const audioStarted = audio ? await audio.start() : false;
+          audioSegmentOpenRef.current = audioStarted;
+        }
+        if (!initiallyPaused && speech?.supported) speech.start({ resetTranscript: true });
         else if (captureDictation) setStatus('Live browser dictation is unavailable here. The observations you selected are running; type the transcript afterward.');
+        if (initiallyPaused) {
+          setStatus('Session is running. Answer dictation and acoustic observations are paused until the first answer begins.');
+        }
+        return true;
       } catch (error) {
         await releaseMedia();
-        setActive(false);
+        updateActive(false);
+        updateAnswerCapturePaused(false);
+        answerPausedAtElapsedMsRef.current = null;
+        startedAtRef.current = 0;
         setStatus(error instanceof Error ? error.message : 'The multimodal rehearsal could not start.');
+        return false;
       } finally {
-        setLoading(false);
+        updateLoading(false);
       }
     }
 
@@ -478,199 +915,70 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
     const trackingLabel = frame?.tracked
       ? (frame.calibrated ? 'tracking locked' : 'calibrating')
       : visionPhase === 'loading' ? 'loading model' : 'find the camera frame';
+    // With a limit set, the chip shows what is left rather than what is spent:
+    // a presenter needs to know how much room remains, not how long they have
+    // been talking. The last thirty seconds are called out because that is
+    // when a closing has to start.
+    const limitMs = targetDurationMs !== null && targetDurationMs > 0 ? targetDurationMs : null;
+    const remainingMs = limitMs === null ? null : Math.max(0, limitMs - elapsedMs);
+    const liveClock = remainingMs === null ? formatTime(elapsedMs) : formatTime(remainingMs);
+    const closingSoon = remainingMs !== null && remainingMs <= 30_000;
 
     return <section className="multimodal-studio" aria-labelledby="studioTitle">
       <div className="studio-heading">
-        <div><p className="overline">Experimental multimodal studio</p><h3 id="studioTitle">Rehearse the whole performance.</h3><p>Camera landmarks + acoustic observations + your active rubric, assembled into one review.</p></div>
-        <span className={`studio-live${active ? ' is-live' : ''}`}><i />{active ? formatTime(elapsedMs) : 'ready'}</span>
+        {/* Not the stage heading: capture is one of two ways to fill the
+            transcript, so focus after a step change belongs on the step's own
+            title rather than on whichever sub-panel happens to be open. */}
+        <div><p className="overline">Multimodal rehearsal</p><h3 id="studioTitle">{title}</h3><p>{description}</p></div>
+        <span className={`studio-live${active ? ' is-live' : ''}${active && closingSoon ? ' is-closing' : ''}`}>
+          <i />
+          {active ? liveClock : 'ready'}
+          {active && limitMs !== null && <small>{closingSoon ? 'left — start closing' : 'left'}</small>}
+        </span>
       </div>
+      {active && limitMs !== null && <p className="studio-limit-note" role="status">
+        Capture stops itself at {formatTime(limitMs)}, the way an evaluator stops a pitch on time. Finish earlier whenever you are done.
+      </p>}
 
       {!active && <fieldset className="studio-consent" disabled={loading}>
-        <legend>Choose what this rehearsal may observe</legend>
-        {/* The split is the privacy boundary, not styling. Three signals are
-            measured here and thrown away; one is kept. Saying which is which
-            beside the checkbox beats burying it in four descriptions. */}
-        <p className="studio-consent-band">Measured on this device, then discarded</p>
-        <label><input type="checkbox" checked={captureCamera} onChange={(event) => setCaptureCamera(event.target.checked)} /><span><strong>Local camera landmarks</strong><small>Loads a self-hosted MediaPipe model. Frames and landmarks are discarded when capture stops.</small></span></label>
-        {captureCamera && <div className="studio-mode-tabs" role="group" aria-label="Camera rehearsal mode">
-          <button aria-pressed={mode === 'interview'} className={mode === 'interview' ? 'is-active' : ''} type="button" disabled={loading} onClick={() => setMode('interview')}><strong>Interview</strong><span>Face framing + head direction</span></button>
-          <button aria-pressed={mode === 'presentation'} className={mode === 'presentation' ? 'is-active' : ''} type="button" disabled={loading} onClick={() => setMode('presentation')}><strong>Presentation</strong><span>Full body + gesture activity</span></button>
-        </div>}
-        <label><input type="checkbox" checked={captureAcoustic} onChange={(event) => setCaptureAcoustic(event.target.checked)} /><span><strong>Local acoustic observations</strong><small>Measures pauses, pitch range, and energy variation. Raw microphone audio is never recorded by this option.</small></span></label>
-        <label><input type="checkbox" checked={captureDictation} disabled={!speechRecognitionIsSupported()} onChange={(event) => setCaptureDictation(event.target.checked)} /><span><strong>Browser dictation</strong><small>{speechRecognitionIsSupported() ? 'May send speech to your browser vendor. Recognized text is appended to your draft and may later go to the configured semantic provider.' : 'Unavailable in this browser. Type or paste the transcript instead.'}</small></span></label>
-
-        <p className="studio-consent-band is-kept">Kept after this attempt</p>
-        <label className="studio-recording-consent">
-          <input type="checkbox" checked={saveReplay} onChange={(event) => setSaveReplay(event.target.checked)} />
-          <span><strong>Keep a replay of this attempt</strong><small>{durableRecordingAvailable ? 'Records camera and microphone. A signed-in attempt uploads it to private storage; deleting a replay keeps its feedback.' : 'Records camera and microphone. This deployment keeps it in this page only, for review or download.'}</small></span>
-        </label>
+        <legend>Choose what this rehearsal may observe <small>every signal starts off</small></legend>
+        {/* These concise, just-in-time choices are still four independent
+            consents. Replay never inherits camera or microphone consent. */}
+        <div className="studio-permission-strip">
+          <label className="studio-permission-chip" title="Local landmarks only; frames and landmarks are discarded after capture."><input type="checkbox" checked={captureCamera} onChange={(event) => setCaptureCamera(event.target.checked)} /><span><strong>Camera</strong><small>local landmarks</small></span></label>
+          <label className="studio-permission-chip" title="Local pauses, pitch and energy; this choice does not record raw audio."><input type="checkbox" checked={captureAcoustic} onChange={(event) => setCaptureAcoustic(event.target.checked)} /><span><strong>Voice</strong><small>local cues</small></span></label>
+          <label className="studio-permission-chip" title={speechRecognitionIsSupported() ? `Your browser vendor may process ${language === 'id-ID' ? 'Indonesian' : 'English'} speech.` : 'Unavailable here. Type or paste the transcript instead.'}><input type="checkbox" checked={captureDictation} disabled={!speechRecognitionIsSupported()} onChange={(event) => setCaptureDictation(event.target.checked)} /><span><strong>Live transcript</strong><small>{language === 'id-ID' ? 'Indonesian' : 'English'}</small></span></label>
+          {allowReplay && <label className="studio-recording-consent studio-permission-chip" title={durableRecordingAvailable ? 'Uploads privately for this signed-in attempt; deleting it keeps feedback.' : 'Kept only in this page for review or download.'}>
+            <input type="checkbox" checked={saveReplay} onChange={(event) => setSaveReplay(event.target.checked)} />
+            <span><strong>Save replay</strong><small>camera + mic</small></span>
+          </label>}
+        </div>
+        <p className="studio-permission-boundary">Camera and voice cues run locally and are discarded. Live transcript may use your browser vendor. Replay is a separate camera + microphone recording and stays off unless enabled.</p>
       </fieldset>}
 
       <div className="studio-stage">
         <video ref={videoRef} aria-label="Live rehearsal camera" muted playsInline />
         <canvas ref={canvasRef} width="640" height="360" aria-hidden="true" />
-        {!active && <div className="studio-camera-empty"><span aria-hidden="true">◉</span><strong>No media access before Start</strong><small>Analysis runs on this device. A replay is created only when you explicitly ask for one above.</small></div>}
-        {captureCamera && <div className="studio-hud"><span><i className={frame?.tracked ? 'good' : ''} />{trackingLabel}</span><span>{mode === 'presentation' ? '33-point pose' : 'face landmarks'}</span></div>}
-        {active && captureAcoustic && <div className="voice-meter" aria-label="Live voice level"><span>VOICE</span><i><b style={{ width: `${liveVoice}%` }} /></i><small>{audioSample?.pitchHz ? `${Math.round(audioSample.pitchHz)} Hz` : audioSample?.quiet ? 'pause' : 'listening'}</small><em>{speechDisruptionCount} possible cues</em></div>}
+        {!active && <div className="studio-camera-empty"><span aria-hidden="true">◉</span><strong>No media access before Start</strong><small>{allowReplay ? 'Analysis runs on this device. A replay is created only when you explicitly ask for one above.' : 'Analysis runs on this device. This interview does not retain a camera or microphone replay.'}</small></div>}
+        {captureCamera && <div className="studio-hud"><span><i className={frame?.tracked ? 'good' : ''} />{trackingLabel}</span><span>{effectiveMode === 'presentation' ? '33-point pose' : 'face landmarks'}</span></div>}
+        {active && !answerCapturePaused && captureAcoustic && <div className="voice-meter" aria-label="Live voice level"><span>VOICE</span><i><b style={{ width: `${liveVoice}%` }} /></i><small>{audioSample?.pitchHz ? `${Math.round(audioSample.pitchHz)} Hz` : audioSample?.quiet ? 'pause' : 'listening'}</small><em>{speechDisruptionCount} possible cues</em></div>}
       </div>
 
       <div className="studio-controls">
-        <label>Dictation language<select value={language} disabled={active || loading || !captureDictation} onChange={(event) => setLanguage(event.target.value)}><option value="id-ID">Bahasa Indonesia</option><option value="en-US">English</option></select></label>
+        <span className="save-state">Project language: {language === 'id-ID' ? 'Bahasa Indonesia' : 'English'}</span>
         {!active
-          ? <button className="button button-primary studio-record" type="button" disabled={loading || (!captureCamera && !captureAcoustic && !captureDictation && !saveReplay)} onClick={() => void startSession()}><span aria-hidden="true">●</span>{loading ? 'Loading local models…' : 'Start selected capture'}</button>
-          : <button className="button button-primary studio-stop" type="button" disabled={loading} onClick={() => void stopSession()}><span aria-hidden="true">■</span>Finish &amp; assemble review</button>}
+          ? <button className="button button-primary studio-record" type="button" disabled={startDisabled || loading || (!captureCamera && !captureAcoustic && !captureDictation && !saveReplay)} onClick={() => void startSession({ answerCapturePaused: startWithAnswerCapturePaused })}><span aria-hidden="true">●</span>{startDisabled ? startDisabledReason : loading ? 'Loading local models…' : startLabel}</button>
+          : hideStopControl
+            ? <span className="studio-live"><i />Capture continues until the interview ends</span>
+            : <button className="button button-primary studio-stop" type="button" disabled={loading} onClick={() => void stopSession()}><span aria-hidden="true">■</span>{stopLabel === 'Finish & assemble review' ? <>Finish &amp; assemble review</> : stopLabel}</button>}
       </div>
       {active && saveReplay && <p className="recording-sync-status"><span aria-hidden="true">●</span>{recordingState === 'recording' ? ' Camera and microphone replay recording is active.' : ' Replay recording was unavailable; analysis is continuing.'}</p>}
-      <p className="studio-status" aria-live="polite">{status} {active && captureDictation && speechRecognitionIsSupported() ? `Dictation: ${speechState}. Browser dictation may use the browser vendor's speech service.` : ''}</p>
+      <p className="studio-status" aria-live="polite">{status} {active && !answerCapturePaused && captureDictation && speechRecognitionIsSupported() ? `Dictation: ${speechState}. Browser dictation may use the browser vendor's speech service.` : ''}</p>
     </section>;
   },
 );
 
-export function MultimodalReview({
-  result,
-  substanceScore,
-  recordingStatus,
-  savedAttemptId,
-}: Readonly<{
-  result: MultimodalAttemptResult;
-  substanceScore: number;
-  recordingStatus?: string;
-  savedAttemptId?: string | null;
-}>) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
-  useEffect(() => {
-    if (!result.recording) {
-      setRecordingUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(result.recording.blob);
-    setRecordingUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [result.recording]);
-  const visual = result.visionSummary;
-  const vocalScore = result.metrics.vocal.rehearsalScore;
-  const trackingPercent = visual?.metrics.trackingCoveragePercent ?? 0;
-  const reliableVisualTracking = trackingPercent >= 80;
-  const speechDisruptions = result.speechDisruptions ?? [];
-  const visualScore = reliableVisualTracking ? (result.metrics.visual?.rehearsalScore ?? null) : null;
-  // The weighting is computed from what was actually measurable, not asserted.
-  // This screen used to print a fixed "50 / 25 / 25" while the arithmetic
-  // renormalized around a missing camera — so an attempt with no usable
-  // landmarks showed a caption claiming a quarter of the figure came from a
-  // signal that contributed nothing.
-  const reading = summarizeRehearsalReading({
-    substance: substanceScore,
-    vocal: vocalScore,
-    visual: visualScore,
-    vocalExcludedReason: 'No transcript or acoustic timing was available to read.',
-    visualExcludedReason: visual
-      ? `Landmarks held for ${trackingPercent}% of sampled frames, below the 80% floor this reading requires.`
-      : 'The camera was not part of this attempt.',
-  });
-  const replayEvents = [
-    ...speechDisruptions.map((event, index) => ({
-      key: `speech-${event.startMs}-${index}`,
-      startMs: event.startMs,
-      endMs: event.endMs,
-      lane: 'voice' as const,
-      label: event.label,
-      detail: event.evidence,
-      source: event.source === 'interim-transcript' ? 'dictation cue' : 'voice cue',
-    })),
-    ...(visual?.events ?? []).map((event, index) => ({
-      key: `vision-${event.startMs}-${index}`,
-      startMs: event.startMs,
-      endMs: event.endMs,
-      lane: 'camera' as const,
-      label: event.label,
-      detail: 'Camera-landmark observation. Review the surrounding context before interpreting it.',
-      source: 'camera cue',
-    })),
-  ].sort((left, right) => left.startMs - right.startMs);
-  // Where the cues fell across the attempt. Position is the whole point: a list
-  // says a filler happened, a timeline says it happened four times in the last
-  // thirty seconds, which is a different piece of advice.
-  //
-  // The lane carries the identity, so the marks are one hue. Two hues here would
-  // be redundant with the lane label, and the obvious warm/green pair separates
-  // at ΔE 4.2 under protanopia — invisible to a red-green colourblind reader.
-  const timelineDurationMs = Math.max(1_000, result.durationSeconds * 1_000);
-  const timelineLanes = [
-    { id: 'voice' as const, label: 'Voice', events: replayEvents.filter((event) => event.lane === 'voice') },
-    { id: 'camera' as const, label: 'Camera', events: replayEvents.filter((event) => event.lane === 'camera') },
-  ].filter((lane) => lane.events.length > 0);
-
-  function playFrom(startMs: number) {
-    const player = videoRef.current;
-    if (!player) return;
-    player.currentTime = Math.max(0, startMs / 1_000 - 2);
-    void player.play();
-  }
-  return <section className="surface multimodal-review">
-    <div className="multimodal-review-heading"><div><p className="overline">Multimodal performance map</p><h2>How the attempt came across</h2></div></div>
-    <ReadingComposition reading={reading} headingId="rehearsalReadingLabel" />
-    <p className="delivery-boundary"><strong>This number describes one rehearsal attempt, not your ability.</strong> The bar above is its whole arithmetic: each block is as wide as the share it carried and as full as it scored. Readings come from configured, inspectable thresholds, and every component below shows the evidence behind it. Signals that were not measured are excluded from the mean rather than counted as zero. These readings describe observable camera, transcript, and acoustic signals—not emotion, confidence, health, skill, or hiring suitability.</p>
-    {recordingUrl && <section className="recording-review" aria-labelledby="replayTitle">
-      <div><p className="overline">Attempt replay</p><h3 id="replayTitle">Review the moment, not just the number.</h3><p>Timestamp buttons start two seconds before each observation so you can judge the surrounding context yourself.</p></div>
-      <video ref={videoRef} className="recording-player" src={recordingUrl} controls playsInline preload="metadata" aria-label="Recorded attempt replay" />
-      <div className="recording-review-actions"><a className="button button-secondary" href={recordingUrl} download={`talk-active-attempt.${result.recording?.mimeType.includes('mp4') ? 'mp4' : 'webm'}`}>Download this replay</a>{savedAttemptId && <a className="text-button" href={`/attempts/${savedAttemptId}`}>Open saved review</a>}</div>
-      {recordingStatus && <p className="recording-sync-status" role="status">{recordingStatus}</p>}
-      <ol className="replay-timeline">{replayEvents.length > 0 ? replayEvents.map((event) => <li key={event.key}><button className="replay-event-button" type="button" onClick={() => playFrom(event.startMs)}><time>{formatTime(event.startMs)}</time><span><strong>{event.label}</strong><small>{event.source} · {event.detail}</small></span><b aria-hidden="true">Play →</b></button></li>) : <li><p>No timestamp observation crossed the prototype thresholds. You can still scrub the complete replay.</p></li>}</ol>
-    </section>}
-    {!recordingUrl && recordingStatus && <p className="recording-sync-status" role="status">{recordingStatus}</p>}
-    {timelineLanes.length > 0 && <section className="attempt-timeline" aria-labelledby="timelineTitle">
-      <div className="section-title-row">
-        <div><p className="overline">When the cues happened</p><h3 id="timelineTitle">Across the attempt</h3></div>
-        <span className="timeline-duration">{formatTime(timelineDurationMs)} total</span>
-      </div>
-      {timelineLanes.map((lane) => (
-        <div className="timeline-lane" key={lane.id}>
-          <span className="timeline-lane-label">{lane.label}</span>
-          <div className="timeline-track">
-            {lane.events.map((event) => {
-              const left = Math.min(99, (event.startMs / timelineDurationMs) * 100);
-              const span = Math.max(0, (event.endMs - event.startMs) / timelineDurationMs) * 100;
-              return (
-                <button
-                  key={event.key}
-                  className="timeline-mark"
-                  type="button"
-                  style={{ left: `${left}%`, width: `${Math.max(span, 1.5)}%` }}
-                  onClick={() => playFrom(event.startMs)}
-                  title={`${formatTime(event.startMs)} · ${event.label}`}
-                  aria-label={`${formatTime(event.startMs)}, ${event.label}. ${recordingUrl ? 'Play the replay from two seconds before this.' : 'No replay was recorded for this attempt.'}`}
-                  disabled={!recordingUrl}
-                />
-              );
-            })}
-          </div>
-        </div>
-      ))}
-      <p className="timeline-axis" aria-hidden="true">
-        <span>0:00</span><span>{formatTime(timelineDurationMs / 2)}</span><span>{formatTime(timelineDurationMs)}</span>
-      </p>
-      <p className="metrics-boundary">
-        Each mark is a candidate the prototype thresholds flagged, placed where it occurred. The list below carries the same events as text.
-      </p>
-    </section>}
-
-    <div className="performance-details">
-      <div><h3>Voice evidence</h3><ul className="metric-band-list">{result.metrics.vocal.metrics.map((metric) => <MetricBand metric={metric} key={metric.id} />)}</ul>{(result.metrics.fillers.length > 0 || result.metrics.repeatedWordEvents.length > 0) && <div className="event-timeline transcript-cue-list"><span>Transcript cue evidence</span>{/* The quote and its count are one grid cell. Left as siblings they were a
-    third child in a two-column grid, so every count wrapped onto its own
-    row under the timestamp. */}
-{result.metrics.fillers.map((filler) => <p key={filler.label}><time>filler</time><span><q>{filler.label}</q> × {filler.count}</span></p>)}{result.metrics.repeatedWordEvents.slice(0, 6).map((event) => <p key={`${event.word}-${event.tokenIndex}`}><time>{event.timestampSeconds === null ? `word ${event.tokenIndex + 1}` : formatTime(event.timestampSeconds * 1_000)}</time><span><q>{event.word}</q> repeated {event.additionalOccurrences + 1} times in sequence</span></p>)}</div>}<div className="event-timeline speech-disruption-list"><h4>Possible hesitation cues</h4><ul>{speechDisruptions.length > 0 ? speechDisruptions.slice(0, 8).map((event, index) => <li key={`${event.kind}-${event.startMs}-${index}`}><time>{formatTime(event.startMs)}</time><span><strong>{event.label}</strong><small>{event.evidence}</small></span></li>) : <li><time>—</time><span><strong>No audio or interim-dictation candidate crossed the prototype thresholds.</strong><small>Short or unvoiced hesitations may still be missed.</small></span></li>}</ul></div></div>
-      <div><h3>Camera evidence</h3>{visual ? <>{result.metrics.visual && <ul className="metric-band-list">{result.metrics.visual.metrics.map((metric) => <MetricBand metric={metric} key={metric.id} />)}</ul>}<ul className="raw-observation-list">{visual.mode === 'interview' ? <>
-        <li><span><strong>Reliable face tracking</strong><small>Frames with usable landmarks</small></span><b>{visual.metrics.trackingCoveragePercent}%</b></li>
-        <li><span><strong>Face framing</strong><small>Measured after calibration</small></span><b>{visual.metrics.framedPercent}%</b></li>
-        <li><span><strong>Camera-facing head direction</strong><small>This is not eye contact</small></span><b>{visual.metrics.cameraFacingPercent ?? 'n/a'}{visual.metrics.cameraFacingPercent === null ? '' : '%'}</b></li>
-      </> : <>
-        <li><span><strong>Full-body visibility</strong><small>Complete pose inside the frame</small></span><b>{visual.metrics.fullBodyVisiblePercent}%</b></li>
-        <li><span><strong>Hand visibility</strong><small>Both wrists tracked</small></span><b>{visual.metrics.handsVisiblePercent}%</b></li>
-        <li><span><strong>Movement bursts</strong><small>Motion events, not gesture quality</small></span><b>{visual.metrics.gestureBurstCount}</b></li>
-        <li><span><strong>Position changes</strong><small>Sustained lateral relocations</small></span><b>{visual.metrics.positionChangeCount}</b></li>
-      </>}</ul>{visual.events.length > 0 && <div className="event-timeline"><span>Timestamp evidence</span>{visual.events.slice(0, 6).map((event, index) => <p key={`${event.kind}-${event.startMs}-${index}`}><time>{formatTime(event.startMs)}</time>{event.label}</p>)}</div>}</> : <p className="performance-empty">Camera observations were unavailable for this attempt.</p>}</div>
-    </div>
-    <p className="metrics-boundary">{result.metrics.boundary} These audio and interim-dictation cues are experimental candidates, not a diagnosis; emphasis, held vowels, noise suppression, microphone gating, or ordinary phrasing can produce similar patterns. They do not change the vocal reading.</p>
-  </section>;
-}
+/* Legacy inline review removed: the evidence-first review lives in
+ * `multimodal-review.tsx`, where it can stay small without coupling capture
+ * permissions to review presentation. */
+export { MultimodalReview } from './multimodal-review';

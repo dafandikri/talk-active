@@ -4,14 +4,6 @@ import logo from '../../../src/assets/brand/talk-active-logo.svg';
 import mascot from '../../../src/assets/mascot/kato-macaw-reading.svg';
 import type { Project } from '@/lib/contracts';
 
-const practiceLoop = [
-  ['Create your project', 'Keep the event, deadline, and rehearsal history together.'],
-  ['Set up the rubric', 'Use the criteria the evaluator will actually apply.'],
-  ['Start speaking', 'Rehearse a complete answer, not an isolated speaking drill.'],
-  ['Review your result', 'Inspect the exact transcript span—or the explicit gap—behind each verdict.'],
-  ['Defend your idea', 'Answer one question aimed at the weakest remaining claim.'],
-] as const;
-
 export function ProductionShell({ project }: Readonly<{ project: Project }>) {
   return (
     <main className="production-shell">
@@ -27,16 +19,15 @@ export function ProductionShell({ project }: Readonly<{ project: Project }>) {
           <h1 className="production-shell__title" id="production-title">
             Rehearse the claim a judge will challenge next.
           </h1>
+          {/* "rubric-grounded" twice in one sentence, and the second half only
+              restated the first. One naming of Kato, one claim, no repetition. */}
           <p className="production-shell__lede">
-            Practice your rubric-grounded answer with <b>Katoo</b>, our AI rehearsal coach.
+            Practise with <b>Kato</b> against the rubric you will actually be judged against.
           </p>
           <div className="production-shell__actions">
             <Link className="production-shell__action" href="/enter">
               Start practicing <span aria-hidden="true">→</span>
             </Link>
-            <a className="production-shell__secondary-action" href="#how-it-works">
-              How it works
-            </a>
           </div>
         </div>
 
@@ -64,21 +55,6 @@ export function ProductionShell({ project }: Readonly<{ project: Project }>) {
           </div>
           <img src={mascot.src} alt="" />
         </div>
-      </section>
-
-      <section className="production-shell__loop" id="how-it-works" aria-labelledby="loop-title">
-        <div className="production-shell__section-intro">
-          <h2 id="loop-title">How it works</h2>
-        </div>
-        <ol>
-          {practiceLoop.map(([title, description], index) => (
-            <li className={title === 'Review your result' ? 'production-shell__evidence-step' : undefined} key={title}>
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              <h3>{title}</h3>
-              <p>{description}</p>
-            </li>
-          ))}
-        </ol>
       </section>
 
       <section className="production-shell__use-cases" aria-labelledby="use-cases-title">

@@ -35,6 +35,7 @@ export function EntryGate() {
         <Link className="entry-brand" href="/" aria-label="Talk-Active home">
           <img src={logo.src} alt="Talk-Active" />
         </Link>
+        <Link className="entry-back" href="/">← Back to landing</Link>
 
         <p className="entry-kicker">Guest rehearsal</p>
         <h1 className="entry-title" id="entry-title">Put your name on this workspace.</h1>

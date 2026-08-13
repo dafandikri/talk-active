@@ -134,6 +134,14 @@ test('an empty recognition boundary allows the same filler in the next utterance
   assert.equal(tracker.events().length, 2);
 });
 
+test('a new interview utterance resets its hypothesis without erasing earlier cues', () => {
+  const tracker = new InterimFillerTracker();
+  assert.equal(tracker.addInterimTranscript('umm first answer', 1_000).length, 1);
+  tracker.beginUtterance();
+  assert.equal(tracker.addInterimTranscript('umm second answer', 4_000).length, 1);
+  assert.deepEqual(tracker.events().map((event) => event.startMs), [1_000, 4_000]);
+});
+
 test('overlapping interim and acoustic cues merge into one inspectable event', () => {
   const merged = mergeSpeechDisruptionEvents(
     [{ kind: 'prolonged-voicing', source: 'acoustic', startMs: 1_000, endMs: 1_900, durationMs: 900, label: 'Possible prolonged voiced hesitation', evidence: 'acoustic' }],

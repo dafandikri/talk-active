@@ -12,10 +12,14 @@ const IdSchema = z.string().trim().min(1).max(128);
 const TimestampSchema = z.string().datetime({ offset: true });
 const OptionalTimestampSchema = TimestampSchema.nullable();
 
+export const ProjectLanguageSchema = z.enum(['id-ID', 'en-US']);
+export const RehearsalFormatSchema = z.enum(['presentation', 'interview']);
+
 export const ProjectSchema = z.object({
   id: IdSchema,
   userId: IdSchema.nullable(),
   title: z.string().trim().min(1).max(160),
+  language: ProjectLanguageSchema.default('id-ID'),
   eventContext: z.string().trim().max(500).nullable(),
   deadline: z.string().date().nullable(),
   createdAt: TimestampSchema,
@@ -260,6 +264,7 @@ export const CapabilitiesResponseSchema = z.object({
     evidence: z.boolean(),
     question: z.boolean(),
     defense: z.boolean(),
+    coach: z.boolean().default(false),
   }),
 });
 
@@ -370,11 +375,20 @@ export const AttemptReviewEvidenceSchema = z.object({
 
 export const AttemptReviewResponseSchema = z.object({
   contractVersion: z.literal(CONTRACT_VERSION),
+  project: ProjectSchema,
   attempt: AttemptSchema,
   deliveryReview: AttemptDeliveryReviewSchema.nullable(),
   deliveryEvents: z.array(AttemptDeliveryEventSchema).max(500),
   recording: AttemptRecordingSchema.nullable(),
   evidence: z.array(AttemptReviewEvidenceSchema).max(20),
+}).superRefine((value, context) => {
+  if (value.project.id !== value.attempt.projectId) {
+    context.addIssue({
+      code: 'custom',
+      path: ['project', 'id'],
+      message: 'The saved review project must own this attempt.',
+    });
+  }
 });
 
 export const AttemptRecordingDeleteResponseSchema = z.object({
@@ -407,16 +421,23 @@ const NewCriterionSchema = CriterionSchema.omit({ id: true, rubricId: true });
 
 export const CreateProjectRequestSchema = z.object({
   title: z.string().trim().min(1).max(160),
+  language: ProjectLanguageSchema.default('id-ID'),
   eventContext: z.string().trim().max(500).nullable().default(null),
   deadline: z.string().date().nullable().default(null),
 });
+
+export const UpdateProjectRequestSchema = z.object({
+  language: ProjectLanguageSchema,
+}).strict();
 
 export const CreateProjectResponseSchema = z.object({
   contractVersion: z.literal(CONTRACT_VERSION),
   project: ProjectSchema,
 });
 
-const CurrentProjectWorkspaceSchema = z.object({
+export const UpdateProjectResponseSchema = CreateProjectResponseSchema;
+
+export const ProjectWorkspaceSchema = z.object({
   project: ProjectSchema,
   rubric: RubricSchema.nullable(),
   criteria: z.array(CriterionSchema).max(20),
@@ -455,7 +476,7 @@ const CurrentProjectWorkspaceSchema = z.object({
 export const CurrentProjectResponseSchema = z.object({
   contractVersion: z.literal(CONTRACT_VERSION),
   identity: z.enum(['account', 'guest']),
-  current: CurrentProjectWorkspaceSchema.nullable(),
+  current: ProjectWorkspaceSchema.nullable(),
 }).superRefine((value, context) => {
   if (value.identity === 'guest' && value.current !== null) {
     context.addIssue({
@@ -464,6 +485,11 @@ export const CurrentProjectResponseSchema = z.object({
       message: 'An anonymous SQL identity cannot recover a private project.',
     });
   }
+});
+
+export const ProjectWorkspaceResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  workspace: ProjectWorkspaceSchema,
 });
 
 /**
@@ -688,6 +714,170 @@ export const StatelessAnalysisResponseSchema = z.object({
   }
 });
 
+// Interview questions are fixed by the client before capture begins. The
+// analysis boundary therefore accepts answer windows only: question prose is
+// deliberately absent (and rejected by strict parsing) so it cannot become
+// evidence or reach a model as part of the rehearsal transcript.
+export const InterviewAnalysisTurnSchema = z.object({
+  turnId: IdSchema,
+  criterion: CriterionSchema.strict(),
+  answer: z.string().trim().min(1).max(12_000),
+  durationSeconds: z.number().finite().positive().max(3_600),
+  answerStartMs: z.number().int().nonnegative().max(3_600_000),
+  answerEndMs: z.number().int().positive().max(3_600_000),
+}).strict().superRefine((value, context) => {
+  if (value.answerEndMs <= value.answerStartMs) {
+    context.addIssue({
+      code: 'custom',
+      path: ['answerEndMs'],
+      message: 'An interview answer must end after it starts.',
+    });
+  }
+  const answerWindowSeconds = (value.answerEndMs - value.answerStartMs) / 1_000;
+  if (value.durationSeconds > answerWindowSeconds + 1) {
+    context.addIssue({
+      code: 'custom',
+      path: ['durationSeconds'],
+      message: 'Answer duration cannot exceed its timestamped window.',
+    });
+  }
+});
+
+export const InterviewAnalysisRequestSchema = z.object({
+  turns: z.array(InterviewAnalysisTurnSchema).min(1).max(5),
+}).strict().superRefine((value, context) => {
+  const turnIds = new Set(value.turns.map((turn) => turn.turnId));
+  if (turnIds.size !== value.turns.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['turns'],
+      message: 'Every interview turn must have a unique id.',
+    });
+  }
+  const criterionIds = new Set(value.turns.map((turn) => turn.criterion.id));
+  if (criterionIds.size !== value.turns.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['turns'],
+      message: 'Every fixed interview turn must target a distinct criterion.',
+    });
+  }
+  if (value.turns.reduce((sum, turn) => sum + turn.answer.length, 0) > 12_000) {
+    context.addIssue({
+      code: 'custom',
+      path: ['turns'],
+      message: 'The interview answers may contain at most 12000 characters in total.',
+    });
+  }
+  for (let index = 1; index < value.turns.length; index += 1) {
+    const previous = value.turns[index - 1];
+    const current = value.turns[index];
+    if (!previous || !current) continue;
+    if (current.criterion.displayOrder <= previous.criterion.displayOrder) {
+      context.addIssue({
+        code: 'custom',
+        path: ['turns', index, 'criterion', 'displayOrder'],
+        message: 'Interview turns must follow the rubric display order.',
+      });
+    }
+    if (current.answerStartMs < previous.answerEndMs) {
+      context.addIssue({
+        code: 'custom',
+        path: ['turns', index, 'answerStartMs'],
+        message: 'Interview answer windows must be ordered and cannot overlap.',
+      });
+    }
+  }
+});
+
+export const InterviewAnswerJudgmentSchema = z.object({
+  verdict: EvidenceVerdictValueSchema,
+  coverageScore: CoverageScoreSchema,
+  citedSpan: z.string().max(12_000).nullable(),
+  missingEvidence: z.array(z.string().trim().min(1).max(200)).max(40),
+  engine: EvidenceEngineSchema,
+  degradedReason: z.string().trim().min(1).max(2_000).nullable(),
+}).superRefine((value, context) => {
+  if (value.verdict !== 'unsupported' && !value.citedSpan?.trim()) {
+    context.addIssue({
+      code: 'custom',
+      path: ['citedSpan'],
+      message: 'A supported or partial interview answer must cite its own answer span.',
+    });
+  }
+  if (value.verdict === 'unsupported' && value.citedSpan !== null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['citedSpan'],
+      message: 'An unsupported interview answer cannot retain a supporting citation.',
+    });
+  }
+  if (value.verdict !== 'supported' && value.missingEvidence.length === 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['missingEvidence'],
+      message: 'A partial or unsupported interview answer must name missing evidence.',
+    });
+  }
+  if (value.verdict === 'supported' && value.missingEvidence.length > 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['missingEvidence'],
+      message: 'A supported interview answer cannot also claim missing evidence.',
+    });
+  }
+});
+
+export const InterviewTurnAnalysisSchema = z.object({
+  turnId: IdSchema,
+  criterionId: IdSchema,
+  judgment: InterviewAnswerJudgmentSchema,
+});
+
+export const InterviewHardestQuestionSchema = z.object({
+  criterionId: IdSchema,
+  questionText: z.string().trim().min(1).max(2_000),
+  engine: EvidenceEngineSchema,
+});
+
+export const InterviewAnalysisResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  turns: z.array(InterviewTurnAnalysisSchema).min(1).max(5),
+  hardestQuestion: InterviewHardestQuestionSchema,
+  mode: z.enum(['semantic', 'mixed', 'deterministic']),
+}).superRefine((value, context) => {
+  const turnIds = new Set(value.turns.map((turn) => turn.turnId));
+  const criterionIds = new Set(value.turns.map((turn) => turn.criterionId));
+  if (turnIds.size !== value.turns.length || criterionIds.size !== value.turns.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['turns'],
+      message: 'Returned interview turns must map one-to-one to distinct criteria.',
+    });
+  }
+  if (!value.turns.some((turn) => turn.criterionId === value.hardestQuestion.criterionId)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['hardestQuestion'],
+      message: 'The hardest question must target one returned interview criterion.',
+    });
+  }
+  const engines = [
+    ...value.turns.map((turn) => turn.judgment.engine),
+    value.hardestQuestion.engine,
+  ];
+  const expectedMode = engines.every((engine) => engine === 'semantic')
+    ? 'semantic'
+    : engines.every((engine) => engine === 'deterministic') ? 'deterministic' : 'mixed';
+  if (value.mode !== expectedMode) {
+    context.addIssue({
+      code: 'custom',
+      path: ['mode'],
+      message: 'Interview analysis mode must match its per-unit provenance.',
+    });
+  }
+});
+
 const StatelessJudgmentSchema = z.object({
   criterionId: IdSchema,
   verdict: EvidenceVerdictValueSchema,
@@ -785,6 +975,35 @@ export const StatelessRejudgeResponseSchema = z.object({
       message: 'The refreshed question must target the re-judged criterion.',
     });
   }
+});
+
+export const ClaimCoachRequestSchema = z.object({
+  transcript: z.string().trim().min(1).max(12_000),
+  criteria: z.array(StatelessInputCriterionSchema).min(1).max(20),
+});
+
+export const CoachedClaimSchema = z.object({
+  citedSpan: z.string().trim().min(1).max(500),
+  supported: z.boolean(),
+  supportSpan: z.string().trim().min(1).max(500).nullable(),
+  invitedQuestion: z.string().trim().min(1).max(300).nullable(),
+});
+
+export const CriterionCoachingSchema = z.object({
+  criterionId: IdSchema,
+  claims: z.array(CoachedClaimSchema).max(8),
+  // Readings whose quotes failed the exact-span check. Counted and shown,
+  // never quietly hidden: a rejection rate is evidence about the tool.
+  discardedClaims: z.number().int().nonnegative().max(24),
+  strongerForm: z.string().trim().min(1).max(2_000).nullable(),
+  blanks: z.array(z.string().trim().min(1).max(200)).max(6),
+  degradedReason: z.string().trim().min(1).max(1_000).nullable(),
+  model: z.string().trim().min(1).max(200).nullable(),
+});
+
+export const ClaimCoachResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  coachings: z.array(CriterionCoachingSchema).min(1).max(20),
 });
 
 export const StatelessDefenseRequestSchema = z.object({
@@ -969,6 +1188,13 @@ export const SavedSessionSchema = z.object({
   weakest: z.string().trim().min(1).max(200),
   defenseStatus: z.enum(['defensible', 'developing', 'vulnerable']).nullable(),
   projectId: IdSchema.nullable().default(null),
+  projectTitle: z.string().trim().min(1).max(160).nullable().default(null),
+  projectLanguage: ProjectLanguageSchema.nullable().default(null),
+  // Sessions written before interview rehearsal existed were presentations.
+  // Keeping that migration at the runtime boundary means old browser history
+  // remains comparable without pretending a five-answer interview covered the
+  // same criterion universe as a full presentation.
+  rehearsalFormat: RehearsalFormatSchema.default('presentation'),
   criteria: z.array(SavedCriterionResultSchema).max(20).default([]),
 });
 
@@ -1106,6 +1332,8 @@ export const LegacyImportResponseSchema = z.object({
 });
 
 export type Project = z.infer<typeof ProjectSchema>;
+export type ProjectLanguage = z.infer<typeof ProjectLanguageSchema>;
+export type RehearsalFormat = z.infer<typeof RehearsalFormatSchema>;
 export type Rubric = z.infer<typeof RubricSchema>;
 export type RubricSource = z.infer<typeof RubricSourceSchema>;
 export type Criterion = z.infer<typeof CriterionSchema>;
@@ -1125,7 +1353,10 @@ export type ParsedCriterion = z.infer<typeof ParsedCriterionSchema>;
 export type RubricParseResponse = z.infer<typeof RubricParseResponseSchema>;
 export type CreateProjectRequest = z.infer<typeof CreateProjectRequestSchema>;
 export type CreateProjectResponse = z.infer<typeof CreateProjectResponseSchema>;
+export type UpdateProjectRequest = z.infer<typeof UpdateProjectRequestSchema>;
+export type UpdateProjectResponse = z.infer<typeof UpdateProjectResponseSchema>;
 export type CurrentProjectResponse = z.infer<typeof CurrentProjectResponseSchema>;
+export type ProjectWorkspaceResponse = z.infer<typeof ProjectWorkspaceResponseSchema>;
 export type ProjectSummary = z.infer<typeof ProjectSummarySchema>;
 export type ProjectListResponse = z.infer<typeof ProjectListResponseSchema>;
 export type ConfirmRubricRequest = z.infer<typeof ConfirmRubricRequestSchema>;
@@ -1139,16 +1370,27 @@ export type ReusedCitation = z.infer<typeof ReusedCitationSchema>;
 export type StatelessAnalysisRequest = z.infer<typeof StatelessAnalysisRequestSchema>;
 export type StatelessAnalysisResponse = z.infer<typeof StatelessAnalysisResponseSchema>;
 export type StatelessInputCriterion = z.infer<typeof StatelessInputCriterionSchema>;
+export type InterviewAnalysisTurn = z.infer<typeof InterviewAnalysisTurnSchema>;
+export type InterviewAnalysisRequest = z.infer<typeof InterviewAnalysisRequestSchema>;
+export type InterviewAnswerJudgment = z.infer<typeof InterviewAnswerJudgmentSchema>;
+export type InterviewTurnAnalysis = z.infer<typeof InterviewTurnAnalysisSchema>;
+export type InterviewHardestQuestion = z.infer<typeof InterviewHardestQuestionSchema>;
+export type InterviewAnalysisResponse = z.infer<typeof InterviewAnalysisResponseSchema>;
 export type StatelessRejudgeRequest = z.infer<typeof StatelessRejudgeRequestSchema>;
 export type StatelessRejudgeResponse = z.infer<typeof StatelessRejudgeResponseSchema>;
 export type StatelessDefenseRequest = z.infer<typeof StatelessDefenseRequestSchema>;
 export type StatelessDefenseResponse = z.infer<typeof StatelessDefenseResponseSchema>;
+export type ClaimCoachRequest = z.infer<typeof ClaimCoachRequestSchema>;
+export type ClaimCoachResponse = z.infer<typeof ClaimCoachResponseSchema>;
+export type CriterionCoaching = z.infer<typeof CriterionCoachingSchema>;
+export type CoachedClaim = z.infer<typeof CoachedClaimSchema>;
 export type QuestionResponse = z.infer<typeof QuestionResponseSchema>;
 export type SourceDocumentUploadResponse = z.infer<typeof SourceDocumentUploadResponseSchema>;
 export type SourceDocumentListResponse = z.infer<typeof SourceDocumentListResponseSchema>;
 export type SourceDocumentDeleteResponse = z.infer<typeof SourceDocumentDeleteResponseSchema>;
 export type DefenseRequest = z.infer<typeof DefenseRequestSchema>;
 export type DefenseResponse = z.infer<typeof DefenseResponseSchema>;
+export type ProgressPoint = z.infer<typeof ProgressPointSchema>;
 export type ProgressResponse = z.infer<typeof ProgressResponseSchema>;
 export type RecurringWeakness = z.infer<typeof RecurringWeaknessSchema>;
 export type SavedCriterionResult = z.infer<typeof SavedCriterionResultSchema>;

@@ -95,11 +95,22 @@ test('finalization enforces duration and size limits', () => {
 
 test('saved attempt review can retain delivery observations without a recording', () => {
   const attemptId = crypto.randomUUID();
+  const projectId = crypto.randomUUID();
   const result = AttemptReviewResponseSchema.safeParse({
     contractVersion: 2,
+    project: {
+      id: projectId,
+      userId: 'review-owner',
+      title: 'Final rehearsal',
+      language: 'en-US',
+      eventContext: null,
+      deadline: null,
+      createdAt: '2026-08-12T00:00:00.000Z',
+      updatedAt: '2026-08-13T00:00:00.000Z',
+    },
     attempt: {
       id: attemptId,
-      projectId: crypto.randomUUID(),
+      projectId,
       mode: 'dictated',
       status: 'review',
       transcript: 'A traceable practice answer.',

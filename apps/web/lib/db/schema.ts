@@ -64,6 +64,7 @@ export const deliveryEventSource = pgEnum('delivery_event_source', [
   'vision',
 ]);
 export const recordingStatus = pgEnum('recording_status', ['pending', 'ready', 'failed']);
+export const projectLanguage = pgEnum('project_language', ['id-ID', 'en-US']);
 
 export const projects = pgTable('projects', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -71,6 +72,7 @@ export const projects = pgTable('projects', {
   // Better Auth's generated user table in our Singapore Postgres deployment.
   userId: text('user_id').references(() => authUsers.id, { onDelete: 'cascade' }),
   title: varchar('title', { length: 160 }).notNull(),
+  language: projectLanguage('language').default('id-ID').notNull(),
   eventContext: text('event_context'),
   deadline: date('deadline', { mode: 'string' }),
   ...timestampColumns,

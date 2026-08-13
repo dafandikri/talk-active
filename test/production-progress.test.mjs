@@ -6,6 +6,9 @@ import { AttemptComparisonSchema, RecurringWeaknessSchema } from '../apps/web/li
 import {
   buildCriterionTrails,
   compareAttemptEvidence,
+  latestCompatibleProgressHistory,
+  latestCompatibleSavedSessions,
+  mergeProgressHistory,
   parseSavedSessions,
   summarizeRecurringWeaknesses,
 } from '../apps/web/lib/progress.ts';
@@ -44,10 +47,49 @@ function detailedSession({ id, createdAt, feasibilityCoverage, feasibilitySpan =
   };
 }
 
+test('project progress keeps unmatched browser summaries and lets a synced attempt win its duplicate ID', () => {
+  const projectId = 'project-finals';
+  const duplicate = {
+    ...detailedSession({
+      id: 'attempt-presentation',
+      createdAt: '2026-08-12T08:00:00.000Z',
+      feasibilityCoverage: 0.5,
+      feasibilitySpan: 'The browser copy predates the durable verdict rows.',
+    }),
+    projectId,
+    evidenceScore: 50,
+  };
+  const interview = {
+    ...detailedSession({
+      id: 'browser-interview',
+      createdAt: '2026-08-13T08:00:00.000Z',
+      feasibilityCoverage: 1,
+      feasibilitySpan: 'Each answer was checked only against its paired criterion.',
+    }),
+    projectId,
+    evidenceScore: 100,
+  };
+  const history = mergeProgressHistory([{
+    attemptId: duplicate.id,
+    createdAt: duplicate.createdAt,
+    coverage: 0.75,
+    hasDeliveryReview: false,
+    recordingStatus: null,
+  }], [duplicate, interview]);
+
+  assert.equal(history.length, 2);
+  assert.deepEqual(history.map((entry) => entry.id), ['attempt-presentation', 'browser-interview']);
+  assert.equal(history[0].source, 'synced', 'the durable attempt replaces its browser mirror');
+  assert.equal(history[0].evidenceScore, 75, 'the durable coverage is the authoritative duplicate');
+  assert.equal(history[1].source, 'browser', 'an interview with no durable attempt stays visible');
+  assert.equal(history[1].evidenceScore, 100);
+});
+
 test('F-4 reads old summary sessions without inventing criterion evidence', () => {
   const [session] = parseSavedSessions(JSON.stringify([OLD_SESSION, { broken: true }]));
   assert.ok(session);
   assert.equal(session.projectId, null);
+  assert.equal(session.rehearsalFormat, 'presentation');
   assert.deepEqual(session.criteria, []);
 
   assert.deepEqual(summarizeRecurringWeaknesses([session]), [], 'one gap is not yet recurring');
@@ -157,6 +199,110 @@ test('F-3 never compares attempts belonging to different projects', () => {
     { ...first, projectId: 'project-a' },
     { ...second, projectId: 'project-b' },
   ]), []);
+});
+
+test('F-3 never compares an interview subset with a full presentation rubric', () => {
+  const presentation = detailedSession({
+    id: 'presentation', createdAt: '2026-08-10T08:00:00.000Z', feasibilityCoverage: 0.5,
+    feasibilitySpan: 'The presentation covers the complete confirmed rubric.',
+  });
+  presentation.projectId = 'same-project';
+  presentation.rehearsalFormat = 'presentation';
+  presentation.criteria.push({
+    criterionId: 'criterion-six',
+    criterionName: 'Sixth criterion',
+    verdict: 'supported',
+    coverage: 1,
+    citedSpan: 'Only the full presentation evaluates this sixth criterion.',
+    missingEvidence: [],
+  });
+  const interview = {
+    ...detailedSession({
+      id: 'interview', createdAt: '2026-08-11T08:00:00.000Z', feasibilityCoverage: 1,
+      feasibilitySpan: 'The interview evaluates only its answer-local subset.',
+    }),
+    projectId: 'same-project',
+    rehearsalFormat: 'interview',
+  };
+
+  assert.deepEqual(
+    compareAttemptEvidence([presentation, interview]),
+    [],
+    'different rehearsal scopes must not manufacture a removed sixth criterion',
+  );
+});
+
+test('coverage trend follows the latest rehearsal format without joining incompatible denominators', () => {
+  const projectId = 'project-finals';
+  const history = mergeProgressHistory([{
+    attemptId: 'presentation-1',
+    createdAt: '2026-08-10T08:00:00.000Z',
+    coverage: 0.5,
+    hasDeliveryReview: false,
+    recordingStatus: null,
+  }, {
+    attemptId: 'presentation-2',
+    createdAt: '2026-08-11T08:00:00.000Z',
+    coverage: 0.75,
+    hasDeliveryReview: false,
+    recordingStatus: null,
+  }], [{
+    ...detailedSession({
+      id: 'interview-1', createdAt: '2026-08-12T08:00:00.000Z', feasibilityCoverage: 1,
+      feasibilitySpan: 'This answer-only aggregate uses the interview subset.',
+    }),
+    projectId,
+    rehearsalFormat: 'interview',
+  }]);
+
+  assert.deepEqual(
+    latestCompatibleProgressHistory(history).map((entry) => entry.id),
+    ['interview-1'],
+    'the latest interview must not display a point delta against a presentation',
+  );
+});
+
+test('browser-only pattern math follows the latest compatible rehearsal format', () => {
+  const presentation = {
+    ...detailedSession({
+      id: 'presentation', createdAt: '2026-08-10T08:00:00.000Z', feasibilityCoverage: 0,
+    }),
+    rehearsalFormat: 'presentation',
+  };
+  const interview = {
+    ...detailedSession({
+      id: 'interview', createdAt: '2026-08-11T08:00:00.000Z', feasibilityCoverage: 0,
+    }),
+    rehearsalFormat: 'interview',
+  };
+
+  const compatible = latestCompatibleSavedSessions([presentation, interview]);
+  assert.deepEqual(compatible.map((session) => session.id), ['interview']);
+  assert.deepEqual(
+    summarizeRecurringWeaknesses(compatible),
+    [],
+    'one presentation plus one interview must not become a recurring gap',
+  );
+});
+
+test('compatible attempts still compare within each rehearsal format', () => {
+  const attempts = [
+    { ...detailedSession({ id: 'presentation-1', createdAt: '2026-08-10T08:00:00.000Z', feasibilityCoverage: 0 }), rehearsalFormat: 'presentation' },
+    { ...detailedSession({ id: 'interview-1', createdAt: '2026-08-10T09:00:00.000Z', feasibilityCoverage: 0 }), rehearsalFormat: 'interview' },
+    { ...detailedSession({ id: 'presentation-2', createdAt: '2026-08-11T08:00:00.000Z', feasibilityCoverage: 0.5, feasibilitySpan: 'Presentation evidence improved.' }), rehearsalFormat: 'presentation' },
+    { ...detailedSession({ id: 'interview-2', createdAt: '2026-08-11T09:00:00.000Z', feasibilityCoverage: 0.5, feasibilitySpan: 'Interview evidence improved.' }), rehearsalFormat: 'interview' },
+  ];
+
+  assert.deepEqual(
+    compareAttemptEvidence(attempts).map((comparison) => [
+      comparison.previousAttemptId,
+      comparison.currentAttemptId,
+    ]).sort((left, right) => left[0].localeCompare(right[0])),
+    [
+      ['interview-1', 'interview-2'],
+      ['presentation-1', 'presentation-2'],
+    ],
+  );
 });
 
 test('F-3 contract rejects invented movement disconnected from retained coverage', () => {

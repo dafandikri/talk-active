@@ -24,6 +24,7 @@ import {
   EvidenceVerdictSchema,
   ProgressResponseSchema,
   ProjectListResponseSchema,
+  ProjectWorkspaceResponseSchema,
   QuestionResponseSchema,
   SourceDocumentDeleteResponseSchema,
   SourceDocumentListResponseSchema,
@@ -31,10 +32,12 @@ import {
   SourceDocumentUploadResponseSchema,
   WorkspaceExportSchema,
   LegacyImportResponseSchema,
+  UpdateProjectResponseSchema,
   type LegacyWorkspaceImportSchema,
   type ConfirmRubricRequest,
   type CreateAttemptRequest,
   type CreateProjectRequest,
+  type UpdateProjectRequest,
   type DefenseRequest,
   type EvidenceConfirmationRequest,
   type SourceDocument,
@@ -104,6 +107,7 @@ export async function createOwnedProject(
   const [project] = await db.insert(projects).values({
     userId,
     title: input.title,
+    language: input.language,
     eventContext: input.eventContext,
     deadline: input.deadline,
   }).returning();
@@ -112,7 +116,7 @@ export async function createOwnedProject(
 }
 
 /**
- * Every project this account owns, newest activity first.
+ * The 100 most recently active projects this account owns.
  *
  * One grouped query rather than a lookup per project: the switcher shows an
  * attempt count and a last-practised date per row, and doing that with a query
@@ -135,7 +139,10 @@ export async function listOwnedProjects(db: Database, userId: string) {
     .leftJoin(attempts, eq(attempts.projectId, projects.id))
     .where(eq(projects.userId, userId))
     .groupBy(projects.id, rubrics.confirmedAt)
-    .orderBy(desc(projects.updatedAt), desc(projects.createdAt));
+    .orderBy(desc(projects.updatedAt), desc(projects.createdAt))
+    // Keep the query and response contract in agreement. Without this limit,
+    // the 101st project made the entire switcher response fail validation.
+    .limit(100);
 
   return ProjectListResponseSchema.parse({
     contractVersion: CONTRACT_VERSION,
@@ -158,11 +165,68 @@ async function assertProjectAccess(db: Database, projectId: string, userId: stri
       'Sign in before accessing a synced project.',
     );
   }
-  const [project] = await db.select({ id: projects.id, userId: projects.userId })
+  // Put the owner predicate in the lookup itself. Fetching by id and comparing
+  // afterward makes it too easy for a future caller to use the row before the
+  // ownership check, and it briefly loads another account's data into memory.
+  const [project] = await db.select()
     .from(projects)
-    .where(eq(projects.id, projectId))
+    .where(and(
+      eq(projects.id, projectId),
+      eq(projects.userId, userId),
+    ))
     .limit(1);
-  if (!project || project.userId !== userId) notFound('Project');
+  if (!project) notFound('Project');
+  return project;
+}
+
+export async function getOwnedProjectById(
+  db: Database,
+  projectId: string,
+  userId: string | null,
+) {
+  const project = await assertProjectAccess(db, projectId, userId);
+
+  const [rubric] = await db.select().from(rubrics)
+    .where(eq(rubrics.projectId, projectId))
+    .limit(1);
+  const recoveredCriteria = rubric
+    ? await db.select().from(criteria)
+      .where(eq(criteria.rubricId, rubric.id))
+      .orderBy(asc(criteria.displayOrder))
+    : [];
+  const recoveredSources = await db.select().from(sourceDocuments)
+    .where(eq(sourceDocuments.projectId, projectId))
+    .orderBy(asc(sourceDocuments.uploadedAt));
+
+  return ProjectWorkspaceResponseSchema.parse({
+    contractVersion: CONTRACT_VERSION,
+    workspace: {
+      project,
+      rubric: rubric ?? null,
+      criteria: recoveredCriteria,
+      sourceDocuments: recoveredSources,
+    },
+  });
+}
+
+export async function updateOwnedProject(
+  db: Database,
+  projectId: string,
+  input: UpdateProjectRequest,
+  userId: string | null,
+) {
+  const owned = await assertProjectAccess(db, projectId, userId);
+  const [project] = await db.update(projects)
+    .set({ language: input.language, updatedAt: now() })
+    // Keep the write owner-scoped too. Account ownership is not currently
+    // mutable, but the predicate makes that safety independent of that fact.
+    .where(and(
+      eq(projects.id, projectId),
+      eq(projects.userId, owned.userId!),
+    ))
+    .returning();
+  if (!project) notFound('Project');
+  return UpdateProjectResponseSchema.parse({ contractVersion: CONTRACT_VERSION, project });
 }
 
 export async function getCurrentOwnedProject(

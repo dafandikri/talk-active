@@ -4,7 +4,7 @@ import {
   readFileSync,
   readdirSync,
 } from 'node:fs';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -27,7 +27,9 @@ function filesUnder(directory) {
 function distributableAssets(directory) {
   return filesUnder(directory)
     .filter((path) => /\.(?:js|task|wasm)$/u.test(path))
-    .map((path) => relative(ASSET_ROOT, path))
+    // Manifest paths are URL-style on every platform; Node's relative() uses
+    // the host separator, so normalize Windows discovery before comparing.
+    .map((path) => relative(ASSET_ROOT, path).split(sep).join('/'))
     .sort();
 }
 

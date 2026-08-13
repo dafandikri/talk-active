@@ -127,7 +127,10 @@ export async function saveAttemptDeliveryReview(
 
 export async function getAttemptReview(db: Database, attemptId: string, userId: string) {
   const attempt = await assertOwnedAttempt(db, attemptId, userId);
-  const [reviewRows, deliveryEvents, recordingRows, evidence] = await Promise.all([
+  const [projectRows, reviewRows, deliveryEvents, recordingRows, evidence] = await Promise.all([
+    db.select().from(projects)
+      .where(and(eq(projects.id, attempt.projectId), eq(projects.userId, userId)))
+      .limit(1),
     db.select().from(attemptDeliveryReviews)
       .where(eq(attemptDeliveryReviews.attemptId, attemptId)).limit(1),
     db.select().from(attemptDeliveryEvents)
@@ -152,6 +155,7 @@ export async function getAttemptReview(db: Database, attemptId: string, userId: 
   ]);
   return AttemptReviewResponseSchema.parse({
     contractVersion: CONTRACT_VERSION,
+    project: projectRows[0],
     attempt,
     deliveryReview: reviewRows[0] ?? null,
     deliveryEvents,

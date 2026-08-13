@@ -28,9 +28,11 @@ async function installMediaProbe(page: Page) {
 
     const observedWindow = window as Window & {
       __talkActiveMediaRequests?: Array<{ audio: boolean; video: boolean }>;
+      __talkActiveMediaTrackStops?: number;
     };
     const requests: Array<{ audio: boolean; video: boolean }> = [];
     observedWindow.__talkActiveMediaRequests = requests;
+    observedWindow.__talkActiveMediaTrackStops = 0;
     if (!navigator.mediaDevices?.getUserMedia) return;
 
     const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
@@ -41,7 +43,20 @@ async function installMediaProbe(page: Page) {
           audio: constraints.audio !== undefined && constraints.audio !== false,
           video: constraints.video !== undefined && constraints.video !== false,
         });
-        return originalGetUserMedia(constraints);
+        const stream = await originalGetUserMedia(constraints);
+        for (const track of stream.getTracks()) {
+          const originalStop = track.stop.bind(track);
+          Object.defineProperty(track, 'stop', {
+            configurable: true,
+            value: () => {
+              observedWindow.__talkActiveMediaTrackStops = (
+                observedWindow.__talkActiveMediaTrackStops ?? 0
+              ) + 1;
+              originalStop();
+            },
+          });
+        }
+        return stream;
       },
     });
   });
@@ -55,10 +70,21 @@ async function observedMediaRequests(page: Page) {
   ).__talkActiveMediaRequests ?? []);
 }
 
+async function observedMediaTrackStops(page: Page) {
+  return page.evaluate(() => (
+    window as Window & { __talkActiveMediaTrackStops?: number }
+  ).__talkActiveMediaTrackStops ?? 0);
+}
+
 async function openMultimodalAttempt(page: Page) {
   await page.goto('/practice');
   await page.getByRole('button', { name: /Begin this attempt/i }).click();
-  await page.getByRole('tab', { name: /Camera \+ voice/i }).click();
+  await expect(page.locator('.capture-header h2')).toBeFocused();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  // The attempt opens on writing, so the capture panel is not merely idle —
+  // it is not on the page at all until the user asks for it.
+  await expect(page.getByRole('heading', { name: 'Rehearse the whole performance.' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Record live' }).click();
   await expect(page.getByRole('heading', { name: 'Rehearse the whole performance.' })).toBeVisible();
 }
 
@@ -122,14 +148,16 @@ test('multimodal media stays off until Start and each consent is independent at 
   await page.setViewportSize({ width: 390, height: 844 });
   await openMultimodalAttempt(page);
 
-  const cameraConsent = page.getByRole('checkbox', { name: /Local camera landmarks/i });
-  const acousticConsent = page.getByRole('checkbox', { name: /Local acoustic observations/i });
-  const dictationConsent = page.getByRole('checkbox', { name: /Browser dictation/i });
-  const start = page.getByRole('button', { name: 'Start selected capture' });
+  const cameraConsent = page.getByRole('checkbox', { name: /Camera local landmarks/i });
+  const acousticConsent = page.getByRole('checkbox', { name: /Voice local cues/i });
+  const dictationConsent = page.getByRole('checkbox', { name: /Live transcript Indonesian/i });
+  const replayConsent = page.getByRole('checkbox', { name: /Save replay camera \+ mic/i });
+  const start = page.getByRole('button', { name: 'Start rehearsal' });
 
   await expect(cameraConsent).not.toBeChecked();
   await expect(acousticConsent).not.toBeChecked();
   await expect(dictationConsent).not.toBeChecked();
+  await expect(replayConsent).not.toBeChecked();
   await expect(dictationConsent).toBeEnabled();
   await expect(start).toBeDisabled();
   await expect(page.getByText('No media access before Start', { exact: true })).toBeVisible();
@@ -151,12 +179,74 @@ test('multimodal media stays off until Start and each consent is independent at 
   await expect(cameraConsent).not.toBeChecked();
   await expect(acousticConsent).toBeChecked();
   await expect(dictationConsent).toBeChecked();
+  await replayConsent.check();
+  await expect(replayConsent).toBeChecked();
+  await expect(cameraConsent).not.toBeChecked();
+  await replayConsent.uncheck();
   expect(await observedMediaRequests(page)).toEqual([]);
 
   await expectNoHorizontalOverflow(page);
 });
 
-test('camera-only capture renders observations and a fully disclosed summary at 390px', async ({ page }) => {
+test('Mansiz presentation auto-stops once at the configured bell and carries the limit into review', async ({ page }) => {
+  await openMultimodalAttempt(page);
+  await page.getByLabel('Practice transcript').fill(
+    'Our problem affects students, and our evidence shows urgency. '
+    + 'Rubric feedback makes every claim traceable and gives the presenter a focused retry. '
+    + 'The prototype is feasible because its privacy boundary is explicit.',
+  );
+  await page.getByLabel('Time limit').fill('1');
+  await page.getByRole('checkbox', { name: /Voice local cues/i }).check();
+
+  // Install after hydration but before capture so the session origin and bell
+  // share one monotonic clock without delaying the production page boot.
+  const captureOrigin = new Date('2026-08-13T12:00:00.000Z');
+  await page.clock.install({ time: captureOrigin });
+  await page.clock.pauseAt(captureOrigin);
+  await page.getByRole('button', { name: 'Start rehearsal' }).click();
+
+  const finishCapture = page.getByRole('button', {
+    name: 'Finish & assemble review',
+    exact: true,
+  });
+  await expect(finishCapture).toBeVisible();
+  await expect(page.getByRole('status')).toContainText(
+    'Capture stops itself at 01:00, the way an evaluator stops a pitch on time.',
+  );
+  await expect(page.locator('.studio-live')).toContainText('left');
+  expect(await observedMediaRequests(page)).toEqual([{ audio: true, video: false }]);
+
+  await page.clock.fastForward('01:00');
+  await expect(finishCapture).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Start rehearsal' })).toBeVisible();
+  await expect(page.locator('.studio-status')).toContainText(
+    'Time ran out and capture stopped itself, exactly as an evaluator would.',
+  );
+  await expect(page.getByLabel('Spoken length')).toHaveValue('60');
+  await expect.poll(() => observedMediaTrackStops(page)).toBe(1);
+
+  // A later timer turn must not complete or release the same capture again.
+  await page.clock.fastForward(1_000);
+  expect(await observedMediaTrackStops(page)).toBe(1);
+  await expect(page.locator('.studio-status')).toContainText(
+    'Time ran out and capture stopped itself, exactly as an evaluator would.',
+  );
+
+  await page.getByRole('button', { name: /Review this attempt/i }).click();
+  const review = page.locator('.multimodal-review');
+  await expect(review).toBeVisible();
+  await expect(review.locator('.timeline-duration')).toContainText('01:00 total · 01:00 limit');
+  await expect(review.getByRole('note')).toContainText(/00:00.*01:00 limit/iu);
+  await expect(page.locator('[data-practice-stage="review"]')).toHaveCount(1);
+  expect(await observedMediaTrackStops(page)).toBe(1);
+});
+
+test('camera-only capture renders concise observations with fully disclosed detail at 390px', async ({ page }) => {
+  // This one really does load the vendored MediaPipe WASM and pose model, then
+  // drives a fake camera through calibration. It lands within a second or two
+  // of the default budget on a warm machine and over it on a cold one, and a
+  // gate that fails on the demo laptop's mood is not a gate.
+  test.slow();
   await page.setViewportSize({ width: 390, height: 844 });
   await openMultimodalAttempt(page);
   await page.getByLabel('Practice transcript').fill(
@@ -165,8 +255,8 @@ test('camera-only capture renders observations and a fully disclosed summary at 
     + 'We built a feasible prototype architecture with explicit privacy limitations.',
   );
 
-  await page.getByRole('checkbox', { name: /Local camera landmarks/i }).check();
-  await page.getByRole('button', { name: 'Start selected capture' }).click();
+  await page.getByRole('checkbox', { name: /Camera local landmarks/i }).check();
+  await page.getByRole('button', { name: 'Start rehearsal' }).click();
   const finishCapture = page.getByRole('button', { name: 'Finish & assemble review', exact: true });
   await expect(finishCapture).toBeVisible({ timeout: 20_000 });
   await page.waitForTimeout(1_200);
@@ -191,12 +281,21 @@ test('camera-only capture renders observations and a fully disclosed summary at 
   );
 
   await page.getByRole('button', { name: /Review this attempt/i }).click();
+  await expect(page.locator('.review-hero h2')).toBeFocused();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   const review = page.locator('.multimodal-review');
   await expect(review).toBeVisible();
-  await expect(review.getByRole('heading', { name: 'How the attempt came across' })).toBeVisible();
-  await expect(review.getByRole('heading', { name: 'Voice evidence' })).toBeVisible();
-  await expect(review.getByRole('heading', { name: 'Camera evidence' })).toBeVisible();
-  await expect(review.getByText(/not emotion, confidence, health, skill, or hiring suitability/i)).toBeVisible();
+  await expect(review.getByRole('heading', { name: 'Inspect the moments that may need another look.' })).toBeVisible();
+  await expect(review.getByRole('heading', { name: 'Rubric, voice, and camera on one clock' })).toBeVisible();
+  await expect(review.getByText(/do not measure confidence.*health.*hiring suitability/i)).toBeVisible();
+
+  // Dense readings are still present, but no longer compete with rubric proof
+  // and the one synchronized timeline before the user asks to inspect them.
+  const fullReading = review.locator('.review-full-reading');
+  await expect(fullReading.locator('.reading-total')).not.toBeVisible();
+  await fullReading.locator('summary').click();
+  await expect(review.getByRole('heading', { name: 'Voice readings' })).toBeVisible();
+  await expect(review.getByRole('heading', { name: 'Camera readings' })).toBeVisible();
   // A summary figure is allowed, but only while a judge can take it apart. Each
   // clause below is one of the conditions AD-9 puts on showing the number at all.
   const summary = review.locator('.reading-total');
