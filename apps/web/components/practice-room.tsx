@@ -18,6 +18,7 @@ import { jsonRequest, requestContract } from '@/lib/api/client';
 import { detectReusedCitations } from '@/lib/citation-reuse';
 import {
   CapabilitiesResponseSchema,
+  ClaimCoachResponseSchema,
   ConfirmRubricResponseSchema,
   CreateAttemptResponseSchema,
   CreateProjectResponseSchema,
@@ -34,6 +35,7 @@ import {
   StatelessRejudgeResponseSchema,
   type RubricSource,
   type Criterion,
+  type CriterionCoaching,
   type ReusedCitation,
   type SaveAttemptDeliveryReviewRequest,
   type SourceDocument,
@@ -43,6 +45,8 @@ import {
   rejudgeLocalEvidence,
 } from '@/lib/evidence-confirmations';
 import { uploadAttemptRecording } from '@/lib/rehearsal/recording-upload';
+import { buildRubricTimeline } from '@/lib/rehearsal/rubric-moments';
+import { summarizeWordingCues } from '@/lib/rehearsal/wording-cues';
 import {
   MultimodalReview,
   MultimodalStudio,
@@ -212,6 +216,10 @@ export function PracticeRoom() {
   const [stage, setStage] = useState<Stage>('setup');
   const [transcript, setTranscript] = useState(STARTER_DRAFT);
   const [duration, setDuration] = useState(90);
+  // The limit a presenter rehearses against, which is a different fact from
+  // `duration` above — that one is how long the take actually ran, and it is
+  // what the pace reading divides by. Zero means no limit.
+  const [targetMinutes, setTargetMinutes] = useState(7);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [answer, setAnswer] = useState('');
   const [defense, setDefense] = useState<DefenseResult | null>(null);
@@ -250,7 +258,33 @@ export function PracticeRoom() {
   const [recordingsAvailable, setRecordingsAvailable] = useState(false);
   const [recordingStatus, setRecordingStatus] = useState('');
   const [observationNote, setObservationNote] = useState('');
+  const [retakeCriterion, setRetakeCriterion] = useState<{ criterionId: string; label: string } | null>(null);
+  const [retakeDraft, setRetakeDraft] = useState('');
+  const [retakeBusy, setRetakeBusy] = useState(false);
+  const [coachings, setCoachings] = useState<Record<string, CriterionCoaching>>({});
+  const [coachBusy, setCoachBusy] = useState(false);
+  const [coachNote, setCoachNote] = useState('');
   const rubric = useMemo(() => parseRubric(rubricText), [rubricText]);
+  const targetDurationMs = targetMinutes > 0 ? targetMinutes * 60_000 : null;
+  // Where each criterion's cited span sits in the attempt. The verdicts were
+  // grounded against this same transcript, and a capture is detached the
+  // moment the transcript is edited, so these offsets cannot drift.
+  const rubricTimeline = useMemo(() => {
+    if (!analysis || !multimodalResult) return undefined;
+    return buildRubricTimeline(
+      analysis.criteria.map((criterion) => ({
+        id: criterion.id,
+        label: criterion.label,
+        citedSpan: criterion.excerpt || null,
+        reused: reusedCitations.some((item) => item.criterionIds.includes(criterion.id)),
+      })),
+      multimodalResult.transcript,
+      multimodalResult.transcriptTimingPoints,
+    );
+  }, [analysis, multimodalResult, reusedCitations]);
+  // Words that invite a follow-up, counted on this device from the student's
+  // own transcript. No model is involved, so this cannot fail on stage.
+  const wordingCues = useMemo(() => summarizeWordingCues(transcript), [transcript]);
 
   useEffect(() => {
     let cancelled = false;
@@ -401,6 +435,11 @@ export function PracticeRoom() {
     setConfirmationNotes({});
     setDefense(null);
     setDefenseEngineNote('');
+    // Coaching describes the transcript that produced it; a fresh review has
+    // a fresh transcript, so keeping the old reading would attribute claims to
+    // words that are no longer there.
+    setCoachings({});
+    setCoachNote('');
     setReviewId(crypto.randomUUID());
     setQuestionSourceFilename(null);
     try {
@@ -802,6 +841,131 @@ export function PracticeRoom() {
     }
   }
 
+  // One pass over every criterion, so each evidence card can say what was
+  // asserted for it rather than the review saying one thing about the whole
+  // take. A criterion whose coaching fails degrades alone.
+  async function runCoach() {
+    if (!analysis) return;
+    setCoachBusy(true);
+    setCoachNote('');
+    try {
+      const response = await requestContract(
+        '/api/coach',
+        ClaimCoachResponseSchema,
+        jsonRequest('POST', {
+          transcript,
+          criteria: rubricCriteria.map((criterion) => ({
+            id: criterion.id,
+            name: criterion.name,
+            description: criterion.description,
+            requiredEvidence: criterion.requiredEvidence,
+            displayOrder: criterion.displayOrder,
+          })),
+        }),
+      );
+      setCoachings(Object.fromEntries(
+        response.coachings.map((coaching) => [coaching.criterionId, coaching]),
+      ));
+      const degraded = response.coachings.filter((coaching) => coaching.degradedReason).length;
+      setCoachNote(degraded > 0
+        ? `${response.coachings.length - degraded} of ${response.coachings.length} criteria were coached in full. The rest say below what was rejected.`
+        : `All ${response.coachings.length} criteria were coached. Every quote shown passed the exact-span check.`);
+    } catch (caught) {
+      setCoachNote(caught instanceof Error
+        ? `${caught.message} The rubric verdicts above are unaffected.`
+        : 'Claim coaching is unavailable right now. The rubric verdicts above are unaffected.');
+    } finally {
+      setCoachBusy(false);
+    }
+  }
+
+  // A criterion with nothing cited does not need another seven minutes. The
+  // addition is appended and labelled rather than spliced into the original
+  // take: splicing would claim the words were said at a moment they were not,
+  // and every timestamp downstream would inherit that claim.
+  function beginCriterionRetake(entry: { criterionId: string; label: string }) {
+    setRetakeCriterion(entry);
+    setInputMethod('transcript');
+    setStage('attempt');
+    setObservationNote(
+      `Recording an addition for “${entry.label}”. It is appended to this attempt and marked as an addition; only that criterion is judged again.`,
+    );
+  }
+
+  /**
+   * Appends the addition, then re-judges only the criterion it was recorded
+   * for. Every other verdict keeps the reading it already earned — nobody
+   * should have to risk four settled criteria to fix a fifth.
+   */
+  async function appendRetakeAddition(text: string) {
+    const addition = text.trim();
+    if (!retakeCriterion || !addition || !analysis) return;
+    const target = retakeCriterion;
+    const marked = `${transcript.trim()}\n\n[Addition · ${target.label}] ${addition}`;
+    setTranscript(marked);
+    // The prior capture measured the original take; the transcript is no
+    // longer the one it observed, so its sensor summary is detached rather
+    // than left to describe words it never heard.
+    setMultimodalResult(null);
+    setRetakeCriterion(null);
+    setRetakeDraft('');
+    setRetakeBusy(true);
+    setObservationNote(`Re-judging “${target.label}” against the addition. Every other criterion keeps its current verdict.`);
+
+    const criterion = analysis.criteria.find((item) => item.id === target.criterionId);
+    const typedCriterion = rubricCriteria.find((item) => item.id === target.criterionId);
+    try {
+      if (!criterion) throw new Error('That criterion is no longer part of this review.');
+      const response = await requestContract(
+        '/api/rejudge',
+        StatelessRejudgeResponseSchema,
+        jsonRequest('POST', {
+          transcript: marked,
+          criterion: {
+            id: criterion.id,
+            rubricId: 'stateless-analysis',
+            name: criterion.label,
+            description: typedCriterion?.description ?? criterion.requirementText,
+            requiredEvidence: typedCriterion?.requiredEvidence ?? criterion.signals,
+            displayOrder: typedCriterion?.displayOrder
+              ?? analysis.criteria.findIndex((item) => item.id === target.criterionId),
+          },
+          rejected: {
+            verdict: criterion.status === 'covered'
+              ? 'supported' as const
+              : criterion.status === 'partial' ? 'partial' as const : 'unsupported' as const,
+            coverageScore: criterion.status === 'covered' ? 1 : criterion.status === 'partial' ? 0.5 : 0,
+            citedSpan: criterion.excerpt || null,
+            missingEvidence: criterion.missingSignals,
+            engine: criterionEngines[target.criterionId] ?? 'deterministic',
+          },
+        }),
+      );
+      applyRejudgedCriterion(
+        target.criterionId,
+        response.judgment,
+        response.questionText,
+        undefined,
+        response.questionTargetCriterionId,
+      );
+      setObservationNote(
+        `“${target.label}” was re-judged against the addition, which stays marked in the transcript. No other criterion was touched.`,
+      );
+      // Back to the review, because the point of the addition is the verdict
+      // it changes — leaving the user on the capture screen hides the result
+      // they just worked for.
+      setStage('review');
+    } catch (caught) {
+      // The addition is already in the transcript, so the honest recovery is
+      // the full review — not a silent failure that leaves a stale verdict.
+      setObservationNote(
+        `The addition was appended and marked, but re-judging that criterion alone failed. Use “Review this attempt” to re-judge everything. ${caught instanceof Error ? caught.message : ''}`.trim(),
+      );
+    } finally {
+      setRetakeBusy(false);
+    }
+  }
+
   async function runDefense() {
     setBusy(true);
     try {
@@ -929,6 +1093,7 @@ export function PracticeRoom() {
             {inputMethod === 'observations' && <MultimodalStudio
               transcript={transcript}
               durableRecordingAvailable={recordingsAvailable}
+              targetDurationMs={targetDurationMs}
               onTranscriptChange={(value) => {
                 setTranscript(value);
                 if (multimodalResult && value.trim() !== multimodalResult.transcript.trim()) {
@@ -943,6 +1108,17 @@ export function PracticeRoom() {
               }}
               onBusyChange={setStudioBusy}
             />}
+            {retakeCriterion && <section className="criterion-retake-panel" aria-labelledby="retakeDraftTitle">
+              <div className="section-title-row">
+                <div><p className="overline">Addition in progress</p><h3 id="retakeDraftTitle">{retakeCriterion.label}</h3></div>
+                <button className="text-button" type="button" onClick={() => { setRetakeCriterion(null); setRetakeDraft(''); setObservationNote(''); }}>Cancel this addition</button>
+              </div>
+              <p>Say or type only the passage that proves this criterion. It is appended to the attempt and labelled as an addition — the original take is never rewritten — and only this criterion is judged again.</p>
+              <p className="production-field-note">Switch to <strong>Camera + voice</strong> above to dictate it instead of typing; whatever the dictation captures lands in the box below.</p>
+              <label className="sr-only" htmlFor="retakeDraft">Addition for {retakeCriterion.label}</label>
+              <textarea id="retakeDraft" rows={4} maxLength={2_000} value={retakeDraft} placeholder="Name the number, method, or mechanism this criterion asks for." onChange={(event) => setRetakeDraft(event.target.value)} />
+              <button className="button button-primary" type="button" disabled={!retakeDraft.trim() || retakeBusy} aria-busy={retakeBusy} onClick={() => void appendRetakeAddition(retakeDraft)}>{retakeBusy ? 'Re-judging this criterion…' : 'Append and re-judge this criterion'}</button>
+            </section>}
             <label className="sr-only" htmlFor="attemptTranscript">Practice transcript</label>
             <textarea id="attemptTranscript" rows={15} maxLength={12_000} value={transcript} onChange={(event) => {
               const value = event.target.value;
@@ -960,11 +1136,28 @@ export function PracticeRoom() {
               <p className="production-field-note">When semantic question generation is configured, the weakest criterion and attached text are processed by the configured model provider. Otherwise, Talk-Active selects an exact source sentence deterministically.</p>
               {sourceStatus && <p className="rubric-import-status" role="status">{sourceStatus}</p>}
             </section>}
-            <div className="capture-footer"><div className="duration-control"><label htmlFor="attemptDuration">Duration</label><input id="attemptDuration" type="number" min="1" max="3600" value={duration} onChange={(event) => setDuration(Number(event.target.value))} /><span>seconds</span></div><span className="save-state"><span aria-hidden="true">●</span> Local guest draft</span></div>
+            <div className="capture-footer">
+              <div className="duration-control"><label htmlFor="attemptLimit">Time limit</label><input id="attemptLimit" type="number" min="0" max="60" value={targetMinutes} onChange={(event) => setTargetMinutes(Math.max(0, Math.min(60, Math.round(Number(event.target.value)))))} /><span>minutes — capture stops itself at the bell. 0 removes the limit.</span></div>
+              {/* Only meaningful when nothing measured the take for you: a
+                  camera capture overwrites this with what it actually ran. */}
+              {inputMethod === 'transcript' && <div className="duration-control"><label htmlFor="attemptDuration">Spoken length</label><input id="attemptDuration" type="number" min="1" max="3600" value={duration} onChange={(event) => setDuration(Number(event.target.value))} /><span>seconds — used for the pace reading</span></div>}
+              <span className="save-state"><span aria-hidden="true">●</span> Local guest draft</span>
+            </div>
             {error && <p className="form-error" role="alert">{error}</p>}
             <button className="button button-primary button-full" type="button" disabled={busy || studioBusy} aria-busy={busy || studioBusy} onClick={() => void runAnalysis()}>{studioBusy ? 'Finish local capture first' : busy ? 'Reviewing each criterion…' : 'Review this attempt'} <span aria-hidden="true">→</span></button>
           </div>
-          <aside className="session-sidebar"><section className="surface session-goal"><p className="overline">Session goal</p><h3>Make every important claim defensible.</h3><p>Complete the attempt naturally. The review isolates only the next weakness worth fixing.</p></section><section className="surface privacy-card"><span className="privacy-icon" aria-hidden="true">⌾</span><div><strong>{persistence === 'local' ? 'Session history stays in this browser' : 'Project sync is active on this deployment'}</strong><p>{persistence === 'local' ? (statelessSemanticAvailable ? 'Semantic review sends this transcript and the typed rubric criteria to the configured model provider. Grounded review results may be cached for up to 24 hours. Raw audio is never saved.' : 'Semantic review is off, so this attempt is checked on-device. Raw audio is never saved.') : 'Attempts and private source files are saved to the configured project services. Raw audio is never saved.'}</p></div></section></aside>
+          <aside className="session-sidebar">
+            {/* The rubric is the target, so it is on screen while the attempt
+                runs rather than only in the review that follows. Knowing what
+                has to be covered is the difference between rehearsing and
+                talking (Nielsen: recognition rather than recall). */}
+            <section className="surface attempt-target-card">
+              <p className="overline">Cover these before the bell</p>
+              <h3>{rubric.length} criteria{targetMinutes > 0 ? ` · ${targetMinutes} min` : ''}</h3>
+              <ol className="attempt-target-list">{rubric.map((criterion) => <li key={criterion.id}><i aria-hidden="true" />{criterion.label}</li>)}</ol>
+              <p className="trust-note"><span aria-hidden="true">◆</span> {targetMinutes > 0 ? 'The review marks which of these you reached, and when.' : 'Set a time limit to see what an evaluator stopping on time would miss.'}</p>
+            </section>
+            <section className="surface session-goal"><p className="overline">Session goal</p><h3>Make every important claim defensible.</h3><p>Complete the attempt naturally. The review isolates only the next weakness worth fixing.</p></section><section className="surface privacy-card"><span className="privacy-icon" aria-hidden="true">⌾</span><div><strong>{persistence === 'local' ? 'Session history stays in this browser' : 'Project sync is active on this deployment'}</strong><p>{persistence === 'local' ? (statelessSemanticAvailable ? 'Semantic review sends this transcript and the typed rubric criteria to the configured model provider. Grounded review results may be cached for up to 24 hours. Raw audio is never saved.' : 'Semantic review is off, so this attempt is checked on-device. Raw audio is never saved.') : 'Attempts and private source files are saved to the configured project services. Raw audio is never saved.'}</p></div></section></aside>
         </div>
       </section>}
 
@@ -1006,6 +1199,16 @@ export function PracticeRoom() {
               Yes/No writes a human evaluation label and then locks — an
               irreversible action with no warning is the classic version of this
               mistake, and stating the limit costs one line (Nielsen 5). */}
+          {statelessSemanticAvailable && <div className="coach-trigger">
+            <div>
+              <strong>Break this down criterion by criterion</strong>
+              <p>Every criterion gets its own reading: what you asserted for it, which of those assertions you backed with your own words, and a stronger form built only from what you already said.</p>
+            </div>
+            <button className="button button-secondary" type="button" disabled={coachBusy} aria-busy={coachBusy} onClick={() => void runCoach()}>
+              {coachBusy ? 'Reading each criterion…' : Object.keys(coachings).length > 0 ? 'Read them again' : 'Break down each criterion'}
+            </button>
+          </div>}
+          {coachNote && <p className="rubric-import-status" role="status">{coachNote}</p>}
           <p className="evidence-confirm-boundary">Your Yes or No on a criterion is recorded once as your own evaluation label, and cannot be changed afterwards.</p>
           <div className="evidence-list">{analysis.criteria.map((criterion) => {
             const found = Boolean(criterion.excerpt);
@@ -1028,6 +1231,38 @@ export function PracticeRoom() {
               <div className="evidence-topline"><strong>{criterion.label}</strong><span className="evidence-meta"><span className="evidence-state">{reuse ? 'citation reused' : found ? criterionEngine === 'semantic' ? 'grounded evidence' : 'cue match' : criterionEngine === 'semantic' ? 'evidence gap' : 'no cue matched'}</span><span className="evidence-provenance">{criterionEngine === 'semantic' ? 'semantic, checked against your transcript' : 'deterministic cue matching, not semantic analysis'}</span></span></div>
               {found ? <blockquote className="evidence-quote"><span className="evidence-quote-text">{criterion.excerpt}</span><cite className="evidence-source">your words, from this attempt</cite></blockquote> : criterionEngine === 'semantic' ? <p className="evidence-absent">The semantic review found no exact passage that supplies this criterion&apos;s required evidence. <span>Still needed: {criterion.missingSignals.slice(0, 4).join(', ')}.</span></p> : <p className="evidence-absent">Nothing in this attempt matched the declared cues for this criterion. <span>Looked for: {criterion.missingSignals.slice(0, 4).join(', ')}.</span></p>}
               {reuse && <p className="citation-reuse-note"><strong>One quote is doing more than one job.</strong> This exact span was also cited for {reusedWith.join(', ')}. Both readings stay visible, but this is not independent evidence for each criterion.</p>}
+              {/* Per-criterion coaching. The verdict above says whether this
+                  requirement was met; this says what you actually asserted for
+                  it, which of those assertions you backed, and what a stronger
+                  answer would sound like using only what you already said. */}
+              {(() => {
+                const coaching = coachings[criterion.id];
+                const criterionWording = criterion.excerpt ? summarizeWordingCues(criterion.excerpt) : [];
+                if (!coaching && criterionWording.length === 0) return null;
+                return <div className="criterion-coaching">
+                  {coaching && coaching.claims.length > 0 && <ul className="claim-citation-list">
+                    {coaching.claims.map((claim, index) => <li key={index} data-supported={claim.supported}>
+                      <q className="claim-quote">{claim.citedSpan}</q>
+                      {claim.supported && claim.supportSpan
+                        ? <p className="claim-support"><strong>Backed in your own words:</strong> “{claim.supportSpan}”</p>
+                        : <p className="claim-gap"><strong>Nothing in this attempt backs it.</strong> An evaluator asks: “{claim.invitedQuestion}”</p>}
+                    </li>)}
+                  </ul>}
+                  {coaching && coaching.claims.length === 0 && !coaching.degradedReason && <p className="criterion-coaching-empty">This attempt asserts nothing about this criterion — there is no claim to back or challenge yet.</p>}
+                  {criterionWording.length > 0 && <p className="criterion-wording">
+                    <strong>Wording an evaluator will probe:</strong>
+                    {criterionWording.slice(0, 3).map((cue) => <span key={cue.label}>“{cue.label}” — {cue.invites}</span>)}
+                  </p>}
+                  {coaching?.discardedClaims ? <p className="citation-reuse-note"><strong>{coaching.discardedClaims} model reading{coaching.discardedClaims > 1 ? 's were' : ' was'} rejected</strong> because the quote was not a verbatim span of your transcript. Rejected readings are discarded, never repaired.</p> : null}
+                  {coaching?.strongerForm && <div className="stronger-form">
+                    <p className="overline">A stronger form of this answer</p>
+                    <blockquote>{coaching.strongerForm}</blockquote>
+                    {coaching.blanks.length > 0 && <div className="stronger-form-blanks"><span>Each blank is data this attempt never stated. Fill it with a number you have — or say the measurement has not been done, which is also an answer.</span><ol>{coaching.blanks.map((blank, index) => <li key={index}>{blank}</li>)}</ol></div>}
+                    <p className="evidence-provenance">Rearranged from your own words only. A number absent from your transcript is rejected before this is shown.</p>
+                  </div>}
+                  {coaching?.degradedReason && <p className="criterion-coaching-note" role="status">{coaching.degradedReason}</p>}
+                </div>;
+              })()}
               <div className="production-confirm"><span>{found ? 'Would an evaluator accept this?' : 'Is this gap accurate?'}</span><button aria-label={found ? `Confirm that the cited span covers ${criterion.label}` : `Confirm the evidence gap for ${criterion.label}`} className={`button button-secondary${confirmations[criterion.id] === true ? ' is-selected' : ''}`} type="button" disabled={confirmationBusy[criterion.id] || confirmations[criterion.id] !== undefined} onClick={() => void confirmEvidence(criterion.id, true)}>Yes</button><button aria-label={found ? `Reject the cited span for ${criterion.label}` : `Reject the evidence gap for ${criterion.label}`} className={`button button-secondary${confirmations[criterion.id] === false ? ' is-selected' : ''}`} type="button" disabled={confirmationBusy[criterion.id] || confirmations[criterion.id] !== undefined} onClick={() => void confirmEvidence(criterion.id, false)}>No</button>{confirmationNotes[criterion.id] && <small role="status">{confirmationNotes[criterion.id]}</small>}</div>
             </article>;
           })}</div>
@@ -1042,8 +1277,32 @@ export function PracticeRoom() {
               ))}
             </ul>
           ) : null}
+          {/* Each of these words opens a follow-up question, so the question is
+              written out beside it. "3 hedges" is not something anyone can
+              practise against; knowing what an evaluator asks next is. */}
+          {wordingCues.length > 0 && <div className="wording-cue-block">
+            <div className="section-title-row"><div><p className="overline">Wording an evaluator will probe</p><h3>Words that invite the next question</h3></div></div>
+            <ul className="wording-cue-list">
+              {wordingCues.slice(0, 8).map((cue) => (
+                <li key={cue.label} data-cue-kind={cue.kind}>
+                  <strong>{cue.label}</strong>
+                  <span>×{cue.count}</span>
+                  <small>{cue.kind === 'vague-quantity' ? 'an amount nobody can check' : 'a claim weakened before it is challenged'} — invites “{cue.invites}”</small>
+                </li>
+              ))}
+            </ul>
+            <p className="metrics-boundary">Counted by exact word matching in this transcript, on this device. Ordinary phrasing can be perfectly fine — the point is knowing which follow-up each word invites before an evaluator asks it.</p>
+          </div>}
         </section>
-        {multimodalResult && <MultimodalReview result={multimodalResult} substanceScore={analysis.evidenceScore} recordingStatus={recordingStatus} savedAttemptId={remoteAttemptId} />}
+        {multimodalResult && <MultimodalReview
+          result={multimodalResult}
+          substanceScore={analysis.evidenceScore}
+          recordingStatus={recordingStatus}
+          savedAttemptId={remoteAttemptId}
+          rubricTimeline={rubricTimeline}
+          targetDurationMs={targetDurationMs}
+          onRetakeCriterion={beginCriterionRetake}
+        />}
         <div className="review-actions"><button className="button button-secondary" type="button" onClick={() => setStage('attempt')}>Revise transcript</button><button className="button button-secondary" type="button" onClick={saveSession}>Save without Q&amp;A</button></div>
       </section>}
 

@@ -711,6 +711,92 @@
 .timeline-mark { position: absolute; top: 0; height: 2rem; min-width: 10px; padding: 0; background: var(--accent-orange); border: 2px solid var(--surface-sunken); border-radius: var(--radius-sm); cursor: pointer; }
 .timeline-mark:disabled { cursor: default; }
 .timeline-mark:hover:not(:disabled), .timeline-mark:focus-visible { background: var(--accent-orange-strong); }
+/* Rubric lanes on the same clock as the delivery lanes. The state colours are
+   the evidence map's, deliberately: one idea must not grow two vocabularies,
+   and a reader who learned "filled means cited" upstairs should not relearn it
+   here. An empty lane keeps its row — the gap is the finding. */
+.timeline-legend { display: flex; flex-wrap: wrap; gap: var(--space-4); margin: var(--space-4) 0 var(--space-2); color: var(--text-muted); font-size: var(--step-0); }
+.timeline-legend span { display: inline-flex; align-items: center; gap: var(--space-2); }
+.timeline-legend i { width: var(--space-3); height: var(--space-3); background: var(--absence); border-radius: var(--radius-full); }
+.timeline-legend span[data-evidence="found"] i { background: var(--evidence); }
+.timeline-legend span[data-evidence="reused"] i { background: transparent; border: 2px solid var(--evidence); }
+.timeline-legend-cut i { width: 0; height: var(--space-4); background: transparent; border-radius: 0; border-left: 2px dashed var(--text-secondary); }
+.timeline-lane.is-rubric { grid-template-columns: 9rem minmax(0, 1fr); }
+.timeline-lane.is-rubric .timeline-lane-label { max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: normal; font-weight: var(--weight-bold); }
+.timeline-lane.is-rubric .timeline-track[data-evidence="absent"] { border: 1px dashed var(--absence); }
+.timeline-mark.is-evidence { background: var(--evidence); }
+.timeline-mark.is-evidence:hover:not(:disabled), .timeline-mark.is-evidence:focus-visible { background: var(--evidence-strong); }
+.timeline-lane-note { position: absolute; inset: 0; display: flex; align-items: center; padding-left: var(--space-3); color: var(--text-muted); font-size: var(--step-0); }
+.timeline-lane-note[data-evidence="absent"] { color: var(--text-secondary); font-weight: var(--weight-bold); }
+.timeline-cutline { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed var(--text-secondary); pointer-events: none; }
+.timeline-rubric-summary { margin: var(--space-3) 0 var(--space-4); color: var(--text-secondary); font-size: var(--step-0); }
+.timeline-bell-note { margin-top: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--step-0); }
+
+/* The transcript with its cited spans marked in place. These are the student's
+   own words rendered as text nodes; the marks only locate them. */
+.transcript-evidence { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
+.transcript-evidence-body { margin-top: var(--space-4); font-size: var(--step-1); line-height: var(--leading-relaxed); white-space: pre-wrap; }
+.transcript-evidence-body mark { padding: 0.1em 0.25em; color: var(--text-primary); background: var(--evidence-wash); border-bottom: 2px solid var(--evidence); border-radius: var(--radius-sm); }
+.transcript-evidence-mark { padding: 0; background: none; border: 0; font: inherit; text-align: left; cursor: pointer; }
+.transcript-evidence-mark:hover mark, .transcript-evidence-mark:focus-visible mark { background: var(--evidence-border); }
+.transcript-evidence-mark small, .transcript-evidence-static small { display: inline-block; margin-left: var(--space-2); color: var(--evidence-strong); font-size: var(--step-0); font-weight: var(--weight-bold); }
+
+/* Answering one criterion again, without another full take. */
+.criterion-retake { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
+.criterion-retake-list { display: grid; gap: var(--space-2); margin-top: var(--space-4); padding: 0; list-style: none; }
+.criterion-retake-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--absence); border-radius: var(--radius-sm); }
+/* An in-progress input, not a citation — so it borrows the attention accent
+   rather than the reserved evidence hue. */
+.criterion-retake-panel { margin: var(--space-4) 0; padding: var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--accent-sun); border-radius: var(--radius-sm); }
+.criterion-retake-panel textarea { width: 100%; margin: var(--space-3) 0; }
+
+/* The rubric shown as a target while the attempt is still running. */
+.attempt-target-list { display: grid; gap: var(--space-2); margin: var(--space-3) 0; padding: 0; list-style: none; }
+.attempt-target-list li { display: flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); font-size: var(--step-0); }
+.attempt-target-list i { width: var(--space-3); height: var(--space-3); flex: none; background: var(--absence); border-radius: var(--radius-full); }
+
+/* Per-criterion coaching, nested inside the evidence card it belongs to. It
+   sits below the verdict because it explains the verdict rather than
+   competing with it: the cited quote stays the largest thing on the card. */
+.coach-trigger { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); margin: var(--space-4) 0; padding: var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-sm); }
+.coach-trigger strong { display: block; font-size: var(--step-1); }
+.coach-trigger p { margin-top: var(--space-2); color: var(--text-secondary); font-size: var(--step-0); }
+.coach-trigger button { flex: none; }
+.criterion-coaching { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+/* A claim with its support IS a citation, so it uses the evidence channel.
+   An unbacked claim is NOT a failing mark — it is the next thing to rehearse
+   — so it takes the neutral absence tone, the same one an uncovered criterion
+   uses everywhere else. Red here would reassert the grade we do not give. */
+.claim-citation-list { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.claim-citation-list li { padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--absence); border-radius: var(--radius-sm); }
+.claim-citation-list li[data-supported="true"] { border-left-color: var(--evidence); }
+.claim-quote { display: block; color: var(--text-primary); font-family: var(--font-voice); font-size: var(--step-1); line-height: var(--leading-snug); }
+.claim-support, .claim-gap { margin-top: var(--space-2); font-size: var(--step-0); }
+.claim-support { color: var(--text-secondary); }
+.claim-gap { color: var(--text-primary); }
+.criterion-coaching-empty, .criterion-coaching-note { margin-top: var(--space-2); color: var(--text-secondary); font-size: var(--step-0); }
+.criterion-wording { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; margin-top: var(--space-3); color: var(--text-secondary); font-size: var(--step-0); }
+.criterion-wording strong { color: var(--text-primary); }
+.criterion-wording span { padding: var(--space-1) var(--space-2); background: var(--surface-sunken); border-radius: var(--radius-sm); }
+.stronger-form { margin-top: var(--space-4); }
+.stronger-form blockquote { margin: var(--space-2) 0 0; padding: var(--space-3) var(--space-4); color: var(--text-primary); background: var(--surface-sunken); border-radius: var(--radius-sm); font-size: var(--step-1); line-height: var(--leading-relaxed); }
+.stronger-form-blanks { margin-top: var(--space-3); font-size: var(--step-0); }
+.stronger-form-blanks span { display: block; color: var(--text-secondary); }
+.stronger-form-blanks ol { margin: var(--space-2) 0 0; padding-left: var(--space-5); color: var(--text-secondary); }
+
+/* Wording that invites the next question, listed with that question. */
+.wording-cue-block { margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+.wording-cue-list { display: grid; gap: var(--space-2); margin-top: var(--space-3); padding: 0; list-style: none; }
+.wording-cue-list li { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: var(--space-3); align-items: baseline; padding: var(--space-2) var(--space-3); background: var(--surface-sunken); border-radius: var(--radius-sm); }
+.wording-cue-list li strong { font-size: var(--step-0); }
+.wording-cue-list li span { color: var(--text-muted); font-size: var(--step-0); }
+.wording-cue-list li small { color: var(--text-secondary); font-size: var(--step-0); }
+
+/* The live chip counts down when a limit is set, and says so as it closes. */
+.studio-live small { margin-left: var(--space-2); font-size: var(--step-0); font-weight: var(--weight-bold); }
+.studio-live.is-closing { color: var(--caution); }
+.studio-limit-note { margin-top: var(--space-2); color: var(--text-secondary); font-size: var(--step-0); }
+
 .timeline-axis { display: flex; justify-content: space-between; margin: var(--space-2) 0 0 calc(5rem + var(--space-3)); color: var(--text-muted); font-size: var(--step-0); }
 
 @media (max-width: 40rem) {

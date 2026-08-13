@@ -59,11 +59,23 @@ export function normaliseForGrounding(value: unknown): string {
   return normaliseWithOffsets(value).text;
 }
 
-export function findGroundedSpan(
+export interface GroundedRange {
+  /** The span exactly as it appears in the original transcript. */
+  span: string;
+  /** Inclusive character offset of the span in the original transcript. */
+  start: number;
+  /** Exclusive character offset of the span in the original transcript. */
+  end: number;
+}
+
+// The offsets were always computed to cut the span out. Returning them lets a
+// caller place the quote inside the transcript — to mark it in the text, or to
+// ask when it was spoken — instead of only proving that it exists.
+export function findGroundedRange(
   span: unknown,
   transcript: unknown,
   minimumChars = MIN_SPAN_CHARS,
-): string | null {
+): GroundedRange | null {
   const needle = normaliseForGrounding(span);
   if (!Number.isSafeInteger(minimumChars) || minimumChars < 1) {
     throw new Error('minimumChars must be a positive integer.');
@@ -78,7 +90,15 @@ export function findGroundedSpan(
   const start = haystack.starts[matchAt];
   const end = haystack.ends[matchAt + needle.length - 1];
   if (start === undefined || end === undefined) return null;
-  return source.slice(start, end);
+  return { span: source.slice(start, end), start, end };
+}
+
+export function findGroundedSpan(
+  span: unknown,
+  transcript: unknown,
+  minimumChars = MIN_SPAN_CHARS,
+): string | null {
+  return findGroundedRange(span, transcript, minimumChars)?.span ?? null;
 }
 
 export function spanIsGrounded(span: unknown, transcript: unknown): boolean {

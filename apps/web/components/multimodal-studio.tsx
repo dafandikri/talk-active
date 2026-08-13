@@ -39,6 +39,16 @@ import {
   type SpeechDisruptionEvent,
 } from '@/lib/rehearsal/speech-disruptions';
 import {
+  entriesBeyondLimit,
+  segmentTranscript,
+  summarizeRubricCoverage,
+  type RubricTimelineEntry,
+} from '@/lib/rehearsal/rubric-moments';
+import {
+  TranscriptTimingTracker,
+  type TranscriptTimingPoint,
+} from '@/lib/rehearsal/transcript-timing';
+import {
   createVisionSession,
   type BrowserVisionSession,
   type VisionFrameSnapshot,
@@ -57,6 +67,14 @@ export interface MultimodalCapture {
   visionSummary: VisionSessionSummary | null;
   audioSummary: AudioObservationSummary | null;
   speechDisruptions?: readonly SpeechDisruptionEvent[];
+  /**
+   * Dictation growth samples pairing transcript length with capture time.
+   * Present only when the transcript came from live dictation, so a typed
+   * transcript is never given a clock position it does not have.
+   */
+  transcriptTimingPoints?: readonly TranscriptTimingPoint[];
+  /** True when capture ended because the stated time limit ran out. */
+  stoppedAtLimit?: boolean;
   recording: RehearsalRecording | null;
 }
 
@@ -71,6 +89,12 @@ export interface MultimodalStudioHandle {
 interface MultimodalStudioProps {
   transcript: string;
   durableRecordingAvailable?: boolean;
+  /**
+   * The stated time limit for this attempt. When set, the live chip counts
+   * down to it and capture stops itself at zero, the way an evaluator stops a
+   * pitch at the bell. Null leaves capture open-ended.
+   */
+  targetDurationMs?: number | null;
   onTranscriptChange: (value: string) => void;
   onResult: (result: MultimodalAttemptResult | null) => void;
   /** Lets the surrounding step disable its own controls while capture holds the devices. */
@@ -204,7 +228,7 @@ function drawOverlay(canvas: HTMLCanvasElement, frame: VisionFrameSnapshot): voi
 }
 
 export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStudioProps>(
-  function MultimodalStudio({ transcript, durableRecordingAvailable = false, onTranscriptChange, onResult, onBusyChange }, ref) {
+  function MultimodalStudio({ transcript, durableRecordingAvailable = false, targetDurationMs = null, onTranscriptChange, onResult, onBusyChange }, ref) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -219,6 +243,13 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
     const energySamplesRef = useRef<number[]>([]);
     const acousticDisruptionsRef = useRef(new SpeechDisruptionDetector({ ignoreBeforeMs: 3_000 }));
     const interimFillersRef = useRef(new InterimFillerTracker(3_000));
+    const transcriptTimingRef = useRef(new TranscriptTimingTracker());
+    // stopSession awaits the recorder before it clears `active`, so the bell
+    // timer and the Finish button can both enter it. This latch closes the
+    // door on the first caller; without it the second release runs against
+    // already-released media.
+    const stoppingRef = useRef(false);
+    const stoppedAtLimitRef = useRef(false);
 
     const [mode, setMode] = useState<VisionMode>('presentation');
     // Four independent choices. None of them turns on another, and nothing is
@@ -246,9 +277,20 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
 
     useEffect(() => {
       if (!active) return;
-      const timer = window.setInterval(() => setElapsedMs(performance.now() - startedAtRef.current), 250);
+      const timer = window.setInterval(() => {
+        const elapsed = performance.now() - startedAtRef.current;
+        setElapsedMs(elapsed);
+        // The bell. A presentation that runs past its limit is not a longer
+        // presentation — it is a presentation the evaluator stopped, so the
+        // capture stops itself the same way.
+        if (targetDurationMs !== null && targetDurationMs > 0 && elapsed >= targetDurationMs) {
+          stoppedAtLimitRef.current = true;
+          void stopSession();
+        }
+      }, 250);
       return () => window.clearInterval(timer);
-    }, [active]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [active, targetDurationMs]);
 
     useEffect(() => {
       const canvas = canvasRef.current;
@@ -277,7 +319,8 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
     }
 
     async function stopSession(): Promise<MultimodalCapture | null> {
-      if (!active) return lastCapture;
+      if (!active || stoppingRef.current) return lastCapture;
+      stoppingRef.current = true;
       setLoading(true);
       const stoppedAtMs = performance.now();
       const elapsedDurationMs = Math.max(1_000, stoppedAtMs - startedAtRef.current);
@@ -318,8 +361,14 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
       await releaseMedia();
       setActive(false);
       setLoading(false);
+      stoppingRef.current = false;
       setElapsedMs(durationSeconds * 1_000);
-      setStatus(metrics ? 'Rehearsal captured. Review the three evidence layers below.' : 'No transcript was captured. You can type one and review again.');
+      const stoppedAtLimit = stoppedAtLimitRef.current;
+      setStatus(metrics
+        ? stoppedAtLimit
+          ? 'Time ran out and capture stopped itself, exactly as an evaluator would. Review the three evidence layers below.'
+          : 'Rehearsal captured. Review the three evidence layers below.'
+        : 'No transcript was captured. You can type one and review again.');
       const capture: MultimodalCapture = {
         mode,
         durationSeconds,
@@ -328,6 +377,13 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         visionSummary,
         audioSummary,
         speechDisruptions,
+        // Timing describes dictated text only. A typed draft shares no clock
+        // with the recording, and guessing one would put marks at invented
+        // moments.
+        transcriptTimingPoints: transcriptSource === 'web-speech'
+          ? transcriptTimingRef.current.points()
+          : undefined,
+        stoppedAtLimit,
         recording,
       };
       if (finalTranscript) {
@@ -366,6 +422,8 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
       energySamplesRef.current = [];
       acousticDisruptionsRef.current = new SpeechDisruptionDetector({ ignoreBeforeMs: 3_000 });
       interimFillersRef.current = new InterimFillerTracker(3_000);
+      transcriptTimingRef.current = new TranscriptTimingTracker();
+      stoppedAtLimitRef.current = false;
       try {
         // A saved replay is camera plus microphone by definition, which is what
         // its own control says. Every other track is requested only because a
@@ -424,6 +482,10 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
             if (emitted.length > 0) updateSpeechDisruptionCount();
             const next = snapshot.transcript.trim();
             if (!next) return;
+            transcriptTimingRef.current.addSnapshot(
+              next,
+              Math.max(0, snapshot.observedAtMs - startedAtRef.current),
+            );
             transcriptRef.current = next;
             onTranscriptChange(next);
           },
@@ -478,12 +540,27 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
     const trackingLabel = frame?.tracked
       ? (frame.calibrated ? 'tracking locked' : 'calibrating')
       : visionPhase === 'loading' ? 'loading model' : 'find the camera frame';
+    // With a limit set, the chip shows what is left rather than what is spent:
+    // a presenter needs to know how much room remains, not how long they have
+    // been talking. The last thirty seconds are called out because that is
+    // when a closing has to start.
+    const limitMs = targetDurationMs !== null && targetDurationMs > 0 ? targetDurationMs : null;
+    const remainingMs = limitMs === null ? null : Math.max(0, limitMs - elapsedMs);
+    const liveClock = remainingMs === null ? formatTime(elapsedMs) : formatTime(remainingMs);
+    const closingSoon = remainingMs !== null && remainingMs <= 30_000;
 
     return <section className="multimodal-studio" aria-labelledby="studioTitle">
       <div className="studio-heading">
         <div><p className="overline">Experimental multimodal studio</p><h3 id="studioTitle">Rehearse the whole performance.</h3><p>Camera landmarks + acoustic observations + your active rubric, assembled into one review.</p></div>
-        <span className={`studio-live${active ? ' is-live' : ''}`}><i />{active ? formatTime(elapsedMs) : 'ready'}</span>
+        <span className={`studio-live${active ? ' is-live' : ''}${active && closingSoon ? ' is-closing' : ''}`}>
+          <i />
+          {active ? liveClock : 'ready'}
+          {active && limitMs !== null && <small>{closingSoon ? 'left — start closing' : 'left'}</small>}
+        </span>
       </div>
+      {active && limitMs !== null && <p className="studio-limit-note" role="status">
+        Capture stops itself at {formatTime(limitMs)}, the way an evaluator stops a pitch on time. Finish earlier whenever you are done.
+      </p>}
 
       {!active && <fieldset className="studio-consent" disabled={loading}>
         <legend>Choose what this rehearsal may observe</legend>
@@ -531,11 +608,20 @@ export function MultimodalReview({
   substanceScore,
   recordingStatus,
   savedAttemptId,
+  rubricTimeline,
+  targetDurationMs,
+  onRetakeCriterion,
 }: Readonly<{
   result: MultimodalAttemptResult;
   substanceScore: number;
   recordingStatus?: string;
   savedAttemptId?: string | null;
+  /** One entry per rubric criterion with its located citation, when supplied. */
+  rubricTimeline?: readonly RubricTimelineEntry[];
+  /** The stated limit for this attempt, drawn across every lane. */
+  targetDurationMs?: number | null;
+  /** Offered per criterion so a gap can be answered without a fresh 7 minutes. */
+  onRetakeCriterion?: (entry: RubricTimelineEntry) => void;
 }>) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
@@ -601,6 +687,21 @@ export function MultimodalReview({
     { id: 'camera' as const, label: 'Camera', events: replayEvents.filter((event) => event.lane === 'camera') },
   ].filter((lane) => lane.events.length > 0);
 
+  // The rubric lanes sit above the delivery lanes on one clock, which is the
+  // only way to see that the steadiest forty seconds proved nothing. Unlike
+  // voice and camera, an empty rubric lane is never filtered out: the gap is
+  // the finding, and a lane that disappears when it has nothing to say hides
+  // exactly the criterion the student needs to see.
+  const rubricEntries = rubricTimeline ?? [];
+  const coverage = summarizeRubricCoverage(rubricEntries);
+  const limitMs = targetDurationMs != null && targetDurationMs > 0 ? targetDurationMs : null;
+  const cutPercent = limitMs !== null && limitMs < timelineDurationMs
+    ? (limitMs / timelineDurationMs) * 100
+    : null;
+  const beyondTheBell = limitMs === null ? [] : entriesBeyondLimit(rubricEntries, limitMs);
+  const transcriptSegments = segmentTranscript(result.transcript, rubricEntries);
+  const markedSegmentCount = transcriptSegments.filter((segment) => segment.labels.length > 0).length;
+
   function playFrom(startMs: number) {
     const player = videoRef.current;
     if (!player) return;
@@ -619,15 +720,62 @@ export function MultimodalReview({
       <ol className="replay-timeline">{replayEvents.length > 0 ? replayEvents.map((event) => <li key={event.key}><button className="replay-event-button" type="button" onClick={() => playFrom(event.startMs)}><time>{formatTime(event.startMs)}</time><span><strong>{event.label}</strong><small>{event.source} · {event.detail}</small></span><b aria-hidden="true">Play →</b></button></li>) : <li><p>No timestamp observation crossed the prototype thresholds. You can still scrub the complete replay.</p></li>}</ol>
     </section>}
     {!recordingUrl && recordingStatus && <p className="recording-sync-status" role="status">{recordingStatus}</p>}
-    {timelineLanes.length > 0 && <section className="attempt-timeline" aria-labelledby="timelineTitle">
+    {(timelineLanes.length > 0 || rubricEntries.length > 0) && <section className="attempt-timeline" aria-labelledby="timelineTitle">
       <div className="section-title-row">
         <div><p className="overline">When the cues happened</p><h3 id="timelineTitle">Across the attempt</h3></div>
-        <span className="timeline-duration">{formatTime(timelineDurationMs)} total</span>
+        <span className="timeline-duration">{formatTime(timelineDurationMs)} total{limitMs !== null ? ` · ${formatTime(limitMs)} limit` : ''}</span>
       </div>
+      {rubricEntries.length > 0 && <>
+        {/* The legend belongs beside the chart it explains, not in a caption
+            further down: a reader meeting a filled block has to be told what
+            filled means at the moment they meet it. */}
+        <p className="timeline-legend">
+          <span data-evidence="found"><i aria-hidden="true" />evidence cited</span>
+          <span data-evidence="reused"><i aria-hidden="true" />quote shared with another criterion</span>
+          <span data-evidence="absent"><i aria-hidden="true" />nothing cited</span>
+          {cutPercent !== null && <span className="timeline-legend-cut"><i aria-hidden="true" />the limit</span>}
+        </p>
+        {rubricEntries.map((entry) => {
+          const startMs = entry.evidence?.startMs ?? null;
+          const endMs = entry.evidence?.endMs ?? startMs;
+          return <div className="timeline-lane is-rubric" key={entry.criterionId}>
+            <span className="timeline-lane-label" title={entry.label}>{entry.label}</span>
+            <div className="timeline-track" data-evidence={entry.state}>
+              {cutPercent !== null && <i className="timeline-cutline" style={{ left: `${cutPercent}%` }} aria-hidden="true" />}
+              {startMs !== null
+                ? <button
+                  className="timeline-mark is-evidence"
+                  type="button"
+                  style={{
+                    left: `${Math.min(99, (startMs / timelineDurationMs) * 100)}%`,
+                    width: `${Math.max(((endMs ?? startMs) - startMs) / timelineDurationMs * 100, 1.5)}%`,
+                  }}
+                  onClick={() => playFrom(startMs)}
+                  title={`${formatTime(startMs)} · ${entry.label}`}
+                  aria-label={`Around ${formatTime(startMs)}, the cited evidence for ${entry.label}. ${recordingUrl ? 'Play the replay from two seconds before this.' : 'No replay was recorded for this attempt.'}`}
+                  disabled={!recordingUrl}
+                />
+                : <span className="timeline-lane-note" data-evidence={entry.state}>
+                  {entry.evidence
+                    ? 'cited, but a typed transcript has no position on this clock'
+                    : 'no evidence cited anywhere in this attempt'}
+                </span>}
+            </div>
+          </div>;
+        })}
+        <p className="timeline-rubric-summary">
+          {coverage.found + coverage.reused} of {coverage.total} criteria cite a span
+          {coverage.absent > 0 ? `, and ${coverage.absent} cite nothing at all` : ''}.
+          {coverage.timed > 0
+            ? ` ${coverage.timed} could be placed on the clock from dictation timing, which is accurate to a second or two — enough to find the moment, not to sync a word.`
+            : ' None could be placed on the clock, because this transcript was typed rather than dictated.'}
+        </p>
+      </>}
       {timelineLanes.map((lane) => (
         <div className="timeline-lane" key={lane.id}>
           <span className="timeline-lane-label">{lane.label}</span>
           <div className="timeline-track">
+            {cutPercent !== null && <i className="timeline-cutline" style={{ left: `${cutPercent}%` }} aria-hidden="true" />}
             {lane.events.map((event) => {
               const left = Math.min(99, (event.startMs / timelineDurationMs) * 100);
               const span = Math.max(0, (event.endMs - event.startMs) / timelineDurationMs) * 100;
@@ -650,9 +798,60 @@ export function MultimodalReview({
       <p className="timeline-axis" aria-hidden="true">
         <span>0:00</span><span>{formatTime(timelineDurationMs / 2)}</span><span>{formatTime(timelineDurationMs)}</span>
       </p>
+      {limitMs !== null && <p className="timeline-bell-note" role="note">
+        {cutPercent === null
+          ? <>This attempt finished {formatTime(limitMs - timelineDurationMs)} inside the {formatTime(limitMs)} limit.</>
+          : beyondTheBell.length > 0
+            ? <>An evaluator who stops this attempt at {formatTime(limitMs)} never hears the cited evidence for <strong>{beyondTheBell.map((entry) => entry.label).join(', ')}</strong>.</>
+            : coverage.timed > 0
+              ? <>Every cited moment landed before the {formatTime(limitMs)} limit, though the attempt ran {formatTime(timelineDurationMs - limitMs)} past it.</>
+              : <>This attempt ran {formatTime(timelineDurationMs - limitMs)} past the {formatTime(limitMs)} limit.</>}
+      </p>}
       <p className="metrics-boundary">
         Each mark is a candidate the prototype thresholds flagged, placed where it occurred. The list below carries the same events as text.
       </p>
+    </section>}
+
+    {markedSegmentCount > 0 && <section className="transcript-evidence" aria-labelledby="transcriptEvidenceTitle">
+      <div className="section-title-row">
+        <div><p className="overline">Your exact words</p><h3 id="transcriptEvidenceTitle">Where each criterion was earned</h3></div>
+        <span className="timeline-duration">{markedSegmentCount} marked {markedSegmentCount === 1 ? 'passage' : 'passages'}</span>
+      </div>
+      {/* Rendered as text nodes, never injected markup: the transcript is user
+          input and INV-5 does not bend for a highlight. */}
+      <p className="transcript-evidence-body">
+        {transcriptSegments.map((segment, index) => {
+          if (segment.labels.length === 0) return <span key={index}>{segment.text}</span>;
+          const labels = segment.labels.join(' · ');
+          return segment.startMs !== null && recordingUrl
+            ? <button
+              key={index}
+              className="transcript-evidence-mark"
+              type="button"
+              onClick={() => playFrom(segment.startMs ?? 0)}
+              title={`${labels} — play from ${formatTime(segment.startMs)}`}
+            ><mark>{segment.text}</mark><small>{labels}</small></button>
+            : <mark key={index} className="transcript-evidence-static" title={labels}>{segment.text}<small>{labels}</small></mark>;
+        })}
+      </p>
+      <p className="metrics-boundary">
+        Marked passages are the exact spans cited in the rubric evidence map, shown inside your own transcript. Nothing here is rewritten or corrected.
+      </p>
+    </section>}
+
+    {onRetakeCriterion && rubricEntries.some((entry) => entry.state === 'absent') && <section className="criterion-retake" aria-labelledby="retakeTitle">
+      <div className="section-title-row">
+        <div><p className="overline">Fix the gap, not the whole take</p><h3 id="retakeTitle">Answer one criterion again</h3></div>
+      </div>
+      <p>A criterion with nothing cited does not need another full rehearsal. Record a short passage for it; the addition is kept separate from the original take and only that criterion is judged again.</p>
+      <ul className="criterion-retake-list">
+        {rubricEntries.filter((entry) => entry.state === 'absent').map((entry) => (
+          <li key={entry.criterionId}>
+            <span>{entry.label}</span>
+            <button className="button button-secondary" type="button" onClick={() => onRetakeCriterion(entry)}>Record an addition</button>
+          </li>
+        ))}
+      </ul>
     </section>}
 
     <div className="performance-details">

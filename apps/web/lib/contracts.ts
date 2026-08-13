@@ -787,6 +787,35 @@ export const StatelessRejudgeResponseSchema = z.object({
   }
 });
 
+export const ClaimCoachRequestSchema = z.object({
+  transcript: z.string().trim().min(1).max(12_000),
+  criteria: z.array(StatelessInputCriterionSchema).min(1).max(20),
+});
+
+export const CoachedClaimSchema = z.object({
+  citedSpan: z.string().trim().min(1).max(500),
+  supported: z.boolean(),
+  supportSpan: z.string().trim().min(1).max(500).nullable(),
+  invitedQuestion: z.string().trim().min(1).max(300).nullable(),
+});
+
+export const CriterionCoachingSchema = z.object({
+  criterionId: IdSchema,
+  claims: z.array(CoachedClaimSchema).max(8),
+  // Readings whose quotes failed the exact-span check. Counted and shown,
+  // never quietly hidden: a rejection rate is evidence about the tool.
+  discardedClaims: z.number().int().nonnegative().max(24),
+  strongerForm: z.string().trim().min(1).max(2_000).nullable(),
+  blanks: z.array(z.string().trim().min(1).max(200)).max(6),
+  degradedReason: z.string().trim().min(1).max(1_000).nullable(),
+  model: z.string().trim().min(1).max(200).nullable(),
+});
+
+export const ClaimCoachResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  coachings: z.array(CriterionCoachingSchema).min(1).max(20),
+});
+
 export const StatelessDefenseRequestSchema = z.object({
   answerText: z.string().trim().min(1).max(12_000),
   criterion: CriterionSchema,
@@ -1143,6 +1172,10 @@ export type StatelessRejudgeRequest = z.infer<typeof StatelessRejudgeRequestSche
 export type StatelessRejudgeResponse = z.infer<typeof StatelessRejudgeResponseSchema>;
 export type StatelessDefenseRequest = z.infer<typeof StatelessDefenseRequestSchema>;
 export type StatelessDefenseResponse = z.infer<typeof StatelessDefenseResponseSchema>;
+export type ClaimCoachRequest = z.infer<typeof ClaimCoachRequestSchema>;
+export type ClaimCoachResponse = z.infer<typeof ClaimCoachResponseSchema>;
+export type CriterionCoaching = z.infer<typeof CriterionCoachingSchema>;
+export type CoachedClaim = z.infer<typeof CoachedClaimSchema>;
 export type QuestionResponse = z.infer<typeof QuestionResponseSchema>;
 export type SourceDocumentUploadResponse = z.infer<typeof SourceDocumentUploadResponseSchema>;
 export type SourceDocumentListResponse = z.infer<typeof SourceDocumentListResponseSchema>;
