@@ -379,11 +379,12 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 }
 .focus-mascot {
   /* Taken out of flow on purpose. The container has a min-height but no
-     definite height, so height:100% is indeterminate and the image would fall
+     definite height, so height:100% is indeterminate and an in-flow image falls
      back to its own aspect ratio — and the three poses are 1.25, 0.98, and 1.38.
-     In flow, the card would be a different height depending on which pose the
-     state chose, and the practice action would drift below the fold on the
-     tallest one. */
+     That would let the state's choice of pose decide how tall the card is
+     whenever the image is taller than the text column beside it. This is not
+     what pushed the action below the fold on CI; the text was. It is still
+     wrong to let a drawing set the height of a layout. */
   position: absolute; inset: 0; z-index: 1;
   width: 100%; height: 100%; display: block; object-fit: contain; object-position: center bottom;
   transform-origin: 54% 80%; transform-style: preserve-3d; will-change: transform;
@@ -1435,4 +1436,20 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 @media (max-width: 40rem) {
   .insight-band { padding: var(--space-4); }
   .insight-grid { grid-template-columns: 1fr; }
+}
+
+/* A 1280x720 laptop with browser chrome is the booth case, and the primary
+   action has to clear the fold on a font stack we do not control. The UI stack
+   is system fonts, so the same markup wraps to different heights on macOS and
+   on Linux — CI measured the action 100px lower than this machine does. Rather
+   than budget to the pixel for one platform, short viewports get a tighter
+   scale with enough slack to absorb the difference. */
+@media (max-height: 820px) {
+  .home-header { padding-block: var(--space-3); }
+  .page-header { margin-bottom: var(--space-4); }
+  .page-header h1 { font-size: var(--step-4); }
+  .focus-main { padding-block: var(--space-5); }
+  .focus-main h2 { font-size: var(--step-3); max-width: 26ch; }
+  .focus-main > p { margin-bottom: var(--space-4); font-size: var(--step-0); }
+  .focus-coach { min-height: 15rem; }
 }
