@@ -81,6 +81,13 @@ of the product worthy of it.**
    durable upload requires an owned account, Postgres, and configured private Blob storage.
    Recording/upload failure is non-blocking and never prevents rubric analysis or saving the
    text-based attempt.
+8. **Turn-based Kato interview (captain-approved experimental branch, 13 Aug)** — a separate
+   rehearsal format asks up to five fixed rubric-derived questions and checkpoints each answer
+   locally without waiting for a model between questions. Question text is always visible and
+   browser text-to-speech remains optional. With explicit consent, one media session and one
+   replay timeline span the full interview while answer transcripts retain separate turn and
+   time-window boundaries. Final submit runs one turn-aware batch review; each answer is judged
+   only against its paired criterion and Kato's wording never becomes student evidence.
 
 ### Out — decided, not deferred by accident
 
@@ -108,6 +115,7 @@ institutional dashboards · payment.
 | **AD-9** | A rehearsal summary may combine substance, vocal, and visual readings under a disclosed 50/25/25 weighting. It describes one attempt, never the speaker: it is never labelled as ability, confidence, skill, or a grade, it never changes a rubric verdict, and it never appears without its weighting, its three components with their own evidence, and the list of what could not be measured. | A single figure is only defensible while a judge can take it apart. The moment it reads as a rating of the person rather than a description of one attempt, it is a claim we cannot source, and INV-6 puts it back out of scope. |
 | **AD-10** | Saved replay is opt-in, private, ownership-checked on every metadata and media request, and retained separately from delivery observations. Each recording carries a 30-day target expiry timestamp and an explicit delete control; account deletion removes the private blob before database ownership cascades. | Camera and microphone data need a stronger boundary than derived feedback. Deleting a replay keeps its transcript, rubric evidence, and delivery observations useful. Expiry metadata is implemented, but automatic physical cleanup is not claimed until a cleanup job is deployed and verified. |
 | **AD-11** | Replay and timestamped delivery observations are supporting context only. Recording availability, upload success, and replay deletion do not change rubric coverage, vocal, visual, or composite results. | Storage state is not evidence of presentation quality, and a private-storage outage must not change a student's feedback. |
+| **AD-12** | Interview orchestration is a finite state machine owned by application code: fixed rubric order and the five-question hard cap cannot be changed by a model response. Intermediate submit stores an answer and advances locally; only final submit sends the ordered answer/criterion pairs for analysis. Each verdict must ground its citation inside its own answer. Optional media uses one consented stream, recording, and monotonic timeline for the full conversation, with answer windows stored as offsets into it. TTS is excluded from answer transcription and evidence. Individual turn detail stays page-local on this experimental branch; the existing saved progress entry receives one answer-only aggregate. | Removing model-dependent branching makes question transitions immediate and predictable while preserving strict answer-local grounding. One recording avoids repeated permissions and incompatible clocks. The final batch retains deterministic fallback and can evaluate independent turns concurrently; a single hardest follow-up becomes review guidance for the next rehearsal rather than interrupting this one. The explicit persistence boundary avoids claiming multi-turn storage that the current one-question-per-attempt schema does not provide. |
 
 ### Data flow (target)
 

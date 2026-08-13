@@ -65,11 +65,11 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/practice',
-        headers: secured('camera=(self), microphone=(self), geolocation=(), payment=()'),
+        headers: secured('camera=(self), microphone=(self), geolocation=(self), payment=(self)'),
       },
       {
         source: '/((?!practice(?:/|$)).*)',
-        headers: secured('camera=(), microphone=(), geolocation=(), payment=()'),
+        headers: secured('camera=(self), microphone=(self), geolocation=(self), payment=(self)'),
       },
     ];
   },

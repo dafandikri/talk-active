@@ -688,6 +688,170 @@ export const StatelessAnalysisResponseSchema = z.object({
   }
 });
 
+// Interview questions are fixed by the client before capture begins. The
+// analysis boundary therefore accepts answer windows only: question prose is
+// deliberately absent (and rejected by strict parsing) so it cannot become
+// evidence or reach a model as part of the rehearsal transcript.
+export const InterviewAnalysisTurnSchema = z.object({
+  turnId: IdSchema,
+  criterion: CriterionSchema.strict(),
+  answer: z.string().trim().min(1).max(12_000),
+  durationSeconds: z.number().finite().positive().max(3_600),
+  answerStartMs: z.number().int().nonnegative().max(3_600_000),
+  answerEndMs: z.number().int().positive().max(3_600_000),
+}).strict().superRefine((value, context) => {
+  if (value.answerEndMs <= value.answerStartMs) {
+    context.addIssue({
+      code: 'custom',
+      path: ['answerEndMs'],
+      message: 'An interview answer must end after it starts.',
+    });
+  }
+  const answerWindowSeconds = (value.answerEndMs - value.answerStartMs) / 1_000;
+  if (value.durationSeconds > answerWindowSeconds + 1) {
+    context.addIssue({
+      code: 'custom',
+      path: ['durationSeconds'],
+      message: 'Answer duration cannot exceed its timestamped window.',
+    });
+  }
+});
+
+export const InterviewAnalysisRequestSchema = z.object({
+  turns: z.array(InterviewAnalysisTurnSchema).min(1).max(5),
+}).strict().superRefine((value, context) => {
+  const turnIds = new Set(value.turns.map((turn) => turn.turnId));
+  if (turnIds.size !== value.turns.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['turns'],
+      message: 'Every interview turn must have a unique id.',
+    });
+  }
+  const criterionIds = new Set(value.turns.map((turn) => turn.criterion.id));
+  if (criterionIds.size !== value.turns.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['turns'],
+      message: 'Every fixed interview turn must target a distinct criterion.',
+    });
+  }
+  if (value.turns.reduce((sum, turn) => sum + turn.answer.length, 0) > 12_000) {
+    context.addIssue({
+      code: 'custom',
+      path: ['turns'],
+      message: 'The interview answers may contain at most 12000 characters in total.',
+    });
+  }
+  for (let index = 1; index < value.turns.length; index += 1) {
+    const previous = value.turns[index - 1];
+    const current = value.turns[index];
+    if (!previous || !current) continue;
+    if (current.criterion.displayOrder <= previous.criterion.displayOrder) {
+      context.addIssue({
+        code: 'custom',
+        path: ['turns', index, 'criterion', 'displayOrder'],
+        message: 'Interview turns must follow the rubric display order.',
+      });
+    }
+    if (current.answerStartMs < previous.answerEndMs) {
+      context.addIssue({
+        code: 'custom',
+        path: ['turns', index, 'answerStartMs'],
+        message: 'Interview answer windows must be ordered and cannot overlap.',
+      });
+    }
+  }
+});
+
+export const InterviewAnswerJudgmentSchema = z.object({
+  verdict: EvidenceVerdictValueSchema,
+  coverageScore: CoverageScoreSchema,
+  citedSpan: z.string().max(12_000).nullable(),
+  missingEvidence: z.array(z.string().trim().min(1).max(200)).max(40),
+  engine: EvidenceEngineSchema,
+  degradedReason: z.string().trim().min(1).max(2_000).nullable(),
+}).superRefine((value, context) => {
+  if (value.verdict !== 'unsupported' && !value.citedSpan?.trim()) {
+    context.addIssue({
+      code: 'custom',
+      path: ['citedSpan'],
+      message: 'A supported or partial interview answer must cite its own answer span.',
+    });
+  }
+  if (value.verdict === 'unsupported' && value.citedSpan !== null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['citedSpan'],
+      message: 'An unsupported interview answer cannot retain a supporting citation.',
+    });
+  }
+  if (value.verdict !== 'supported' && value.missingEvidence.length === 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['missingEvidence'],
+      message: 'A partial or unsupported interview answer must name missing evidence.',
+    });
+  }
+  if (value.verdict === 'supported' && value.missingEvidence.length > 0) {
+    context.addIssue({
+      code: 'custom',
+      path: ['missingEvidence'],
+      message: 'A supported interview answer cannot also claim missing evidence.',
+    });
+  }
+});
+
+export const InterviewTurnAnalysisSchema = z.object({
+  turnId: IdSchema,
+  criterionId: IdSchema,
+  judgment: InterviewAnswerJudgmentSchema,
+});
+
+export const InterviewHardestQuestionSchema = z.object({
+  criterionId: IdSchema,
+  questionText: z.string().trim().min(1).max(2_000),
+  engine: EvidenceEngineSchema,
+});
+
+export const InterviewAnalysisResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  turns: z.array(InterviewTurnAnalysisSchema).min(1).max(5),
+  hardestQuestion: InterviewHardestQuestionSchema,
+  mode: z.enum(['semantic', 'mixed', 'deterministic']),
+}).superRefine((value, context) => {
+  const turnIds = new Set(value.turns.map((turn) => turn.turnId));
+  const criterionIds = new Set(value.turns.map((turn) => turn.criterionId));
+  if (turnIds.size !== value.turns.length || criterionIds.size !== value.turns.length) {
+    context.addIssue({
+      code: 'custom',
+      path: ['turns'],
+      message: 'Returned interview turns must map one-to-one to distinct criteria.',
+    });
+  }
+  if (!value.turns.some((turn) => turn.criterionId === value.hardestQuestion.criterionId)) {
+    context.addIssue({
+      code: 'custom',
+      path: ['hardestQuestion'],
+      message: 'The hardest question must target one returned interview criterion.',
+    });
+  }
+  const engines = [
+    ...value.turns.map((turn) => turn.judgment.engine),
+    value.hardestQuestion.engine,
+  ];
+  const expectedMode = engines.every((engine) => engine === 'semantic')
+    ? 'semantic'
+    : engines.every((engine) => engine === 'deterministic') ? 'deterministic' : 'mixed';
+  if (value.mode !== expectedMode) {
+    context.addIssue({
+      code: 'custom',
+      path: ['mode'],
+      message: 'Interview analysis mode must match its per-unit provenance.',
+    });
+  }
+});
+
 const StatelessJudgmentSchema = z.object({
   criterionId: IdSchema,
   verdict: EvidenceVerdictValueSchema,
@@ -1139,6 +1303,12 @@ export type ReusedCitation = z.infer<typeof ReusedCitationSchema>;
 export type StatelessAnalysisRequest = z.infer<typeof StatelessAnalysisRequestSchema>;
 export type StatelessAnalysisResponse = z.infer<typeof StatelessAnalysisResponseSchema>;
 export type StatelessInputCriterion = z.infer<typeof StatelessInputCriterionSchema>;
+export type InterviewAnalysisTurn = z.infer<typeof InterviewAnalysisTurnSchema>;
+export type InterviewAnalysisRequest = z.infer<typeof InterviewAnalysisRequestSchema>;
+export type InterviewAnswerJudgment = z.infer<typeof InterviewAnswerJudgmentSchema>;
+export type InterviewTurnAnalysis = z.infer<typeof InterviewTurnAnalysisSchema>;
+export type InterviewHardestQuestion = z.infer<typeof InterviewHardestQuestionSchema>;
+export type InterviewAnalysisResponse = z.infer<typeof InterviewAnalysisResponseSchema>;
 export type StatelessRejudgeRequest = z.infer<typeof StatelessRejudgeRequestSchema>;
 export type StatelessRejudgeResponse = z.infer<typeof StatelessRejudgeResponseSchema>;
 export type StatelessDefenseRequest = z.infer<typeof StatelessDefenseRequestSchema>;

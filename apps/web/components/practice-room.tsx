@@ -9,6 +9,7 @@ import {
   analyzeSpeech,
   DEFAULT_RUBRIC,
   evaluateDefense,
+  makeDrill,
   parseRubric,
   STARTER_DRAFT,
   type AnalysisResult,
@@ -48,6 +49,11 @@ import {
   MultimodalStudio,
   type MultimodalAttemptResult,
 } from '@/components/multimodal-studio';
+import {
+  InterviewSession,
+  type InterviewCompletion,
+} from '@/components/interview-session';
+import type { InterviewLanguage, InterviewTurn } from '@/lib/interview-session';
 import { parseSavedSessions, PRODUCTION_SESSIONS_KEY } from '@/lib/progress';
 import {
   readRubricSourceType,
@@ -59,6 +65,7 @@ import {
 } from '@/lib/rubric-storage';
 
 type Stage = 'setup' | 'attempt' | 'review' | 'defend';
+type RehearsalFormat = 'presentation' | 'interview';
 
 const stageOrder: Stage[] = ['setup', 'attempt', 'review', 'defend'];
 const REMOTE_PROJECT_TITLE = 'Talk-Active · RISTEK Finals';
@@ -189,6 +196,42 @@ function strictLocalAnalysis(result: AnalysisResult): AnalysisResult {
   };
 }
 
+function analysisFromInterview(completion: InterviewCompletion): AnalysisResult {
+  const local = analyzeSpeech({
+    transcript: completion.transcript,
+    rubricText: rubricTextFromCriteria(completion.turns.map((turn) => turn.question.criterion)),
+    durationSeconds: completion.durationSeconds,
+  });
+  const criteria: AnalysisResult['criteria'] = completion.turns.map((turn) => ({
+    id: turn.question.criterion.id,
+    label: turn.question.criterion.name,
+    requirementText: turn.question.criterion.description,
+    signals: [...turn.question.criterion.requiredEvidence],
+    score: turn.judgment.coverageScore * 100,
+    status: turn.judgment.verdict === 'supported'
+      ? 'covered' as const
+      : turn.judgment.verdict === 'partial' ? 'partial' as const : 'missing' as const,
+    matchedSignals: turn.judgment.citedSpan ? [turn.judgment.citedSpan] : [],
+    missingSignals: [...turn.judgment.missingEvidence],
+    excerpt: turn.judgment.citedSpan ?? '',
+  }));
+  const weakest = criteria.reduce((selected, criterion) => (
+    criterion.score < selected.score ? criterion : selected
+  ));
+  return {
+    ...local,
+    evidenceScore: Math.round(
+      criteria.reduce((sum, criterion) => sum + criterion.score, 0) / criteria.length,
+    ),
+    coveredCount: criteria.filter((criterion) => criterion.status === 'covered').length,
+    criterionCount: criteria.length,
+    criteria,
+    weakest,
+    judgeQuestion: completion.hardestQuestion.questionText,
+    drill: makeDrill(weakest),
+  };
+}
+
 function strictLocalDefense(result: DefenseResult): DefenseResult {
   if (result.missingSignals.length === 0) return result;
   if (result.matchedSignals.length === 0) {
@@ -250,7 +293,19 @@ export function PracticeRoom() {
   const [recordingsAvailable, setRecordingsAvailable] = useState(false);
   const [recordingStatus, setRecordingStatus] = useState('');
   const [observationNote, setObservationNote] = useState('');
+  const [rehearsalFormat, setRehearsalFormat] = useState<RehearsalFormat>('presentation');
+  const [interviewLanguage, setInterviewLanguage] = useState<InterviewLanguage>('id-ID');
+  const [interviewTurns, setInterviewTurns] = useState<readonly InterviewTurn[]>([]);
+  const [interviewHardestQuestion, setInterviewHardestQuestion] = useState<{
+    criterionId: string;
+    questionText: string;
+    engine: 'semantic' | 'deterministic';
+  } | null>(null);
   const rubric = useMemo(() => parseRubric(rubricText), [rubricText]);
+  const visibleStageOrder = useMemo(
+    () => rehearsalFormat === 'interview' ? stageOrder.filter((item) => item !== 'defend') : stageOrder,
+    [rehearsalFormat],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -393,8 +448,16 @@ export function PracticeRoom() {
     return context;
   }
 
-  async function runAnalysis() {
+  async function runAnalysis(overrides?: Readonly<{
+    transcript: string;
+    durationSeconds: number;
+    multimodalResult?: MultimodalAttemptResult | null;
+  }>) {
+    const reviewTranscript = overrides?.transcript ?? transcript;
+    const reviewDuration = overrides?.durationSeconds ?? duration;
+    const reviewMultimodalResult = overrides ? overrides.multimodalResult ?? null : multimodalResult;
     setBusy(true);
+    setError('');
     setRemoteAttemptId(null);
     setReusedCitations([]);
     setConfirmations({});
@@ -405,7 +468,7 @@ export function PracticeRoom() {
     setQuestionSourceFilename(null);
     try {
       const localResult = strictLocalAnalysis(
-        analyzeSpeech({ transcript, rubricText, durationSeconds: duration }),
+        analyzeSpeech({ transcript: reviewTranscript, rubricText, durationSeconds: reviewDuration }),
       );
       const localReusedCitations = detectReusedCitations(localResult.criteria.map((criterion) => ({
         criterionId: criterion.id,
@@ -421,7 +484,7 @@ export function PracticeRoom() {
               '/api/analyze',
               StatelessAnalysisResponseSchema,
               jsonRequest('POST', {
-                transcript,
+                transcript: reviewTranscript,
                 criteria: rubricCriteria.map((criterion) => ({
                   id: criterion.id,
                   name: criterion.name,
@@ -429,7 +492,7 @@ export function PracticeRoom() {
                   requiredEvidence: criterion.requiredEvidence,
                   displayOrder: criterion.displayOrder,
                 })),
-                durationSeconds: duration,
+                durationSeconds: reviewDuration,
               }),
             );
             setAnalysis(response.analysis);
@@ -461,9 +524,9 @@ export function PracticeRoom() {
           const created = await requestContract('/api/attempts', CreateAttemptResponseSchema, jsonRequest('POST', {
             projectId: context.projectId,
             mode: 'typed',
-            transcript,
+            transcript: reviewTranscript,
             transcriptSource: 'typed',
-            durationSeconds: duration,
+            durationSeconds: reviewDuration,
           }));
           const evidence = await requestContract(
             `/api/attempts/${created.attempt.id}/evidence`,
@@ -511,8 +574,8 @@ export function PracticeRoom() {
           ));
           setReusedCitations(evidence.reusedCitations);
           setRemoteAttemptId(created.attempt.id);
-          if (multimodalResult) {
-            void syncMultimodalAttempt(created.attempt.id, multimodalResult);
+          if (reviewMultimodalResult) {
+            void syncMultimodalAttempt(created.attempt.id, reviewMultimodalResult);
           }
           const semanticCount = evidence.verdicts.filter((verdict) => verdict.engine === 'semantic').length;
           const deterministicCount = evidence.verdicts.length - semanticCount;
@@ -531,6 +594,39 @@ export function PracticeRoom() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function completeInterview(completion: InterviewCompletion): void {
+    const completedAnalysis = analysisFromInterview(completion);
+    const completedEngines = Object.fromEntries(
+      completion.turns.map((turn) => [turn.question.criterion.id, turn.judgment.engine]),
+    );
+    const semanticCount = completion.turns.filter(
+      (turn) => turn.judgment.engine === 'semantic',
+    ).length;
+    setInterviewTurns(completion.turns);
+    setInterviewHardestQuestion(completion.hardestQuestion);
+    setTranscript(completion.transcript);
+    setDuration(completion.durationSeconds);
+    setMultimodalResult(completion.multimodalResult);
+    setAnalysis(completedAnalysis);
+    setCriterionEngines(completedEngines);
+    setReusedCitations(detectReusedCitations(completion.turns.map((turn) => ({
+      criterionId: turn.question.criterion.id,
+      citedSpan: turn.judgment.citedSpan,
+    }))));
+    setEngineNote(`${semanticCount} of ${completion.turns.length} answers used semantic mapping; ${completion.turns.length - semanticCount} used deterministic fallback. Each citation was checked only against its own answer. The next rehearsal question used ${completion.hardestQuestion.engine} generation.`);
+    setRemoteAttemptId(null);
+    setQuestionSourceFilename(null);
+    setConfirmations({});
+    setConfirmationNotes({});
+    setDefense(null);
+    setReviewId(crypto.randomUUID());
+    setObservationNote(completion.multimodalResult
+      ? 'One continuous interview capture is attached to this page-local review.'
+      : 'No camera or microphone capture was attached to this interview.');
+    setError('');
+    setStage('review');
   }
 
   async function uploadSourceDocument() {
@@ -895,8 +991,8 @@ export function PracticeRoom() {
       </header>
 
       <ol className="practice-steps" aria-label="Practice progress">
-        {stageOrder.map((item, index) => {
-          const current = stageOrder.indexOf(stage);
+        {visibleStageOrder.map((item, index) => {
+          const current = visibleStageOrder.indexOf(stage);
           const state = index === current ? ' is-active' : index < current ? ' is-complete' : '';
           // The active step was signalled by a CSS class alone, so which step
           // you were on was visible and not announced. aria-current is how a
@@ -911,7 +1007,13 @@ export function PracticeRoom() {
           <div className="surface setup-form">
             <p className="overline" id="practiceProjectLabel">Project</p>
             <div className="setup-project-summary" aria-labelledby="practiceProjectLabel"><span className="project-avatar" aria-hidden="true">{projectInitials(projectTitle)}</span><div><strong>{projectTitle}</strong><small>7-minute pitch · 3-minute Q&amp;A</small></div></div>
-            <button className="button button-primary button-full" type="button" onClick={() => setStage('attempt')}>Begin this attempt <span aria-hidden="true">→</span></button>
+            <fieldset className="rehearsal-format-picker">
+              <legend>Rehearsal format</legend>
+              <label className={rehearsalFormat === 'presentation' ? 'is-selected' : ''}><input type="radio" name="rehearsalFormat" value="presentation" checked={rehearsalFormat === 'presentation'} onChange={() => { setRehearsalFormat('presentation'); setInterviewTurns([]); setInterviewHardestQuestion(null); }} /><span><strong>Presentation attempt</strong><small>Deliver one continuous pitch, then review it.</small></span></label>
+              <label className={rehearsalFormat === 'interview' ? 'is-selected' : ''}><input type="radio" name="rehearsalFormat" value="interview" checked={rehearsalFormat === 'interview'} onChange={() => { setRehearsalFormat('interview'); setInterviewTurns([]); setInterviewHardestQuestion(null); }} /><span><strong>Interview Q&amp;A</strong><small>Five fixed rubric questions, then one final answer-local review.</small></span></label>
+            </fieldset>
+            {rehearsalFormat === 'interview' && <label className="interview-language-picker" htmlFor="interviewLanguage">Question and narration language<select id="interviewLanguage" value={interviewLanguage} onChange={(event) => setInterviewLanguage(event.target.value as InterviewLanguage)}><option value="id-ID">Bahasa Indonesia</option><option value="en-US">English</option></select></label>}
+            <button className="button button-primary button-full" type="button" onClick={() => setStage('attempt')}>{rehearsalFormat === 'interview' ? 'Start Kato interview' : 'Begin this attempt'} <span aria-hidden="true">→</span></button>
           </div>
           <aside className="surface setup-rubric">
             <div className="section-title-row"><div><p className="overline">Active rubric</p><h3>{rubric.length} criteria</h3></div><Link className="text-button" href="/rubric">Edit</Link></div>
@@ -921,7 +1023,18 @@ export function PracticeRoom() {
         </div>
       </section>}
 
-      {stage === 'attempt' && <section className="practice-stage is-visible">
+      {stage === 'attempt' && rehearsalFormat === 'interview' && <section className="practice-stage is-visible">
+        <InterviewSession
+          criteria={rubricCriteria}
+          language={interviewLanguage}
+          semanticAvailable={statelessSemanticAvailable}
+          finishing={busy}
+          onComplete={completeInterview}
+        />
+        {error && <p className="form-error" role="alert">{error}</p>}
+      </section>}
+
+      {stage === 'attempt' && rehearsalFormat === 'presentation' && <section className="practice-stage is-visible">
         <div className="attempt-layout">
           <div className="surface capture-panel">
             <div className="capture-header"><div><p className="overline">Current attempt</p><h2>{projectTitle}</h2></div><div className="timer">typed</div></div>
@@ -969,11 +1082,24 @@ export function PracticeRoom() {
       </section>}
 
       {stage === 'review' && analysis && <section className="practice-stage is-visible">
-        <div className="review-hero"><div><p className="overline overline-light">Attempt review</p><h2>One claim needs your attention before the judges find it.</h2><p>This result measures explicit rubric evidence in this transcript—not confidence or speaking ability.</p><p className="evidence-analysis-mode"><strong>Analysis provenance</strong><span>{engineNote}</span></p></div><div className="coverage-gauge" style={{ '--gauge': `${analysis.evidenceScore * 3.6}deg` } as React.CSSProperties}><strong>{analysis.evidenceScore}%</strong><span>rubric evidence</span></div></div>
+        <div className="review-hero"><div><p className="overline overline-light">{rehearsalFormat === 'interview' ? 'Interview review' : 'Attempt review'}</p><h2>{rehearsalFormat === 'interview' ? 'Your answer evidence, mapped across the whole rubric.' : 'One claim needs your attention before the judges find it.'}</h2><p>This result measures explicit rubric evidence in {rehearsalFormat === 'interview' ? 'your answers' : 'this transcript'}—not confidence or speaking ability.</p><p className="evidence-analysis-mode"><strong>Analysis provenance</strong><span>{engineNote}</span></p></div><div className="coverage-gauge" style={{ '--gauge': `${analysis.evidenceScore * 3.6}deg` } as React.CSSProperties}><strong>{analysis.evidenceScore}%</strong><span>rubric evidence</span></div></div>
         <div className="review-grid">
           <section className="surface weakness-card"><div className="weakness-heading"><span className="attention-icon" aria-hidden="true">!</span><div><p className="overline">Focus next</p><h3>{analysis.weakest.label}</h3></div></div><p>{analysis.drill}</p><div className="missing-cues"><span>Still implicit</span><div><SignalChips signals={analysis.weakest.missingSignals.slice(0, 5)} empty="No declared cues missing" /></div></div></section>
-          <section className="surface judge-preview"><p className="overline">Likely judge question</p><blockquote>{analysis.judgeQuestion}</blockquote>{questionSourceFilename && <p className="question-source-evidence">Grounded in your private source: <strong>{questionSourceFilename}</strong></p>}<button className="button button-primary button-full" type="button" onClick={() => setStage('defend')}>Practise my answer <span aria-hidden="true">→</span></button></section>
+          {rehearsalFormat === 'presentation'
+            ? <section className="surface judge-preview"><p className="overline">Likely judge question</p><blockquote>{analysis.judgeQuestion}</blockquote>{questionSourceFilename && <p className="question-source-evidence">Grounded in your private source: <strong>{questionSourceFilename}</strong></p>}<button className="button button-primary button-full" type="button" onClick={() => setStage('defend')}>Practise my answer <span aria-hidden="true">→</span></button></section>
+            : <section className="surface interview-summary-card"><p className="overline">Next rehearsal focus</p><h3>{interviewTurns.length} fixed rubric questions completed</h3><p>Every verdict below used only its paired answer. Kato&apos;s wording was excluded from evidence.</p>{interviewHardestQuestion && <blockquote>{interviewHardestQuestion.questionText}</blockquote>}</section>}
         </div>
+        {rehearsalFormat === 'interview' && interviewTurns.length > 0 && <section className="surface interview-turn-summary" aria-labelledby="interviewTurnsTitle">
+          <div className="section-title-row"><div><p className="overline">Turn record</p><h2 id="interviewTurnsTitle">Questions and answers</h2></div></div>
+          <p className="delivery-boundary">One final batch produced these answer-local verdicts. Question text is shown for context but was never sent as answer evidence.</p>
+          <ol aria-label="Interview answers">{interviewTurns.map((turn, index) => <li key={turn.id}>
+            <div><span>Question {index + 1} · {turn.question.criterion.name}</span><strong>{turn.judgment.verdict === 'supported' ? 'evidence covered' : turn.judgment.verdict === 'partial' ? 'partial evidence' : 'evidence missing'}</strong></div>
+            <blockquote>{turn.question.text}</blockquote>
+            <p><span>Your answer</span>{turn.answer}</p>
+            {turn.judgment.citedSpan ? <cite>“{turn.judgment.citedSpan}” — exact answer span</cite> : <small>Missing: {turn.judgment.missingEvidence.slice(0, 5).join(', ')}</small>}
+            <small>Answer window: {Math.round(turn.answerStartMs / 100) / 10}s–{Math.round(turn.answerEndMs / 100) / 10}s on the single interview timeline.</small>
+          </li>)}</ol>
+        </section>}
         <section className="surface evidence-section">
           <div className="section-title-row"><div><p className="overline">Rubric evidence map</p><h2>What your transcript actually supports</h2></div><div className="delivery-context"><span>{analysis.delivery.wordsPerMinute} WPM · {analysis.delivery.pace}</span><span>{analysis.delivery.fillerCount} potential fillers</span></div></div>
           {/* The whole rubric on one line, before the detail.
@@ -1044,10 +1170,10 @@ export function PracticeRoom() {
           ) : null}
         </section>
         {multimodalResult && <MultimodalReview result={multimodalResult} substanceScore={analysis.evidenceScore} recordingStatus={recordingStatus} savedAttemptId={remoteAttemptId} />}
-        <div className="review-actions"><button className="button button-secondary" type="button" onClick={() => setStage('attempt')}>Revise transcript</button><button className="button button-secondary" type="button" onClick={saveSession}>Save without Q&amp;A</button></div>
+        <div className="review-actions"><button className="button button-secondary" type="button" onClick={() => { if (rehearsalFormat === 'interview') { setInterviewTurns([]); setInterviewHardestQuestion(null); setMultimodalResult(null); } setStage('attempt'); }}>{rehearsalFormat === 'interview' ? 'Repeat interview' : 'Revise transcript'}</button><button className="button button-secondary" type="button" onClick={saveSession}>{rehearsalFormat === 'interview' ? 'Save interview review' : 'Save without Q&amp;A'}</button></div>
       </section>}
 
-      {stage === 'defend' && analysis && <section className="practice-stage is-visible"><div className="defense-layout">
+      {stage === 'defend' && rehearsalFormat === 'presentation' && analysis && <section className="practice-stage is-visible"><div className="defense-layout">
         <section className="judge-room"><div className="judge-room-topline"><div className="judge-profile"><span className="judge-avatar" aria-hidden="true">J</span><span><strong>Competition evaluator</strong><small>Questioning <b>{analysis.weakest.label}</b></small></span></div><span className="live-chip"><i /> Q&amp;A drill</span></div><blockquote>{analysis.judgeQuestion}</blockquote>{questionSourceFilename && <p className="question-source-evidence">Grounded in your private source: <strong>{questionSourceFilename}</strong></p>}<p>Answer directly. Name the mechanism, comparison, or proof the rubric expects.</p></section>
         <div className="defense-workspace"><section className="surface answer-panel"><label htmlFor="defenseAnswer">Your answer</label><textarea id="defenseAnswer" rows={10} value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder="Start with a direct answer..." />{error && <p className="form-error" role="alert">{error}</p>}<button className="button button-primary button-full" type="button" disabled={busy} onClick={() => void runDefense()}>{busy ? 'Checking only this answer…' : 'Check this answer'} <span aria-hidden="true">→</span></button></section>
           <section className="surface defense-feedback" aria-live="polite">{defense ? <div><div className="verdict-row"><div><p className="overline">Answer evidence coverage</p><h3>{defense.status}</h3></div><strong>{defense.score}%</strong></div><p>{defense.feedback}</p>{defenseEngineNote && <p className="evidence-provenance"><strong>Defense provenance:</strong> {defenseEngineNote}</p>}<div className="signal-review"><div><span>Grounded answer evidence</span><div><SignalChips signals={defense.matchedSignals} empty="No grounded answer span yet" /></div></div><div><span>Still missing</span><div><SignalChips signals={defense.missingSignals} empty="No declared cues missing" /></div></div></div><div className="follow-up"><span>The judge pushes once more</span><p>{defense.followUp}</p></div><button className="button button-primary button-full" type="button" onClick={saveSession}>Save this session <span aria-hidden="true">✓</span></button></div> : <div className="feedback-empty"><img className="mascot-guide" src={logo.src} alt="" /><h3>Say it in your own words.</h3><p>This check uses only the answer above, never the original pitch.</p></div>}</section>
