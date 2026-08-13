@@ -620,3 +620,23 @@
 .studio-consent .studio-recording-consent:hover { background: var(--inverse-raised); }
 .studio-consent .studio-recording-consent strong { color: var(--text-on-inverse); font-size: var(--step-0); }
 .studio-consent .studio-recording-consent small { color: var(--text-on-inverse-muted); font-size: var(--step-0); }
+
+/* Attempt timeline. Identity is the lane, so the marks are one hue: the obvious
+   warm/green pair for voice-versus-camera separates at ΔE 4.2 under protanopia,
+   which is no separation at all for a red-green colourblind reader. */
+.attempt-timeline { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
+.timeline-duration { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-bold); }
+.timeline-lane { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: var(--space-3); align-items: center; margin-top: var(--space-3); }
+.timeline-lane-label { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+.timeline-track { position: relative; height: 2rem; background: var(--surface-sunken); border-radius: var(--radius-sm); }
+/* Rounded data-ends, and a 2px surface gap so two adjacent cues never read as
+   one long one. The hit target is taller than the mark on purpose. */
+.timeline-mark { position: absolute; top: 0; height: 2rem; min-width: 10px; padding: 0; background: var(--accent-orange); border: 2px solid var(--surface-sunken); border-radius: var(--radius-sm); cursor: pointer; }
+.timeline-mark:disabled { cursor: default; }
+.timeline-mark:hover:not(:disabled), .timeline-mark:focus-visible { background: var(--accent-orange-strong); }
+.timeline-axis { display: flex; justify-content: space-between; margin: var(--space-2) 0 0 calc(5rem + var(--space-3)); color: var(--text-muted); font-size: var(--step-0); }
+
+@media (max-width: 40rem) {
+  .timeline-lane { grid-template-columns: 3.5rem minmax(0, 1fr); gap: var(--space-2); }
+  .timeline-axis { margin-left: calc(3.5rem + var(--space-2)); }
+}

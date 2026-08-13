@@ -8,7 +8,7 @@ import katoQuestioning from '../../../../../src/assets/mascot/kato-macaw-questio
 import katoReading from '../../../../../src/assets/mascot/kato-macaw-reading.svg';
 import { DEFAULT_RUBRIC, parseRubric } from '@/lib/analyzer';
 import type { SavedSession } from '@/lib/contracts';
-import { parseSavedSessions, PRODUCTION_SESSIONS_KEY } from '@/lib/progress';
+import { parseSavedSessions, PRODUCTION_SESSIONS_KEY, summarizeRecurringWeaknesses } from '@/lib/progress';
 import { readStoredRubricCriteria } from '@/lib/rubric-storage';
 
 interface DashboardCriterion {
@@ -46,6 +46,33 @@ function coverageLabel(value: number): string {
   return `${Number.isInteger(value) ? value : value.toFixed(1).replace(/\.0$/u, '')}%`;
 }
 
+const TRAJECTORY_LIMIT = 6;
+
+/**
+ * Coverage across the last few saved attempts, oldest first. Only the shape of
+ * the run is interesting here; the numbers themselves live on Progress, and
+ * repeating them would make two screens responsible for the same claim.
+ */
+function coverageTrajectory(sessions: readonly SavedSession[]) {
+  const ordered = [...sessions]
+    .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
+    .slice(-TRAJECTORY_LIMIT);
+  if (ordered.length < 2) return null;
+
+  const points = ordered.map((session) => session.evidenceScore);
+  const first = points[0] ?? 0;
+  const last = points[points.length - 1] ?? 0;
+  return {
+    points,
+    first,
+    last,
+    delta: Math.round(last - first),
+    // A run of two is a pair, not a trend, and saying otherwise would be a
+    // claim the data cannot carry.
+    describable: ordered.length >= 3,
+  };
+}
+
 export default function WorkspaceHomePage() {
   const [dashboard, setDashboard] = useState<DashboardState>(initialDashboard);
 
@@ -77,6 +104,14 @@ export default function WorkspaceHomePage() {
     : latestIsComplete
       ? 'That result describes one saved transcript, not confidence or speaking ability. Rehearse again to see whether the evidence holds.'
       : `The latest saved transcript recorded ${coverageLabel(latestSession.evidenceScore)} explicit rubric coverage. Open Progress to inspect its retained quote or missing cues before rehearsing again.`;
+
+  // Both come from attempts already saved in this browser. Neither invents a
+  // reading: a gap is only called recurring once it has survived more than one
+  // attempt, and a run is only described once there are three of them.
+  const trajectory = coverageTrajectory(dashboard.sessions);
+  const recurringGap = summarizeRecurringWeaknesses(dashboard.sessions)
+    .sort((left, right) => right.gapCount - left.gapCount
+      || (left.averageCoverage ?? 1) - (right.averageCoverage ?? 1))[0] ?? null;
 
   // Kato's pose reports the state of the work rather than decorating it, so the
   // dashboard is readable from across a booth before anyone reads a word. Each
@@ -114,6 +149,60 @@ export default function WorkspaceHomePage() {
           <div className="focus-stat"><span>Saved sessions</span><strong>{dashboard.sessions.length}</strong><small>Valid attempts retained in this browser</small></div>
         </div>
       </section>
+
+      {(recurringGap || trajectory) && <section className="insight-band" aria-labelledby="insightTitle">
+        <div className="section-title-row">
+          <div><p className="overline">Read from your saved attempts</p><h2 id="insightTitle">What to rehearse next</h2></div>
+          <Link className="text-button" href="/progress">Open Progress</Link>
+        </div>
+        <div className="insight-grid">
+          {recurringGap && <article className="insight-card is-gap">
+            <p className="overline">The gap that keeps returning</p>
+            <strong className="insight-headline">{recurringGap.criterionName}</strong>
+            <p className="insight-detail">
+              Unsupported in {recurringGap.gapCount} of {recurringGap.attemptCount} saved {recurringGap.attemptCount === 1 ? 'attempt' : 'attempts'}.
+            </p>
+            {recurringGap.latestMissingEvidence.length > 0 && <p className="insight-cues">
+              <span>Still missing</span>
+              {recurringGap.latestMissingEvidence.slice(0, 3).map((cue) => <span className="signal-chip" key={cue}>{cue}</span>)}
+            </p>}
+            <Link className="button button-secondary" href="/practice">Rehearse this criterion</Link>
+          </article>}
+
+          {trajectory && <article className="insight-card">
+            <p className="overline">Coverage across attempts</p>
+            <strong className="insight-headline">
+              {coverageLabel(trajectory.first)} <span aria-hidden="true">→</span> {coverageLabel(trajectory.last)}
+            </strong>
+            {/* The bars carry the shape; the sentence under them carries the
+                claim. A chart nobody can read aloud is not evidence. */}
+            <svg
+              className="insight-spark"
+              viewBox={`0 0 ${trajectory.points.length * 12} 32`}
+              role="img"
+              aria-label={`Evidence coverage across the last ${trajectory.points.length} saved attempts: ${trajectory.points.map((point) => coverageLabel(point)).join(', ')}.`}
+              preserveAspectRatio="none"
+            >
+              {trajectory.points.map((point, index) => (
+                <rect
+                  key={`${index}-${point}`}
+                  x={index * 12}
+                  y={32 - Math.max(2, (point / 100) * 32)}
+                  width="8"
+                  height={Math.max(2, (point / 100) * 32)}
+                  rx="1"
+                />
+              ))}
+            </svg>
+            <p className="insight-detail">
+              {trajectory.describable
+                ? `${trajectory.delta === 0 ? 'Level' : trajectory.delta > 0 ? `Up ${trajectory.delta} points` : `Down ${Math.abs(trajectory.delta)} points`} across the last ${trajectory.points.length} saved attempts.`
+                : 'Two saved attempts is a pair, not yet a trend. Save one more to see a direction.'}
+            </p>
+            <p className="insight-boundary">Coverage counts explicit rubric evidence in a transcript. It is not a score for you.</p>
+          </article>}
+        </div>
+      </section>}
 
       <div className="dashboard-grid">
         <section className="surface next-session" aria-labelledby="nextSessionTitle">

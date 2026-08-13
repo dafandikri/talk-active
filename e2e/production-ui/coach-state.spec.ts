@@ -66,3 +66,69 @@ test('each state draws a different pose, so the state is visible not just labell
   expect(waiting).not.toEqual(gap);
   expect(waiting).toBeTruthy();
 });
+
+// The insight band answers "what do I rehearse next" from attempts already
+// saved here. Both readings are deliberately conservative: a gap is only
+// "recurring" after more than one attempt, and a run of two is not called a
+// trend. These pin that restraint, because loosening it is how a dashboard
+// starts asserting things the data cannot carry.
+
+function attempt(id: string, at: string, score: number, coverage: number) {
+  return {
+    id, createdAt: at, evidenceScore: score, weakest: 'Differentiation',
+    defenseStatus: 'developing', projectId: null,
+    criteria: [
+      {
+        criterionId: '019ff7f4-e54b-7aaa-baba-00000000000a',
+        criterionName: 'Differentiation',
+        verdict: coverage < 1 ? 'unsupported' : 'supported',
+        coverage,
+        citedSpan: coverage < 1 ? null : 'We are unlike existing tools.',
+        missingEvidence: coverage < 1 ? ['existing tools', 'competitor'] : [],
+      },
+    ],
+  };
+}
+
+async function seed(page: import('@playwright/test').Page, rows: unknown[]) {
+  await page.addInitScript(([key, value]) => localStorage.setItem(key as string, JSON.stringify(value)),
+    [SESSIONS_KEY, rows] as const);
+}
+
+test('the band names the recurring gap and the direction of the run', async ({ page }) => {
+  await seed(page, [
+    attempt('019ff7f4-e54b-7aaa-baba-000000000001', '2026-08-11T02:00:00.000Z', 40, 0.2),
+    attempt('019ff7f4-e54b-7aaa-baba-000000000002', '2026-08-12T02:00:00.000Z', 62, 0.5),
+    attempt('019ff7f4-e54b-7aaa-baba-000000000003', '2026-08-13T02:00:00.000Z', 88, 0.75),
+  ]);
+  await page.goto('/workspace');
+
+  const band = page.locator('.insight-band');
+  await expect(band).toBeVisible();
+  await expect(band.getByText('Differentiation', { exact: true })).toBeVisible();
+  await expect(band.getByText('Unsupported in 3 of 3 saved attempts.')).toBeVisible();
+  await expect(band.getByText(/Up 48 points across the last 3 saved attempts/)).toBeVisible();
+  // The figure never gets to stand alone.
+  await expect(band.getByText(/not a score for you/i)).toBeVisible();
+  // The chart is readable without seeing it.
+  await expect(band.locator('.insight-spark')).toHaveAttribute('aria-label', /40%, 62%, 88%/);
+});
+
+test('two attempts is a pair, and the band says so instead of drawing a trend', async ({ page }) => {
+  await seed(page, [
+    attempt('019ff7f4-e54b-7aaa-baba-000000000001', '2026-08-12T02:00:00.000Z', 40, 0.2),
+    attempt('019ff7f4-e54b-7aaa-baba-000000000002', '2026-08-13T02:00:00.000Z', 88, 0.75),
+  ]);
+  await page.goto('/workspace');
+
+  await expect(page.locator('.insight-band')).toBeVisible();
+  await expect(page.getByText(/not yet a trend/i)).toBeVisible();
+});
+
+test('one attempt shows no band at all, because there is nothing to compare', async ({ page }) => {
+  await seed(page, [attempt('019ff7f4-e54b-7aaa-baba-000000000001', '2026-08-13T02:00:00.000Z', 88, 0.75)]);
+  await page.goto('/workspace');
+
+  await expect(page.locator('.focus-card')).toBeVisible();
+  await expect(page.locator('.insight-band')).toHaveCount(0);
+});

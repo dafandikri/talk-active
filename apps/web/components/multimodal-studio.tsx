@@ -565,6 +565,8 @@ export function MultimodalReview({
     ...speechDisruptions.map((event, index) => ({
       key: `speech-${event.startMs}-${index}`,
       startMs: event.startMs,
+      endMs: event.endMs,
+      lane: 'voice' as const,
       label: event.label,
       detail: event.evidence,
       source: event.source === 'interim-transcript' ? 'dictation cue' : 'voice cue',
@@ -572,11 +574,26 @@ export function MultimodalReview({
     ...(visual?.events ?? []).map((event, index) => ({
       key: `vision-${event.startMs}-${index}`,
       startMs: event.startMs,
+      endMs: event.endMs,
+      lane: 'camera' as const,
       label: event.label,
       detail: 'Camera-landmark observation. Review the surrounding context before interpreting it.',
       source: 'camera cue',
     })),
   ].sort((left, right) => left.startMs - right.startMs);
+  // Where the cues fell across the attempt. Position is the whole point: a list
+  // says a filler happened, a timeline says it happened four times in the last
+  // thirty seconds, which is a different piece of advice.
+  //
+  // The lane carries the identity, so the marks are one hue. Two hues here would
+  // be redundant with the lane label, and the obvious warm/green pair separates
+  // at ΔE 4.2 under protanopia — invisible to a red-green colourblind reader.
+  const timelineDurationMs = Math.max(1_000, result.durationSeconds * 1_000);
+  const timelineLanes = [
+    { id: 'voice' as const, label: 'Voice', events: replayEvents.filter((event) => event.lane === 'voice') },
+    { id: 'camera' as const, label: 'Camera', events: replayEvents.filter((event) => event.lane === 'camera') },
+  ].filter((lane) => lane.events.length > 0);
+
   function playFrom(startMs: number) {
     const player = videoRef.current;
     if (!player) return;
@@ -594,6 +611,42 @@ export function MultimodalReview({
       <ol className="replay-timeline">{replayEvents.length > 0 ? replayEvents.map((event) => <li key={event.key}><button className="replay-event-button" type="button" onClick={() => playFrom(event.startMs)}><time>{formatTime(event.startMs)}</time><span><strong>{event.label}</strong><small>{event.source} · {event.detail}</small></span><b aria-hidden="true">Play →</b></button></li>) : <li><p>No timestamp observation crossed the prototype thresholds. You can still scrub the complete replay.</p></li>}</ol>
     </section>}
     {!recordingUrl && recordingStatus && <p className="recording-sync-status" role="status">{recordingStatus}</p>}
+    {timelineLanes.length > 0 && <section className="attempt-timeline" aria-labelledby="timelineTitle">
+      <div className="section-title-row">
+        <div><p className="overline">When the cues happened</p><h3 id="timelineTitle">Across the attempt</h3></div>
+        <span className="timeline-duration">{formatTime(timelineDurationMs)} total</span>
+      </div>
+      {timelineLanes.map((lane) => (
+        <div className="timeline-lane" key={lane.id}>
+          <span className="timeline-lane-label">{lane.label}</span>
+          <div className="timeline-track">
+            {lane.events.map((event) => {
+              const left = Math.min(99, (event.startMs / timelineDurationMs) * 100);
+              const span = Math.max(0, (event.endMs - event.startMs) / timelineDurationMs) * 100;
+              return (
+                <button
+                  key={event.key}
+                  className="timeline-mark"
+                  type="button"
+                  style={{ left: `${left}%`, width: `${Math.max(span, 1.5)}%` }}
+                  onClick={() => playFrom(event.startMs)}
+                  title={`${formatTime(event.startMs)} · ${event.label}`}
+                  aria-label={`${formatTime(event.startMs)}, ${event.label}. ${recordingUrl ? 'Play the replay from two seconds before this.' : 'No replay was recorded for this attempt.'}`}
+                  disabled={!recordingUrl}
+                />
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <p className="timeline-axis" aria-hidden="true">
+        <span>0:00</span><span>{formatTime(timelineDurationMs / 2)}</span><span>{formatTime(timelineDurationMs)}</span>
+      </p>
+      <p className="metrics-boundary">
+        Each mark is a candidate the prototype thresholds flagged, placed where it occurred. The list below carries the same events as text.
+      </p>
+    </section>}
+
     <div className="performance-score-grid">{metricCards.map((card) => <article key={card.label}><span>{card.label}</span><strong className={card.value === null ? 'is-text' : undefined}>{card.value === null ? 'insufficient' : card.value}</strong><small>{card.note}</small>{card.value !== null && <i><b style={{ width: `${card.value}%` }} /></i>}</article>)}</div>
     <div className="performance-details">
       <div><h3>Voice evidence</h3><ul>{result.metrics.vocal.metrics.map((metric) => <li key={metric.id}><span><strong>{metric.label}</strong><small>{metric.explanation}</small></span><b>{metric.observedValue === null ? 'not measured' : `${metric.observedValue} ${metric.unit}`}</b></li>)}</ul>{(result.metrics.fillers.length > 0 || result.metrics.repeatedWordEvents.length > 0) && <div className="event-timeline transcript-cue-list"><span>Transcript cue evidence</span>{result.metrics.fillers.map((filler) => <p key={filler.label}><time>filler</time><q>{filler.label}</q> × {filler.count}</p>)}{result.metrics.repeatedWordEvents.slice(0, 6).map((event) => <p key={`${event.word}-${event.tokenIndex}`}><time>{event.timestampSeconds === null ? `word ${event.tokenIndex + 1}` : formatTime(event.timestampSeconds * 1_000)}</time><q>{event.word}</q> repeated {event.additionalOccurrences + 1} times in sequence</p>)}</div>}<div className="event-timeline speech-disruption-list"><h4>Possible hesitation cues</h4><ul>{speechDisruptions.length > 0 ? speechDisruptions.slice(0, 8).map((event, index) => <li key={`${event.kind}-${event.startMs}-${index}`}><time>{formatTime(event.startMs)}</time><span><strong>{event.label}</strong><small>{event.evidence}</small></span></li>) : <li><time>—</time><span><strong>No audio or interim-dictation candidate crossed the prototype thresholds.</strong><small>Short or unvoiced hesitations may still be missed.</small></span></li>}</ul></div></div>
