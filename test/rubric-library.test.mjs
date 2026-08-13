@@ -110,6 +110,10 @@ test('F-9 records only a known rubric source and defaults invalid storage safely
   assert.equal(RUBRIC_SOURCE_STORAGE_KEY, 'talkactive.production.rubric-source.v1');
 });
 
+// Restored 13 August. The declutter removed the "not official scoring rubrics"
+// sentence and this assertion with it. The sentence is what stops a starter
+// being mistaken for the evaluator's own matrix, which is the whole reason a
+// student would rehearse against the wrong criteria.
 test('F-9 tells users templates are unofficial and never auto-saved', () => {
   assert.match(editorSource, /not official scoring rubrics/iu);
   assert.match(editorSource, /starter loaded but not saved/iu);

@@ -421,30 +421,55 @@ test('progress names a weakness only after it recurs and retains its evidence', 
   await expectVisibleControlsHitTest(page);
 });
 
+// Restored 13 August. This check was removed alongside the rubric declutter,
+// which also removed the import panel it exercises. Pasting the evaluator's own
+// scoring matrix is the hero moment in docs/specs/2026-08-10-innovation-week.md,
+// and /api/rubrics/parse had been left with no caller. A green suite that no
+// longer contains this check says nothing about whether the demo works.
 test('rubric import stays traceable and requires human confirmation', async ({ page }) => {
   await page.goto('/rubric');
   await expectVisibleControlsHitTest(page);
+
   await page.getByText('Import from a scoring matrix').click();
   await page.getByLabel('Paste the scoring matrix').fill(
     'Problem evidence | affected students, frequency, source\nFeasibility | architecture, cost, timeline',
   );
   await page.getByRole('button', { name: 'Structure these criteria' }).click();
-  await expect(page.getByRole('status')).toContainText('2 criteria structured in deterministic mode');
-  await expect(page.locator('.production-source-quote')).toHaveCount(2);
+
+  // Structured, and explicitly not saved yet.
+  await expect(page.locator('[data-toast-variant="warning"]'))
+    .toContainText('2 criteria structured in deterministic mode');
   await expect(page.getByRole('button', { name: 'Save rubric' })).toBeVisible();
+
+  // Each imported row still says which sentence it came from. Without this the
+  // criteria are unattributable and the import stops being auditable.
+  await expect(page.locator('.production-source-quote')).toHaveCount(2);
+  await expectVisibleControlsHitTest(page);
+});
+
+test('rubric editor caps the criteria list and keeps Save at the end', async ({ page }) => {
+  await page.goto('/rubric');
+  await expectVisibleControlsHitTest(page);
+  const addCriterion = page.getByRole('button', { name: 'Add criterion' });
+  await expect(page.locator('.rubric-row')).toHaveCount(4);
+  await addCriterion.click();
+  await expect(page.locator('.rubric-row')).toHaveCount(5);
+  await expect(addCriterion).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Save rubric' })).toBeVisible();
+  await expect(page.locator('.rubric-status')).toHaveCount(0);
   await expectVisibleControlsHitTest(page);
 });
 
 test('rubric library remains editable, explicitly saved, and source-labelled', async ({ page }) => {
   await page.goto('/rubric');
   await page.getByRole('button', { name: /Skripsi defense/i }).click();
-  await expect(page.getByRole('status')).toContainText('starter loaded but not saved');
+  await expect(page.locator('[data-toast-variant="warning"]')).toContainText(/starter loaded but not saved/iu);
   await expect(page.locator('.rubric-row')).toHaveCount(5);
 
   const firstCriterion = page.getByLabel('Criterion').first();
   await firstCriterion.fill('Research gap and urgency');
   await page.getByRole('button', { name: 'Save rubric' }).click();
-  await expect(page.getByRole('status')).toContainText('5 confirmed criteria saved');
+  await expect(page.locator('[data-toast-variant="positive"]')).toContainText('5 confirmed criteria saved');
   await expect.poll(() => page.evaluate(() => localStorage.getItem(
     'talkactive.production.rubric-source.v1',
   ))).toBe('library');
@@ -464,7 +489,7 @@ test('mobile workspace exposes the complete frozen navigation', async ({ page })
   await expectVisibleControlsHitTest(page);
   await nav.getByRole('link', { name: /Rubric/i }).click();
   await expect(page).toHaveURL(/\/rubric$/u);
-  await expect(page.getByRole('heading', { name: 'Make feedback follow the real rules.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Modify rubric' })).toBeVisible();
 });
 
 test('account sync is optional and fails closed when secrets are absent', async ({ page, request }) => {

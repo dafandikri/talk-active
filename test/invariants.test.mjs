@@ -197,7 +197,9 @@ test('INV-2 account language stays on the screens that own it', () => {
     'apps/web/app/(auth)/enter/page.tsx',
     'apps/web/app/(workspace)/account/page.tsx',
   ]);
-  for (const relative of PRODUCT_SURFACES.filter((file) => !owners.has(file))) {
+  for (const relative of PRODUCT_SURFACES) {
+    const ownerPath = relative.replaceAll('\\', '/');
+    if (owners.has(ownerPath)) continue;
     const source = read(relative);
     if (!source) continue;
     for (const [number, line] of source.split(/\r?\n/u).entries()) {

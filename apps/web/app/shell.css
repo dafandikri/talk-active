@@ -284,8 +284,11 @@
 
 .nav-item, .sidebar-project, .mobile-nav a { text-decoration: none; }
 
+/* An imported criterion has to keep saying where it came from. The row is three
+   columns now, so the quote spans all of them on its own line rather than
+   sitting in a column that no longer exists. */
 .production-source-quote {
-  grid-column: 2 / 5;
+  grid-column: 1 / -1;
   margin: 0;
   color: var(--text-muted);
   font-family: var(--font-voice);
@@ -376,11 +379,9 @@
 }
 
 .rubric-template-list strong,
-.rubric-template-list span,
-.rubric-template-list small { display: block; }
+.rubric-template-list span { display: block; }
 .rubric-template-list strong { font-size: var(--step-0); }
 .rubric-template-list span { margin-top: var(--space-1); color: var(--text-secondary); font-size: var(--step-0); line-height: var(--leading-snug); }
-.rubric-template-list small { margin-top: var(--space-2); color: var(--brand); font-size: var(--step-0); font-weight: var(--weight-bold); }
 
 .production-boundary-note {
   color: var(--text-muted);
