@@ -89,6 +89,41 @@ test('signed-in remount restores the owned project, rubric, and source list with
   expect(createCalls).toBe(0);
 });
 
+// Restoring a saved project is optional. The capability probe is not. Sharing
+// one catch between them meant a single failed recovery revoked capabilities
+// the server had already confirmed: source attachments disappeared, the session
+// fell back to local, and nothing on screen said why.
+test('a failed project recovery keeps the capabilities the server confirmed', async ({ page }) => {
+  await page.route('**/api/**', async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname === '/api/capabilities') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          contractVersion,
+          persistence: 'neon',
+          accounts: true,
+          sourceDocuments: true,
+          semantic: { rubric: false, evidence: false, question: false, defense: false },
+        }),
+      });
+    }
+    if (pathname === '/api/projects/current') {
+      return route.fulfill({ status: 503, contentType: 'application/json', body: '{}' });
+    }
+    return route.fulfill({ status: 500, contentType: 'application/json', body: '{}' });
+  });
+
+  await page.goto('/practice');
+  await page.getByRole('button', { name: /Begin this attempt/i }).click();
+
+  // The capability survives the failed recovery.
+  await expect(page.getByText('Ground the judge question in your material')).toBeVisible();
+  // And the failure is stated rather than absorbed (INV-4).
+  await expect(page.getByText(/saved project could not be restored/iu)).toBeVisible();
+});
+
 test('guest capability never probes SQL project recovery', async ({ page }) => {
   let currentCalls = 0;
   await page.route('**/api/**', async (route) => {

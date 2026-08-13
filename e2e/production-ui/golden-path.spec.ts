@@ -287,6 +287,14 @@ test('private source upload grounds the saved judge question with visible proven
       sourceDocuments: true,
       semantic: { rubric: false, evidence: false, question: false, defense: false },
     });
+    // This visitor has no owned project to restore. The route still has to
+    // answer: an unmocked probe falls through to the 404 below, which is a
+    // console error the afterEach hook is right to fail on.
+    if (url.pathname === '/api/projects/current') return respond({
+      contractVersion: 2,
+      identity: 'guest',
+      current: null,
+    });
     if (url.pathname === '/api/projects' && request.method() === 'POST') return respond({
       contractVersion: 2,
       project: {
@@ -483,10 +491,37 @@ test('account sync is optional and fails closed when secrets are absent', async 
   await expect.poll(() => page.evaluate(() => localStorage.getItem('talkactive.workspace.v1'))).toBe(sourceBefore);
 });
 
-test('configured model route fails loudly before spend when its limiter is unavailable', async ({ request }) => {
+// An attempt belongs to an account, so this route now answers a stranger with
+// 401 rather than reporting whether its limiter happens to be configured. That
+// ordering is deliberate: infrastructure state is not something to disclose to
+// an unauthenticated caller.
+test('an attempt-scoped model route refuses a stranger before anything else', async ({ request }) => {
   const response = await request.post('/api/attempts/019ff7f4-e54b-7aaa-baba-123456789abc/question', {
     headers: { 'x-vercel-forwarded-for': '203.0.113.44' },
   });
+
+  expect(response.status()).toBe(401);
+});
+
+// The guest-reachable route is where INV-7 has to hold: an unconfigured limiter
+// must stop the request loudly, before any spend, rather than quietly letting a
+// model call through unmetered.
+test('the guest model route fails loudly before spend when its limiter is unavailable', async ({ request }) => {
+  const response = await request.post('/api/analyze', {
+    headers: { 'x-vercel-forwarded-for': '203.0.113.44' },
+    data: {
+      transcript: 'We map every claim in the transcript back to a criterion in the rubric.',
+      durationSeconds: 45,
+      criteria: [{
+        id: '019ff7f4-e54b-7aaa-baba-1234567890ab',
+        name: 'Rubric grounding',
+        description: 'Every verdict points at the transcript.',
+        requiredEvidence: ['rubric', 'criterion'],
+        displayOrder: 0,
+      }],
+    },
+  });
+
   expect(response.status()).toBe(503);
   await expect(response.json()).resolves.toEqual({
     contractVersion: 2,

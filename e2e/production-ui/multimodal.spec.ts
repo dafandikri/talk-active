@@ -172,30 +172,18 @@ test('camera-only capture renders raw observations without a composite score at 
   await page.waitForTimeout(1_200);
 
   const landmarkCanvas = page.locator('.studio-stage canvas');
-  await landmarkCanvas.evaluate((canvas: HTMLCanvasElement) => {
-    const context = canvas.getContext('2d');
-    context?.fillRect(0, 0, canvas.width, canvas.height);
-  });
-  await expect.poll(() => landmarkCanvas.evaluate((canvas: HTMLCanvasElement) => {
-    const context = canvas.getContext('2d');
-    return context
-      ? context.getImageData(0, 0, canvas.width, canvas.height).data.some((value, index) => (
-        index % 4 === 3 && value > 0
-      ))
-      : false;
-  })).toBe(true);
+  await expect(landmarkCanvas).toBeVisible();
 
   await finishCapture.click();
   await expect(page.locator('.studio-status')).toContainText('Local observations captured');
   await expect(page.locator('.studio-hud')).toContainText(/find the camera frame/i);
-  await expect.poll(() => landmarkCanvas.evaluate((canvas: HTMLCanvasElement) => {
-    const context = canvas.getContext('2d');
-    return context
-      ? context.getImageData(0, 0, canvas.width, canvas.height).data.some((value, index) => (
-        index % 4 === 3 && value > 0
-      ))
-      : false;
-  })).toBe(false);
+
+  // Canvas pixels are deliberately not asserted here. drawOverlay clears the
+  // whole canvas on every frame before it draws, and Chrome's synthetic camera
+  // has no face or body in it, so the surface is empty throughout a headless
+  // run: painting it from the test only races the next frame. The property that
+  // matters — the landmark canvas is scrubbed when a capture ends — is asserted
+  // directly against clearRect in test/raw-observation-retention.test.mjs.
 
   expect(await observedMediaRequests(page)).toEqual([{ audio: false, video: true }]);
   expect([...(page as ObservedPage).localAssets ?? []]).toContain(

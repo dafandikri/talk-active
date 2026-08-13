@@ -214,38 +214,49 @@ export function PracticeRoom() {
         setSemanticDefenseAvailable(capabilities.semantic.defense);
         if (capabilities.persistence !== 'neon') return;
 
-        const recovered = await requestContract(
-          '/api/projects/current',
-          CurrentProjectResponseSchema,
-        );
-        if (cancelled || !recovered.current?.rubric?.confirmedAt) return;
-        const criteria = recovered.current.criteria.map((criterion) => ({
-          id: criterion.id,
-          name: criterion.name,
-          description: criterion.description,
-          requiredEvidence: criterion.requiredEvidence,
-          sourceExcerpt: null,
-          displayOrder: criterion.displayOrder,
-        }));
-        if (criteria.length === 0) return;
-        setRemoteContext({
-          projectId: recovered.current.project.id,
-          criteria: recovered.current.criteria,
-        });
-        setSourceDocuments(recovered.current.sourceDocuments);
-        const recoveredRubricText = rubricTextFromCriteria(criteria);
-        const localRubricText = rubricTextFromCriteria(stored.criteria);
-        setRubricCriteria(criteria);
-        setRubricText(recoveredRubricText);
-        setRubricSourceType(recovered.current.rubric.sourceType);
-        writeStoredRubricCriteria(localStorage, criteria);
-        localStorage.setItem(
-          RUBRIC_SOURCE_STORAGE_KEY,
-          recovered.current.rubric.sourceType,
-        );
-        if (localRubricText !== recoveredRubricText) {
+        // Recovering a saved project is optional and must not revoke what the
+        // server just reported it can do. Sharing one catch with the capability
+        // probe meant a single failed recovery silently downgraded the session
+        // to local and hid source attachments, with nothing said about why.
+        try {
+          const recovered = await requestContract(
+            '/api/projects/current',
+            CurrentProjectResponseSchema,
+          );
+          if (cancelled || !recovered.current?.rubric?.confirmedAt) return;
+          const criteria = recovered.current.criteria.map((criterion) => ({
+            id: criterion.id,
+            name: criterion.name,
+            description: criterion.description,
+            requiredEvidence: criterion.requiredEvidence,
+            sourceExcerpt: null,
+            displayOrder: criterion.displayOrder,
+          }));
+          if (criteria.length === 0) return;
+          setRemoteContext({
+            projectId: recovered.current.project.id,
+            criteria: recovered.current.criteria,
+          });
+          setSourceDocuments(recovered.current.sourceDocuments);
+          const recoveredRubricText = rubricTextFromCriteria(criteria);
+          const localRubricText = rubricTextFromCriteria(stored.criteria);
+          setRubricCriteria(criteria);
+          setRubricText(recoveredRubricText);
+          setRubricSourceType(recovered.current.rubric.sourceType);
+          writeStoredRubricCriteria(localStorage, criteria);
+          localStorage.setItem(
+            RUBRIC_SOURCE_STORAGE_KEY,
+            recovered.current.rubric.sourceType,
+          );
+          if (localRubricText !== recoveredRubricText) {
+            setSourceStatus(
+              'This signed-in project already has a confirmed rubric. Its saved criteria were restored; browser-only rubric edits do not replace a synced project rubric.',
+            );
+          }
+        } catch {
+          if (cancelled) return;
           setSourceStatus(
-            'This signed-in project already has a confirmed rubric. Its saved criteria were restored; browser-only rubric edits do not replace a synced project rubric.',
+            'Your saved project could not be restored just now, so this attempt uses the rubric stored in this browser. Nothing saved on the server has been changed.',
           );
         }
       })
