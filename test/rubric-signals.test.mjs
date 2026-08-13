@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { analyzeSpeech, makeJudgeQuestion, parseRubric } from '../apps/web/lib/analyzer.ts';
+import {
+  analyzeSpeech,
+  DEFAULT_RUBRIC,
+  evaluateDefense,
+  makeJudgeQuestion,
+  parseRubric,
+  STARTER_DRAFT,
+} from '../apps/web/lib/analyzer.ts';
 
 // A rubric line is `Label | signal, signal, signal`. The comma is the separator
 // the syntax advertises, so a signal the author wrote as two words has to
@@ -219,6 +226,50 @@ test('a very long span is elided inside the question', () => {
 
   assert.ok(question.length < span.length, 'the question must not simply inline the whole span');
   assert.match(question, /…/u, 'an elided span has to show that it was elided');
+});
+
+// The evidence pass and the defense pass must agree on what a cue is. They did
+// not: evidence learned to read phrases while the defense kept testing single
+// tokens, so an answer that said "unique logic" was told "unique logic" was
+// missing. The recorded scenarios all use one-word cues, so only a run against
+// the default rubric could show it.
+test('a defense answering a multi-word cue is credited with it', () => {
+  const [criterion] = parseRubric('Differentiation | competitors, unique logic, traceable');
+
+  const defense = evaluateDefense({
+    answer: 'Compared with competitors, our unique logic keeps every verdict traceable to the rubric.',
+    criterion,
+  });
+
+  assert.deepEqual(defense.missingSignals, []);
+  assert.deepEqual(defense.matchedSignals, ['competitors', 'unique logic', 'traceable']);
+  assert.equal(defense.status, 'defensible');
+});
+
+test('the shipped default rubric still reaches a defensible answer', () => {
+  const analysis = analyzeSpeech({
+    transcript: STARTER_DRAFT,
+    rubricText: DEFAULT_RUBRIC,
+    durationSeconds: 60,
+  });
+  const defense = evaluateDefense({
+    answer: 'Compared with competitors, our unique logic keeps every verdict traceable to the evaluator rubric.',
+    criterion: analysis.weakest,
+  });
+
+  assert.equal(analysis.weakest.id, 'differentiation');
+  assert.equal(defense.status, 'defensible', 'the demo answer must survive a change to cue parsing');
+});
+
+test('half a phrase still does not defend the cue', () => {
+  const [criterion] = parseRubric('Differentiation | competitors, unique logic, traceable');
+
+  const defense = evaluateDefense({
+    answer: 'Compared with competitors, our approach is unique and stays traceable.',
+    criterion,
+  });
+
+  assert.deepEqual(defense.missingSignals, ['unique logic']);
 });
 
 test('every criterion still reports a usable question when nothing is missing', () => {

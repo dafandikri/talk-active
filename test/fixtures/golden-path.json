@@ -1421,18 +1421,17 @@
         }
       },
       "output": {
-        "score": 75,
+        "score": 100,
         "status": "defensible",
         "criterionId": "differentiation",
         "criterionLabel": "Differentiation",
         "matchedSignals": [
           "unlike",
           "competitor",
+          "existing tools",
           "instead"
         ],
-        "missingSignals": [
-          "existing tools"
-        ],
+        "missingSignals": [],
         "feedback": "Your answer names the alternative and makes the “Differentiation” mechanism explicit. It can now be transferred into the pitch.",
         "followUp": "What user evidence would prove that this mechanism improves a real competition outcome?"
       }
@@ -1454,20 +1453,20 @@
         }
       },
       "output": {
-        "score": 25,
-        "status": "vulnerable",
+        "score": 50,
+        "status": "developing",
         "criterionId": "differentiation",
         "criterionLabel": "Differentiation",
         "matchedSignals": [
-          "unlike"
+          "unlike",
+          "existing tools"
         ],
         "missingSignals": [
           "competitor",
-          "existing tools",
           "instead"
         ],
-        "feedback": "The answer does not yet defend “Differentiation” with the rubric's own evidence cues.",
-        "followUp": "What is your direct claim, what alternative are you comparing against, and where is the proof? Include competitor and existing tools."
+        "feedback": "The answer addresses unlike, existing tools, but still leaves competitor and instead implicit.",
+        "followUp": "Can you answer again with a direct comparison and explicitly include competitor and instead?"
       }
     },
     {

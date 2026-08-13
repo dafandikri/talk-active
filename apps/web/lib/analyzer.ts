@@ -403,9 +403,12 @@ export function evaluateDefense({ answer, criterion }: DefenseInput): DefenseRes
     throw new AnalysisError('invalid_criterion', 'Run the pitch stress test before entering the judge room.');
   }
 
+  // Same presence rule the evidence pass uses. A defense that says "unique
+  // logic" has answered the cue "unique logic", and it must not be told
+  // otherwise because the two passes disagreed about what a cue is.
   const answerTokens = new Set(tokenize(normalizedAnswer));
-  const matchedSignals = criterion.signals.filter((signal) => answerTokens.has(signal));
-  const missingSignals = criterion.signals.filter((signal) => !answerTokens.has(signal));
+  const matchedSignals = criterion.signals.filter((signal) => signalIsPresent(signal, answerTokens));
+  const missingSignals = criterion.signals.filter((signal) => !signalIsPresent(signal, answerTokens));
   const score = Math.round((matchedSignals.length / criterion.signals.length) * 100);
   const status: DefenseStatus = score >= 75
     ? 'defensible'
