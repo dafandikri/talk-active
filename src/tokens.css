@@ -35,7 +35,15 @@
    LAYER 1 — PRIMITIVES
    Raw ramps. No meaning attached. Never referenced by component CSS.
    ------------------------------------------------------------------------ */
-:root {
+ @font-face {
+   font-family: "Outfit";
+   font-style: normal;
+   font-weight: 100 900;
+   font-display: swap;
+   src: url("/fonts/outfit.woff2") format("woff2");
+ }
+
+ :root {
   /* Monochrome structure. Warm white keeps the interface from feeling like a
      hospital dashboard, while black gives the mascot palette room to sing. */
   --mono-950: #101312;
@@ -111,20 +119,20 @@
   --tracking-normal: 0;
   --tracking-wide: 0.12em;
 
-  /* Two typefaces, each with a job.
+  /* Three type roles, each with a job.
      `--font-ui` is the application speaking.
+     `--font-heading` gives the product's headings their editorial voice.
      `--font-voice` is the USER speaking — it is applied only to transcript
-     quotes and evidence. The serif/sans split is a semantic signal, not
-     decoration: when you see a serif, those are your own words.
+     quotes and evidence. It remains a separate semantic role even though all
+     roles currently share Outfit.
 
-     Both are platform fonts on purpose. The previous stylesheet asked for
-     `Inter` with no @font-face and no font file, and CSP `style-src 'self'`
-     blocks Google Fonts — so Inter never loaded once, and the app rendered in
-     a different face on every machine. Naming a font we do not ship is the
-     typographic version of overclaiming (INV-2). These stacks always resolve. */
-  --font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-             "Helvetica Neue", Arial, sans-serif;
-  --font-voice: Georgia, "Iowan Old Style", "Times New Roman", Times, serif;
+     The primary fonts are self-hosted because CSP allows font requests only
+     from this origin. The fallback stacks keep text readable if an asset is
+     unavailable. */
+  --font-ui: "Outfit", ui-sans-serif, system-ui, -apple-system,
+             "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-heading: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-voice: "Outfit", ui-sans-serif, system-ui, sans-serif;
 
   /* -------------------------------------------------------------------------
      SPACING — 4px base. 9 steps. The previous stylesheet used 93 distinct

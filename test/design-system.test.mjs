@@ -426,11 +426,11 @@ test('every named typeface is a platform font or is shipped with @font-face', ()
 test('font-family in components resolves to a role token', () => {
   const offenders = linesMatching(COMPONENT_STYLES_CODE, /font-family\s*:/u).filter((entry) => {
     const values = [...entry.line.matchAll(/font-family\s*:\s*([^;}]+)/gu)].map((m) => m[1].trim());
-    return values.some((value) => !/^(var\(--font-(ui|voice)\)|inherit)$/u.test(value));
+    return values.some((value) => !/^(var\(--font-(ui|heading|voice)\)|inherit)$/u.test(value));
   });
   assert.equal(
     offenders.length, 0,
-    report(offenders, 'font-family must be var(--font-ui), var(--font-voice), or inherit.'),
+    report(offenders, 'font-family must be var(--font-ui), var(--font-heading), var(--font-voice), or inherit.'),
   );
 });
 

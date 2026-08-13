@@ -42,7 +42,10 @@ select:focus-visible,
 }
 
 h1, h2, h3, p { margin-top: 0; }
-h1, h2, h3 { letter-spacing: var(--tracking-tight); }
+h1, h2, h3 {
+  font-family: var(--font-heading);
+  letter-spacing: var(--tracking-tight);
+}
 h1 { margin-bottom: 0; font-size: var(--step-5); line-height: var(--leading-tight); }
 h2 { margin-bottom: 0; font-size: var(--step-3); line-height: var(--leading-snug); }
 h3 { margin-bottom: 0; font-size: var(--step-2); line-height: var(--leading-snug); }
