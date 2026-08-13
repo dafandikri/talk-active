@@ -88,6 +88,22 @@ async function openMultimodalAttempt(page: Page) {
   await expect(page.getByRole('heading', { name: 'Rehearse the whole performance.' })).toBeVisible();
 }
 
+async function enterPracticeThroughClientNavigation(page: Page) {
+  await page.goto('/workspace');
+  const practiceLink = page.locator('.main-nav a[href^="/practice"]');
+  await expect(practiceLink).toHaveCount(1);
+  await practiceLink.click();
+  await expect(page).toHaveURL(/\/practice(?:\?|$)/u);
+  await expect(page.getByRole('heading', { name: 'What are you preparing for?' })).toBeVisible();
+}
+
+async function enableEveryCaptureChoice(page: Page) {
+  await page.getByRole('checkbox', { name: /Camera local landmarks/i }).check();
+  await page.getByRole('checkbox', { name: /Voice local cues/i }).check();
+  await page.getByRole('checkbox', { name: /Live transcript/i }).check();
+  await page.getByRole('checkbox', { name: /Save replay camera \+ mic/i }).check();
+}
+
 async function expectNoHorizontalOverflow(page: Page) {
   const layout = await page.evaluate(() => {
     const viewportWidth = document.documentElement.clientWidth;
@@ -142,6 +158,30 @@ test.afterEach(async ({ page }) => {
   const observedPage = page as ObservedPage;
   expect(observedPage.consoleErrors ?? []).toEqual([]);
   expect(observedPage.externalRequests ?? []).toEqual([]);
+});
+
+test('presentation capture can request devices after client navigation without a refresh', async ({ page }) => {
+  await enterPracticeThroughClientNavigation(page);
+  await page.getByRole('button', { name: /Begin this attempt/i }).click();
+  await page.getByRole('button', { name: 'Record live' }).click();
+  await enableEveryCaptureChoice(page);
+  await page.getByRole('button', { name: 'Start rehearsal' }).click();
+
+  // Reaching calibration proves getUserMedia resolved. The pose model may
+  // still be loading, which is independent of the permission regression.
+  await expect(page.locator('.studio-status')).toContainText('Calibrating for 3 seconds');
+  expect(await observedMediaRequests(page)).toEqual([{ audio: true, video: true }]);
+});
+
+test('interview capture can request devices after client navigation without a refresh', async ({ page }) => {
+  await enterPracticeThroughClientNavigation(page);
+  await page.getByRole('radio', { name: /Interview Q&A/i }).check();
+  await page.getByRole('button', { name: 'Start Kato interview' }).click();
+  await enableEveryCaptureChoice(page);
+  await page.getByRole('button', { name: 'Start continuous interview capture' }).click();
+
+  await expect(page.locator('.studio-status')).toContainText('paused until the first answer begins');
+  expect(await observedMediaRequests(page)).toEqual([{ audio: true, video: true }]);
 });
 
 test('multimodal media stays off until Start and each consent is independent at 390px', async ({ page }) => {
