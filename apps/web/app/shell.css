@@ -188,18 +188,9 @@
    label column and sentence case from the base rule. They used to be a single
    lane called "RUBRIC", which is what the narrow uppercase override was for. */
 .timeline-legend-observation i { background: var(--accent-orange); }
-.review-exception-summary { display: grid; grid-template-columns: minmax(13rem, .5fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; margin-top: var(--space-5); padding: var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-md); }
-.review-exception-head > span { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
-.review-exception-summary h4 { margin: var(--space-1) 0 0; font-size: var(--step-1); line-height: var(--leading-snug); }
-.review-exception-head > p { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); line-height: var(--leading-snug); }
-.review-exception-unmeasured strong { color: var(--text-secondary); }
-/* The bands sit on the panel's own surface, so they read as one chart set
-   rather than a stack of cards inside a card. */
-.review-exception-summary .metric-band-list { gap: var(--space-3); }
-.review-exception-summary .metric-band { padding: var(--space-3); background: var(--surface); }
-/* Nothing left its band: the good news gets the full width instead of sitting
-   beside an empty column. */
-.review-exception-summary > :only-child { grid-column: 1 / -1; }
+.review-replay-panel { margin-top: var(--space-5); padding: var(--space-4); background: var(--surface-sunken); border: 1px solid var(--border-strong); border-radius: var(--radius-md); }
+.review-replay-panel .recording-player { margin-top: var(--space-4); scroll-margin-block: var(--space-6); }
+.review-replay-panel .recording-sync-status { margin-top: var(--space-3); }
 .review-disclosure { margin-top: var(--space-4); overflow: clip; border: 1px solid var(--border); border-radius: var(--radius-md); }
 .review-disclosure > summary { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-4); background: var(--surface); font-weight: var(--weight-heavy); cursor: pointer; }
 .review-disclosure > summary:hover { background: var(--surface-sunken); }
@@ -220,9 +211,6 @@
 .review-transcript-evidence button { padding: 0; background: none; border: 0; font: inherit; text-align: left; cursor: pointer; }
 .review-transcript-evidence mark small { display: inline-block; margin-left: var(--space-2); color: var(--evidence-strong); font-size: var(--step-0); font-weight: var(--weight-bold); }
 .review-transcript-evidence > small { color: var(--text-muted); font-size: var(--step-0); }
-.review-replay-disclosure { margin-top: var(--space-5); border-color: var(--border-strong); }
-.review-replay-disclosure .recording-player { margin-top: 0; }
-.review-replay-disclosure .recording-sync-status { margin-top: var(--space-3); }
 .review-full-reading { margin-top: var(--space-5); border-color: var(--text-primary); }
 .review-full-reading .reading-composition { margin-bottom: var(--space-4); }
 .review-raw-summary, .review-audio-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--space-2); margin: var(--space-5) 0 0; }
@@ -354,7 +342,7 @@
   .multimodal-review-heading { align-items: stretch; flex-direction: column; }
   .studio-heading, .studio-controls { align-items: stretch; flex-direction: column; }
   .studio-live { align-self: flex-start; }
-  .observation-summary-grid, .observation-details, .performance-details, .review-retake-strip, .review-exception-summary { grid-template-columns: 1fr; }
+  .observation-summary-grid, .observation-details, .performance-details, .review-retake-strip { grid-template-columns: 1fr; }
   /* The bar keeps its proportions on a phone — the widths ARE the weighting, so
      stacking the segments would delete the thing the chart exists to show. Only
      the height and the label size give way. */
@@ -406,8 +394,7 @@
   }
   .mobile-nav a .nav-icon { width: 20px; height: 20px; }
   .mobile-nav a.is-active { color: var(--brand); background: var(--brand-wash); box-shadow: inset 0 3px 0 var(--brand); }
-  .studio-permission-boundary, .review-delivery-boundary,
-  .review-exception-summary > p {
+  .studio-permission-boundary, .review-delivery-boundary {
     font-size: var(--step-1);
     line-height: var(--leading-normal);
   }
@@ -779,7 +766,7 @@
    warm/green pair for voice-versus-camera separates at ΔE 4.2 under protanopia,
    which is no separation at all for a red-green colourblind reader. */
 .attempt-timeline { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
-.timeline-duration { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-bold); }
+.timeline-duration, .review-replay-duration { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-bold); }
 .timeline-lane { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: var(--space-3); align-items: center; margin-top: var(--space-3); }
 .timeline-lane-label { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
 .timeline-track { position: relative; height: 2rem; background: var(--surface-sunken); border-radius: var(--radius-sm); }

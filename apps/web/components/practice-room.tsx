@@ -1644,13 +1644,12 @@ export function PracticeRoom({
         </details>}
         <section className="surface evidence-section">
           <div className="section-title-row"><div><p className="overline">Rubric evidence map</p><h2>What your transcript actually supports</h2></div></div>
-          {/* The whole rubric on one line, before the detail.
-              With six criteria the list below runs several screens — the quote
-              is deliberately the largest text on the page, and that is not
-              negotiable — so "how am I doing overall" used to cost a scroll in
-              each direction. The map answers it in place, and each cell jumps
-              to its own criterion (Nielsen: user control, and recognition over
-              recall). Nothing here replaces the evidence; it indexes it. */}
+          {/* The whole rubric on one line, before the detail. With six criteria
+              the list below still runs several screens, so "how am I doing
+              overall" used to cost a scroll in each direction. The map answers
+              it in place, and each cell jumps to its own criterion (Nielsen:
+              user control, and recognition over recall). Nothing here replaces
+              the evidence; it indexes it. */}
           <ol className="evidence-map" aria-label="Every rubric criterion and whether this attempt cites a transcript span for it">
             {analysis.criteria.map((criterion) => {
               const reuse = reusedCitations.find((item) => item.criterionIds.includes(criterion.id));

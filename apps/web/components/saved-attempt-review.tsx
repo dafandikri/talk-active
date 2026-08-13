@@ -132,6 +132,7 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
     if (!video || !recordingReady) return;
     if (replayDetailsRef.current) replayDetailsRef.current.open = true;
     video.currentTime = Math.max(0, event.startMs / 1_000 - 2);
+    video.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setPlaybackNote(`Replay moved to ${formatClock(event.startMs)}, with two seconds of context.`);
     void video.play().catch(() => {
       setPlaybackNote(`Replay is ready at ${formatClock(event.startMs)}. Press play to continue.`);

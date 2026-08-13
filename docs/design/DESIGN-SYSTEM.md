@@ -15,8 +15,10 @@ criterion it supports. It does not grade confidence, personality, or ability.
 
 That creates three permanent rules:
 
-1. **Evidence is the largest thing on the review screen.** The cited quote uses
-   `--step-evidence`, which is larger than the page-title step.
+1. **Evidence is the clearest thing on the review screen.** Cited speech keeps
+   the voice typeface and evidence treatment, while dense review cards use the
+   restrained numbered scale so long spans remain scannable. Public and booth
+   evidence may use the larger `--step-evidence` display step.
 2. **Blue means cited evidence.** It is reserved for transcript spans, matched
    cues, and evidence-specific supporting context.
 3. **Absence is neutral.** “No cue matched” names what was missing; it is not a
@@ -157,7 +159,11 @@ that its CSP prevents it from loading.
 | `--step-4` | 29px | page title |
 | `--step-5` | 37px | hero |
 | `--step-6` | 46px | booth headline |
-| `--step-evidence` | 29–37px | cited user speech |
+| `--step-evidence` | 29–37px | public and booth evidence display |
+
+Dense workflow evidence and judge-question cards use `--step-4` on larger
+screens and `--step-3` on compact screens. They remain prominent without
+turning a long transcript or question into a display headline.
 
 No component invents a font size outside this scale.
 

@@ -101,9 +101,9 @@
   --step-5: 2.3125rem;  /* 37px — hero */
   --step-6: 2.875rem;   /* 46px — booth display only */
 
-  /* The evidence quote gets its own named step, and it deliberately outranks
-     the page title. "Evidence is the hero" is enforced by the scale itself,
-     not by remembering to make quotes big. */
+  /* Display evidence gets its own named step for the public brief and booth.
+     Dense workflow reviews use the numbered scale so long transcript spans
+     remain scannable without shrinking the display treatment. */
   --step-evidence: clamp(1.8125rem, 1.1rem + 2.2vw, 2.3125rem);
 
   --weight-regular: 400;

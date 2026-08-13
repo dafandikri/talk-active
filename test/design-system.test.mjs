@@ -206,16 +206,16 @@ test('no two type steps are closer than 20% apart', () => {
   }
 });
 
-test('the evidence step outranks the page title — evidence is the hero', () => {
-  // The design decision "evidence is the hero" has to live somewhere a
-  // reviewer cannot forget it. Here is somewhere.
+test('the display evidence step can outrank the page title', () => {
+  // Public and booth evidence can carry display hierarchy while dense workflow
+  // cards use the restrained numbered scale for long transcript spans.
   const evidence = resolve('--step-evidence');
   const max = parseFloat(evidence.match(/clamp\([^,]+,[^,]+,\s*([\d.]+)rem/u)?.[1] ?? '0');
   const pageTitle = parseFloat(resolve('--step-4'));
   assert.ok(
     max > pageTitle,
     `--step-evidence tops out at ${max}rem but --step-4 (page title) is ${pageTitle}rem. `
-    + 'The quoted evidence must be able to outrank the page title.',
+    + 'Display evidence must be able to outrank the page title.',
   );
 });
 
