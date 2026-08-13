@@ -132,3 +132,39 @@ test('one attempt shows no band at all, because there is nothing to compare', as
   await expect(page.locator('.focus-card')).toBeVisible();
   await expect(page.locator('.insight-band')).toHaveCount(0);
 });
+
+// The pose must not change the height of the card. Each drawing has a different
+// aspect ratio (1.25, 0.98, 1.38), and the container has a min-height but no
+// definite height, so an in-flow image falls back to its own ratio and the tall
+// pose pushes the practice action below the fold. That reproduced only on CI,
+// where the column geometry let the image win the row.
+//
+// An earlier version of this check compared the width and height attributes,
+// which are not layout. This one measures what actually rendered.
+for (const [label, rows] of [
+  ['nothing saved', null],
+  ['an open gap', savedSession(62, 'Differentiation')],
+  ['full coverage', savedSession(100, 'Differentiation')],
+] as const) {
+  test(`the practice action stays above the fold at 720p with ${label}`, async ({ page }) => {
+    if (rows) {
+      await page.addInitScript(([key, value]) => localStorage.setItem(key as string, JSON.stringify(value)),
+        [SESSIONS_KEY, rows] as const);
+    }
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.goto('/workspace');
+
+    const action = page.locator('.view a[href="/practice"]').first();
+    await expect(action).toBeVisible();
+    const bounds = await action.boundingBox();
+    expect(bounds, 'the practice action must have rendered bounds').not.toBeNull();
+    expect((bounds?.y ?? 720) + (bounds?.height ?? 0)).toBeLessThanOrEqual(720);
+
+    // The image is out of flow, so whichever pose the state picked cannot be
+    // what decides the row height.
+    const drivesLayout = await page.locator('.focus-mascot').evaluate(
+      (element) => getComputedStyle(element).position !== 'absolute',
+    );
+    expect(drivesLayout, 'an in-flow mascot lets the pose resize the card').toBe(false);
+  });
+}

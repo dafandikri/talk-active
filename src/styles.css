@@ -378,7 +378,13 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   background: radial-gradient(58% 46% at 50% 58%, var(--accent-leaf-wash), transparent 72%);
 }
 .focus-mascot {
-  position: relative; z-index: 1;
+  /* Taken out of flow on purpose. The container has a min-height but no
+     definite height, so height:100% is indeterminate and the image would fall
+     back to its own aspect ratio — and the three poses are 1.25, 0.98, and 1.38.
+     In flow, the card would be a different height depending on which pose the
+     state chose, and the practice action would drift below the fold on the
+     tallest one. */
+  position: absolute; inset: 0; z-index: 1;
   width: 100%; height: 100%; display: block; object-fit: contain; object-position: center bottom;
   transform-origin: 54% 80%; transform-style: preserve-3d; will-change: transform;
   animation: mascot-greet 4.8s var(--ease) infinite;
