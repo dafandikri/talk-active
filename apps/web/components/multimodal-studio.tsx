@@ -235,7 +235,7 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
     const [speechDisruptionCount, setSpeechDisruptionCount] = useState(0);
     const [saveReplay, setSaveReplay] = useState(false);
     const [recordingState, setRecordingState] = useState<'off' | 'recording' | 'failed'>('off');
-    const [status, setStatus] = useState('Choose a mode, then start a camera rehearsal.');
+    const [status, setStatus] = useState('Pick the signals you want observed. Nothing is requested until you press Start.');
     const [lastCapture, setLastCapture] = useState<MultimodalCapture | null>(null);
 
     useEffect(() => { transcriptRef.current = transcript; }, [transcript]);
@@ -483,22 +483,31 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         <span className={`studio-live${active ? ' is-live' : ''}`}><i />{active ? formatTime(elapsedMs) : 'ready'}</span>
       </div>
 
-      <div className="studio-mode-tabs" role="group" aria-label="Rehearsal mode">
-        <button aria-pressed={mode === 'interview'} className={mode === 'interview' ? 'is-active' : ''} type="button" disabled={active || loading || !captureCamera} onClick={() => setMode('interview')}><strong>Interview</strong><span>Face framing + head direction</span></button>
-        <button aria-pressed={mode === 'presentation'} className={mode === 'presentation' ? 'is-active' : ''} type="button" disabled={active || loading || !captureCamera} onClick={() => setMode('presentation')}><strong>Presentation</strong><span>Full body + gesture activity</span></button>
-      </div>
-
       {!active && <fieldset className="studio-consent" disabled={loading}>
-        <legend>Choose each signal before permission is requested</legend>
+        <legend>Choose what this rehearsal may observe</legend>
+        {/* The split is the privacy boundary, not styling. Three signals are
+            measured here and thrown away; one is kept. Saying which is which
+            beside the checkbox beats burying it in four descriptions. */}
+        <p className="studio-consent-band">Measured on this device, then discarded</p>
         <label><input type="checkbox" checked={captureCamera} onChange={(event) => setCaptureCamera(event.target.checked)} /><span><strong>Local camera landmarks</strong><small>Loads a self-hosted MediaPipe model. Frames and landmarks are discarded when capture stops.</small></span></label>
+        {captureCamera && <div className="studio-mode-tabs" role="group" aria-label="Camera rehearsal mode">
+          <button aria-pressed={mode === 'interview'} className={mode === 'interview' ? 'is-active' : ''} type="button" disabled={loading} onClick={() => setMode('interview')}><strong>Interview</strong><span>Face framing + head direction</span></button>
+          <button aria-pressed={mode === 'presentation'} className={mode === 'presentation' ? 'is-active' : ''} type="button" disabled={loading} onClick={() => setMode('presentation')}><strong>Presentation</strong><span>Full body + gesture activity</span></button>
+        </div>}
         <label><input type="checkbox" checked={captureAcoustic} onChange={(event) => setCaptureAcoustic(event.target.checked)} /><span><strong>Local acoustic observations</strong><small>Measures pauses, pitch range, and energy variation. Raw microphone audio is never recorded by this option.</small></span></label>
         <label><input type="checkbox" checked={captureDictation} disabled={!speechRecognitionIsSupported()} onChange={(event) => setCaptureDictation(event.target.checked)} /><span><strong>Browser dictation</strong><small>{speechRecognitionIsSupported() ? 'May send speech to your browser vendor. Recognized text is appended to your draft and may later go to the configured semantic provider.' : 'Unavailable in this browser. Type or paste the transcript instead.'}</small></span></label>
+
+        <p className="studio-consent-band is-kept">Kept after this attempt</p>
+        <label className="studio-recording-consent">
+          <input type="checkbox" checked={saveReplay} onChange={(event) => setSaveReplay(event.target.checked)} />
+          <span><strong>Keep a replay of this attempt</strong><small>{durableRecordingAvailable ? 'Records camera and microphone. A signed-in attempt uploads it to private storage; deleting a replay keeps its feedback.' : 'Records camera and microphone. This deployment keeps it in this page only, for review or download.'}</small></span>
+        </label>
       </fieldset>}
 
       <div className="studio-stage">
         <video ref={videoRef} aria-label="Live rehearsal camera" muted playsInline />
         <canvas ref={canvasRef} width="640" height="360" aria-hidden="true" />
-        {!active && <div className="studio-camera-empty"><span aria-hidden="true">◉</span><strong>No media access before Start</strong><small>Analysis runs on this device. A replay is created only when you explicitly select it below.</small></div>}
+        {!active && <div className="studio-camera-empty"><span aria-hidden="true">◉</span><strong>No media access before Start</strong><small>Analysis runs on this device. A replay is created only when you explicitly ask for one above.</small></div>}
         {captureCamera && <div className="studio-hud"><span><i className={frame?.tracked ? 'good' : ''} />{trackingLabel}</span><span>{mode === 'presentation' ? '33-point pose' : 'face landmarks'}</span></div>}
         {active && captureAcoustic && <div className="voice-meter" aria-label="Live voice level"><span>VOICE</span><i><b style={{ width: `${liveVoice}%` }} /></i><small>{audioSample?.pitchHz ? `${Math.round(audioSample.pitchHz)} Hz` : audioSample?.quiet ? 'pause' : 'listening'}</small><em>{speechDisruptionCount} possible cues</em></div>}
       </div>
@@ -509,10 +518,6 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
           ? <button className="button button-primary studio-record" type="button" disabled={loading || (!captureCamera && !captureAcoustic && !captureDictation && !saveReplay)} onClick={() => void startSession()}><span aria-hidden="true">●</span>{loading ? 'Loading local models…' : 'Start selected capture'}</button>
           : <button className="button button-primary studio-stop" type="button" disabled={loading} onClick={() => void stopSession()}><span aria-hidden="true">■</span>Finish &amp; assemble review</button>}
       </div>
-      <label className="studio-recording-consent">
-        <input type="checkbox" checked={saveReplay} disabled={active || loading} onChange={(event) => setSaveReplay(event.target.checked)} />
-        <span><strong>Keep a replay of this attempt</strong><small>{durableRecordingAvailable ? 'Includes camera and microphone. Signed-in attempts can upload to private storage; deleting a replay keeps its feedback.' : 'Includes camera and microphone. This deployment keeps it only in this page for review or download.'}</small></span>
-      </label>
       {active && saveReplay && <p className="recording-sync-status"><span aria-hidden="true">●</span>{recordingState === 'recording' ? ' Camera and microphone replay recording is active.' : ' Replay recording was unavailable; analysis is continuing.'}</p>}
       <p className="studio-status" aria-live="polite">{status} {active && captureDictation && speechRecognitionIsSupported() ? `Dictation: ${speechState}. Browser dictation may use the browser vendor's speech service.` : ''}</p>
     </section>;
