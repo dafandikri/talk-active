@@ -58,6 +58,7 @@ async function mockAttempt(page: Page, options: { recordingStatus: 'ready' | nul
 test('the saved review plots every cue in time, in its own lane', async ({ page }) => {
   await mockAttempt(page, { recordingStatus: 'ready' });
   await page.goto(`/attempts/${ATTEMPT_ID}`);
+  await expect(page.getByRole('link', { name: 'Back to progress' })).toHaveCount(0);
 
   const timeline = page.locator('.saved-attempt-timeline');
   await expect(timeline).toBeVisible();

@@ -558,10 +558,7 @@ test('the Next.js shell imports the frozen visual system directly and in cascade
 });
 
 test('dashboard home carries the approved character-led outlined material', () => {
-  assert.match(
-    STYLES_CODE,
-    /\.home-header\s*\{[^}]*border:\s*2px solid var\(--text-primary\);[^}]*box-shadow:\s*var\(--space-1\) var\(--space-1\) 0 var\(--accent-orange\);/su,
-  );
+  assert.doesNotMatch(STYLES_CODE, /\.home-header\s*\{/u, 'the dashboard title must not be rendered as a yellow banner');
   assert.match(
     STYLES_CODE,
     /\.focus-card\s*\{[^}]*border:\s*2px solid var\(--text-primary\);[^}]*box-shadow:\s*var\(--space-1\) var\(--space-1\) 0 var\(--accent-sky\);/su,
@@ -590,11 +587,10 @@ test('the Talk-Active lockup is consistent across product and landing surfaces',
 });
 
 test('workflow views keep the character system restrained and evidence-safe', () => {
-  // practice, progress, and account each carry exactly one. The rubric editor dropped its
-  // banner on 13 August so the criteria list starts at the top of the page.
+  // Practice, progress, and account retain a small mark in a plain page header.
   assert.equal((INDEX.match(/className="workflow-mark"/gu) ?? []).length, 3,
-    'each workflow view that keeps a banner carries exactly one workflow mark');
-  assert.match(STYLES_CODE, /\.workflow-header\s*\{[^}]*background:\s*var\(--accent-sun-wash\);[^}]*border:\s*2px solid var\(--text-primary\);[^}]*box-shadow:\s*none;/su);
+    'each marked workflow view carries exactly one workflow mark');
+  assert.doesNotMatch(STYLES_CODE, /\.workflow-header\s*\{/u, 'workflow views must not use the yellow banner treatment');
   assert.match(STYLES_CODE, /\.workflow-mark\s*\{[^}]*object-fit:\s*contain;[^}]*box-shadow:\s*none;/su);
   assert.doesNotMatch(STYLES_CODE, /\.workflow-mark\s*\{[^}]*(?:background|border):/su);
   for (const selector of ['setup-form', 'setup-rubric', 'capture-panel', 'rubric-editor-card', 'progress-chart-card', 'history-card']) {

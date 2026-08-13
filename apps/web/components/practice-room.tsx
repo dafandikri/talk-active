@@ -877,9 +877,8 @@ export function PracticeRoom() {
 
   return (
     <section className="view is-visible" aria-labelledby="practiceTitle">
-      <header className="page-header compact-header workflow-header">
+      <header className="page-header compact-header">
         <div className="workflow-heading"><img className="workflow-mark" src={logo.src} alt="" /><div><p className="overline">Practice room</p><h1 id="practiceTitle">Rehearse one attempt at a time.</h1></div></div>
-        <Link className="button button-secondary" href="/workspace">Exit session</Link>
       </header>
 
       <ol className="practice-steps" aria-label="Practice progress">

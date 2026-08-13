@@ -45,6 +45,7 @@ test('production guest completes attempt → evidence → defense → progress',
 
   await page.getByRole('link', { name: /Continue practising/i }).click();
   await expect(page).toHaveURL(/\/practice$/u);
+  await expect(page.getByRole('link', { name: 'Exit session' })).toHaveCount(0);
   await page.getByRole('button', { name: /Begin this attempt/i }).click();
   await expect(page.getByLabel('Practice transcript')).toBeVisible();
   await expectVisibleControlsHitTest(page);
@@ -76,6 +77,7 @@ test('production guest completes attempt → evidence → defense → progress',
   await page.getByRole('button', { name: /Save this session/i }).click();
 
   await expect(page).toHaveURL(/\/progress$/u);
+  await expect(page.getByRole('link', { name: 'New practice' })).toHaveCount(0);
   await expect(page.getByText('Attempt 1')).toBeVisible();
   await expect(page.locator('.full-session-list .session-status').getByText('defensible', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'The criteria that keep returning' })).toBeVisible();
@@ -500,6 +502,7 @@ test('account sync is optional and fails closed when secrets are absent', async 
   })));
   await page.goto('/account');
   await expect(page.getByRole('heading', { name: 'Account sync is not configured here.' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Continue as guest' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Start a local rehearsal' })).toBeVisible();
   await expectVisibleControlsHitTest(page);
 
