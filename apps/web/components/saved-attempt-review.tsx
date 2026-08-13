@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { requestContract } from '@/lib/api/client';
@@ -62,7 +61,6 @@ function ReviewError({ message, onRetry }: Readonly<{ message: string; onRetry: 
       <p className="form-error" role="alert">{message}</p>
       <div className="saved-review-actions">
         <button className="button button-primary" type="button" onClick={onRetry}>Try again</button>
-        <Link className="button button-secondary" href="/progress">Back to progress</Link>
       </div>
     </section>
   );
@@ -157,13 +155,12 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
 
   return (
     <section className="view is-visible" aria-labelledby="savedReviewTitle">
-      <header className="page-header compact-header workflow-header saved-review-header">
+      <header className="page-header compact-header saved-review-header">
         <div>
           <p className="overline">Saved attempt · {dateLabel(review.attempt.createdAt)}</p>
           <h1 id="savedReviewTitle">Replay the moment behind the feedback.</h1>
           <p className="page-lede">Use each timestamp to inspect the surrounding delivery, then compare it with the exact rubric evidence retained from this attempt.</p>
         </div>
-        <Link className="button button-secondary" href="/progress">Back to progress</Link>
       </header>
 
       <div className="saved-review-layout">

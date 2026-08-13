@@ -185,7 +185,7 @@ export function ProgressView() {
   const syncedArchive = synced?.attempts ?? [];
 
   return <section className="view is-visible" aria-labelledby="progressTitle">
-    <header className="page-header compact-header workflow-header"><div className="workflow-heading"><img className="workflow-mark" src={logo.src} alt="" /><div><p className="overline">Practice history</p><h1 id="progressTitle">See what changed between attempts.</h1><p className="page-lede">Track explicit evidence and recurring weak claims without inventing a universal speaking score.</p></div></div><Link className="button button-primary" href="/practice">New practice</Link></header>
+    <header className="page-header compact-header"><div className="workflow-heading"><img className="workflow-mark" src={logo.src} alt="" /><div><p className="overline">Practice history</p><h1 id="progressTitle">See what changed between attempts.</h1><p className="page-lede">Track explicit evidence and recurring weak claims without inventing a universal speaking score.</p></div></div></header>
 
     {/* The workspace has always held more than one project; the interface only
         ever admitted to one. This switcher appears once there is a second

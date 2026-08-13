@@ -125,7 +125,7 @@ export default function WorkspaceHomePage() {
 
   return (
     <section className="view is-visible" aria-labelledby="homeTitle">
-      <header className="page-header home-header">
+      <header className="page-header">
         <div><p className="overline">Your workspace</p><h1 id="homeTitle">Make your next answer harder to challenge.</h1></div>
       </header>
 

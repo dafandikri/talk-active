@@ -68,7 +68,13 @@ test('H-2 the interface speaks the user\'s language, not the schema\'s', () => {
 //  3. User control and freedom
 // ---------------------------------------------------------------------------
 test('H-3 every stage of the practice flow has a marked exit', () => {
-  assert.match(PRACTICE, /Exit session/u, 'the session must be leavable from any stage');
+  // The heuristic is "the user can always leave", not "there is a button named
+  // Exit session" — that dedicated link was removed on 13 August because the
+  // persistent sidebar already leaves from every stage. So the property is
+  // asserted where it actually lives: a nav that is present throughout.
+  for (const destination of ['/workspace', '/practice', '/rubric', '/progress']) {
+    assert.ok(FRAME.includes(`href: '${destination}'`), `the persistent nav must reach ${destination}`);
+  }
   assert.match(PRACTICE, /Revise transcript/u, 'review must be able to return to the attempt');
   assert.match(PRACTICE, /Back to attempt review/u, 'the Q&A drill must be able to go back');
   assert.match(STUDIO, /Finish &amp; assemble review/u, 'a running capture must be stoppable by the user');

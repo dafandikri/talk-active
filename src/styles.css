@@ -42,7 +42,10 @@ select:focus-visible,
 }
 
 h1, h2, h3, p { margin-top: 0; }
-h1, h2, h3 { letter-spacing: var(--tracking-tight); }
+h1, h2, h3 {
+  font-family: var(--font-heading);
+  letter-spacing: var(--tracking-tight);
+}
 h1 { margin-bottom: 0; font-size: var(--step-5); line-height: var(--leading-tight); }
 h2 { margin-bottom: 0; font-size: var(--step-3); line-height: var(--leading-snug); }
 h3 { margin-bottom: 0; font-size: var(--step-2); line-height: var(--leading-snug); }
@@ -192,30 +195,8 @@ h3 { margin-bottom: 0; font-size: var(--step-2); line-height: var(--leading-snug
   display: flex; align-items: end; justify-content: space-between;
   gap: var(--space-6); margin-bottom: var(--space-6);
 }
-.home-header {
-  padding: var(--space-5) var(--space-6);
-  background: var(--accent-sun-wash);
-  border: 2px solid var(--text-primary);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--space-1) var(--space-1) 0 var(--accent-orange);
-}
-.home-header h1 { max-width: 18ch; }
-.home-header .overline { color: var(--accent-orange-strong); }
-.home-header .button-primary {
-  border: 2px solid var(--text-primary);
-  box-shadow: var(--space-1) var(--space-1) 0 var(--text-primary);
-}
 .compact-header { align-items: center; }
 .compact-header h1 { max-width: 24ch; }
-.workflow-header {
-  align-items: flex-start;
-  padding: var(--space-5) var(--space-6);
-  background: var(--accent-sun-wash);
-  border: 2px solid var(--text-primary);
-  border-radius: var(--radius-lg);
-  box-shadow: none;
-}
-.workflow-header .overline { color: var(--accent-orange-strong); }
 .workflow-heading { display: flex; align-items: flex-start; gap: var(--space-4); min-width: 0; }
 .workflow-mark {
   width: 64px;
@@ -1341,7 +1322,6 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   .mobile-nav button.is-active { color: var(--brand); }
   .workspace { margin-left: 0; padding: var(--space-5) var(--space-4) var(--space-7); }
   .page-header { display: block; margin-bottom: var(--space-5); }
-  .home-header { padding: var(--space-5); }
   .page-header .button { margin-top: var(--space-4); }
   h1, .compact-header h1 { font-size: var(--step-4); }
   .focus-card, .dashboard-grid, .setup-grid, .review-grid, .defense-workspace, .progress-stats { grid-template-columns: 1fr; }
@@ -1498,7 +1478,6 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
    than budget to the pixel for one platform, short viewports get a tighter
    scale with enough slack to absorb the difference. */
 @media (max-height: 820px) {
-  .home-header { padding-block: var(--space-3); }
   .page-header { margin-bottom: var(--space-4); }
   .page-header h1 { font-size: var(--step-4); }
   .focus-main { padding-block: var(--space-5); }
