@@ -480,7 +480,13 @@
 .attempt-diff-evidence { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); margin-top: var(--space-4); }
 .attempt-diff-side { min-width: 0; padding: var(--space-4); background: var(--surface); border-radius: var(--radius-sm); }
 .attempt-diff-side > strong { display: block; margin-top: var(--space-2); }
-.attempt-diff-side blockquote { margin-top: var(--space-3); color: var(--text-primary); font-family: var(--font-voice); font-size: var(--step-evidence); line-height: var(--leading-snug); }
+/* The voice serif stays — these are still the speaker's own words, and the
+   typeface is what says so. The hero SIZE does not: "evidence is the hero"
+   earns its place on the review screen, where the quote is the finding. Here
+   the finding is the difference between two quotes, and setting both at
+   29–37px in a half-width column made the comparison the tallest card on the
+   page while saying nothing extra. */
+.attempt-diff-side blockquote { margin-top: var(--space-3); color: var(--text-primary); font-family: var(--font-voice); font-size: var(--step-2); line-height: var(--leading-snug); }
 .attempt-diff-side > p:not(.overline) { margin-top: var(--space-3); color: var(--text-secondary); font-size: var(--step-0); }
 .attempt-diff-absent { color: var(--text-muted); }
 
@@ -538,10 +544,15 @@
   border-radius: var(--radius-sm);
 }
 
+/* One rule across this page: the review screen's quote is the hero, because
+   there the quote IS the finding. Every quote on the progress page is
+   retrospective — proof attached to a pattern rather than the pattern itself —
+   so it keeps the voice serif and gives up the hero size. The pattern is what
+   the reader came for, and at 29–37px a historical citation outranked it. */
 .recurring-evidence blockquote {
   color: var(--text-primary);
   font-family: var(--font-voice);
-  font-size: var(--step-evidence);
+  font-size: var(--step-2);
   line-height: var(--leading-snug);
 }
 
