@@ -58,7 +58,7 @@ has to survive four days of sleep-deprived sprinting.
 | **INV-5** | User content is rendered as text, never as markup. | `test/invariants.test.mjs` |
 | **INV-6** | Scope stays explicitly bounded. | `test/invariants.test.mjs` |
 | **INV-7** | Analysis fails loudly, never silently. | `test/invariants.test.mjs` |
-| **INV-8** | The demo path cannot break. | `scripts/demo-gate.mjs` |
+| **INV-8** | The demo path cannot break. | `e2e/production-ui/` |
 
 ### INV-1 — Every external fact is traceable to a source
 A number an evaluator cannot verify is a number an evaluator can discount. Every statistic
@@ -105,24 +105,35 @@ Invalid input raises a typed error. A silent wrong answer on stage is worse than
 one, because you cannot recover from what you did not notice.
 
 ### INV-8 — The demo path cannot break
-`scripts/demo-gate.mjs` runs the exact sequence a judge watches — cold start, practice,
-analyse, defend, save, reload — and fails on **any** console error, uncaught exception, empty
-verdict card, lost state, or resource loaded from outside our own origin. Run it before every
-mentoring session and before you sleep.
+`e2e/production-ui/` drives a real browser through the exact sequence a judge watches — cold
+start, practice, analyse, defend, save, reload — against a production build, and fails on
+**any** console error, uncaught exception, empty verdict card, lost state, or resource loaded
+from outside our own origin. Run `pnpm test:production:browser` before every mentoring session
+and before you sleep.
+
+**Corrected 13 August 2026.** This invariant used to name `scripts/demo-gate.mjs`. That script
+went out with the vanilla build on 12 August and nothing replaced the reference, so for a day
+INV-8 pointed at a file that did not exist and `pnpm demo` was not a command. The browser suite
+had quietly taken the job over. An invariant nobody can run is not enforced, and the fastest way
+to find that out is a judge asking how you know the demo holds.
 
 ---
 
 ## Stack & conventions
 
-- Language / framework: semantic HTML, CSS, and native JavaScript ES modules on Node.js 20+.
-- Package manager: pnpm. The product prototype intentionally has zero runtime dependencies.
-- Start: `pnpm dev` (local allow-listed server on `127.0.0.1:4173`).
-- **Gate: `pnpm check`** — unit tests, invariants, HTTP security, real-browser interaction,
-  the demo gate, and artifact health. This is the only definition of "done".
-- `pnpm demo` — the demo gate alone. Fast. Run it constantly.
+- Language / framework: TypeScript and React on Next.js (App Router), Node.js 20+.
+- Package manager: pnpm. Every runtime dependency is one somebody has to defend: Drizzle and
+  Neon Postgres for persistence, Zod for the wire contract, the AI SDK and Gateway for the
+  semantic tier, Upstash for the rate limiter that gates spend, better-auth for accounts,
+  Vercel Blob for private replay storage, and one pinned vision package whose WASM and models
+  are vendored same-origin so the booth never depends on a CDN.
+- Start: `pnpm dev` (Next.js with Turbopack). The browser gate builds and serves on `127.0.0.1:4183`.
+- **Gate: `pnpm check`** — unit tests, invariants, production typecheck and build,
+  real-browser interaction, and artifact health. This is the only definition of "done".
+- `pnpm test:production:browser` — the browser walk-through alone. Run it constantly.
 - `pnpm check:proposal` — rebuilds and re-verifies the proposal PDF (needs `tectonic`).
 - Agent context: `pnpm project` (compact TOON output).
-- Prefer pure domain logic in `src/analyzer.mjs`; keep DOM effects in `src/app.mjs`.
+- Prefer pure domain logic in `apps/web/lib/analyzer.ts`; keep DOM effects in the components.
 
 ---
 
@@ -135,9 +146,9 @@ is the permission.** That is what lets five people work in parallel without a bo
 
 | Owner | Owns | Points defended |
 |---|---|---|
-| **Demo owner** | `scripts/demo-gate.mjs` stays green. Has veto on any merge within 12h of a demo. | Technical Execution 30 · Interactive Demo 30 |
-| **Core logic** | `src/analyzer.mjs`. Semantic evidence mapping behind a flag, deterministic fallback always intact. | Innovation & Uniqueness 10 · data-flow 10 |
-| **Interface** | `src/app.mjs`, `src/styles.css`, booth display. | Design & UX 10 · Booth & Visual 20 |
+| **Demo owner** | `e2e/production-ui/` stays green. Has veto on any merge within 12h of a demo. | Technical Execution 30 · Interactive Demo 30 |
+| **Core logic** | `apps/web/lib/analyzer.ts` and `apps/web/lib/ai/`. Semantic evidence mapping behind a capability check, deterministic fallback always intact. | Innovation & Uniqueness 10 · data-flow 10 |
+| **Interface** | `apps/web/components/`, `apps/web/app/shell.css`, booth display. | Design & UX 10 · Booth & Visual 20 |
 | **Pitch** | 7-minute script, deck, Q&A drilling. Rehearses *using Talk-Active against the finals rubric*. | Pitching & Q&A 20 · Communication 30 |
 | **Integration** | Keeps `main` green, owns merges, runs the gate, exhibition logistics. | every block |
 
