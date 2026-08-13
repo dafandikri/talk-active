@@ -304,19 +304,20 @@ test('rubric editor caps the criteria list and keeps Save at the end', async ({ 
   await expect(page.locator('.rubric-row')).toHaveCount(5);
   await expect(addCriterion).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Save rubric' })).toBeVisible();
+  await expect(page.locator('.rubric-status')).toHaveCount(0);
   await expectVisibleControlsHitTest(page);
 });
 
 test('rubric library remains editable, explicitly saved, and source-labelled', async ({ page }) => {
   await page.goto('/rubric');
   await page.getByRole('button', { name: /Skripsi defense/i }).click();
-  await expect(page.getByRole('status')).toContainText('starter loaded but not saved');
+  await expect(page.locator('[data-toast-variant="warning"]')).toContainText(/starter loaded but not saved/iu);
   await expect(page.locator('.rubric-row')).toHaveCount(5);
 
   const firstCriterion = page.getByLabel('Criterion').first();
   await firstCriterion.fill('Research gap and urgency');
   await page.getByRole('button', { name: 'Save rubric' }).click();
-  await expect(page.getByRole('status')).toContainText('5 confirmed criteria saved');
+  await expect(page.locator('[data-toast-variant="positive"]')).toContainText('5 confirmed criteria saved');
   await expect.poll(() => page.evaluate(() => localStorage.getItem(
     'talkactive.production.rubric-source.v1',
   ))).toBe('library');

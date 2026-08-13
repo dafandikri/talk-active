@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 import socialImage from '../../../src/assets/LOGO & TAGLINE.png';
+import { ToastProvider } from '@/components/toast';
 
 // The visual system is frozen during the migration. Import the source styles
 // directly so the vanilla and Next.js builds cannot drift through copied CSS.
@@ -35,7 +36,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><ToastProvider>{children}</ToastProvider></body>
     </html>
   );
 }

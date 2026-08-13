@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { useToast } from '@/components/toast';
 import { DEFAULT_RUBRIC, parseRubric } from '@/lib/analyzer';
 import { type RubricSource } from '@/lib/contracts';
 import { RUBRIC_TEMPLATES, type RubricTemplate } from '@/lib/rubric-library';
@@ -33,23 +34,27 @@ function defaultCriteria(): EditableCriterion[] {
 
 export function RubricEditor() {
   const [criteria, setCriteria] = useState<EditableCriterion[]>(defaultCriteria);
-  const [status, setStatus] = useState('Review every criterion before saving.');
   const [sourceType, setSourceType] = useState<RubricSource>('manual');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
-    const saved = localStorage.getItem(RUBRIC_STORAGE_KEY);
-    if (!saved) return;
     try {
+      const saved = localStorage.getItem(RUBRIC_STORAGE_KEY);
+      if (!saved) return;
       const parsed = JSON.parse(saved) as EditableCriterion[];
       if (Array.isArray(parsed) && parsed.length > 0) {
         setCriteria(parsed);
         setSourceType(readRubricSourceType(localStorage));
       }
     } catch {
-      setStatus('The saved local rubric was invalid, so the finals starter rubric was restored.');
+      showToast({
+        variant: 'warning',
+        title: 'Starter rubric restored',
+        message: 'The saved local rubric was invalid, so the finals starter rubric was restored.',
+      });
     }
-  }, []);
+  }, [showToast]);
 
   function applyTemplate(template: RubricTemplate) {
     setCriteria(template.criteria.map((criterion, index) => ({
@@ -60,7 +65,11 @@ export function RubricEditor() {
     })));
     setSourceType('library');
     setSelectedTemplate(template.id);
-    setStatus(`${template.name} starter loaded but not saved. Replace any cue that does not match your evaluator, then confirm with Save rubric.`);
+    showToast({
+      variant: 'warning',
+      title: 'Starter loaded but not saved',
+      message: `${template.name} starter loaded. Replace any cue that does not match your evaluator, then confirm with Save rubric.`,
+    });
   }
 
   function updateCriterion(id: string, patch: Partial<EditableCriterion>) {
@@ -74,13 +83,30 @@ export function RubricEditor() {
       evidence: criterion.evidence.trim(),
     })).filter((criterion) => criterion.name && criterion.evidence);
     if (cleaned.length === 0) {
-      setStatus('Keep at least one named criterion with observable evidence cues.');
+      showToast({
+        variant: 'negative',
+        title: 'Rubric not saved',
+        message: 'Keep at least one named criterion with observable evidence cues.',
+      });
       return;
     }
-    localStorage.setItem(RUBRIC_STORAGE_KEY, JSON.stringify(cleaned));
-    localStorage.setItem(RUBRIC_SOURCE_STORAGE_KEY, sourceType);
+    try {
+      localStorage.setItem(RUBRIC_STORAGE_KEY, JSON.stringify(cleaned));
+      localStorage.setItem(RUBRIC_SOURCE_STORAGE_KEY, sourceType);
+    } catch {
+      showToast({
+        variant: 'negative',
+        title: 'Rubric not saved',
+        message: 'This browser could not save the rubric locally.',
+      });
+      return;
+    }
     setCriteria(cleaned);
-    setStatus(`${cleaned.length} confirmed criteria saved in this browser.`);
+    showToast({
+      variant: 'positive',
+      title: 'Rubric saved',
+      message: `${cleaned.length} confirmed criteria saved in this browser.`,
+    });
   }
 
   return <section className="view is-visible" aria-labelledby="rubricTitle">
@@ -107,7 +133,6 @@ export function RubricEditor() {
           </button>
         </div>)}</div>
         <button className="add-criterion" type="button" disabled={criteria.length >= MAX_CRITERIA_ROWS} onClick={() => setCriteria((current) => [...current, { id: crypto.randomUUID(), name: '', evidence: '', sourceExcerpt: null }])}><span>+</span> Add criterion</button>
-        <p className="rubric-status" role="status">{status}</p>
         <div className="rubric-actions"><button className="button button-primary" type="button" onClick={save}>Save rubric</button></div>
       </section>
     </div>
