@@ -184,8 +184,9 @@
 .review-retake-strip .button { flex: none; }
 .review-unified-timeline { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
 .review-unified-timeline > .attempt-timeline { margin-top: var(--space-3); padding-top: 0; border-top: 0; }
-.review-attempt-timeline .timeline-lane.is-rubric { grid-template-columns: 5rem minmax(0, 1fr); }
-.review-attempt-timeline .timeline-lane.is-rubric .timeline-lane-label { max-width: none; text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+/* The rubric lanes are labelled with criterion names, so they keep the wider
+   label column and sentence case from the base rule. They used to be a single
+   lane called "RUBRIC", which is what the narrow uppercase override was for. */
 .timeline-legend-observation i { background: var(--accent-orange); }
 .review-exception-summary { display: grid; grid-template-columns: minmax(13rem, .5fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; margin-top: var(--space-5); padding: var(--space-4); background: var(--surface-sunken); border-radius: var(--radius-md); }
 .review-exception-head > span { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
@@ -370,7 +371,6 @@
   .review-retake-strip .button { width: 100%; }
   .review-disclosure > summary { align-items: flex-start; }
   .review-disclosure-body { padding: var(--space-4); }
-  .review-attempt-timeline .timeline-lane.is-rubric { grid-template-columns: 3.5rem minmax(0, 1fr); }
   .review-timeline-text li { grid-template-columns: 3.5rem minmax(0, 1fr); gap: var(--space-2); }
   .production-source-quote { grid-column: 2 / 4; }
   .voice-meter em { display: none; }
@@ -807,7 +807,11 @@
 .timeline-lane.is-rubric .timeline-track[data-evidence="absent"] { border: 1px dashed var(--absence); }
 .timeline-mark.is-evidence { background: var(--evidence); }
 .timeline-mark.is-evidence:hover:not(:disabled), .timeline-mark.is-evidence:focus-visible { background: var(--evidence-strong); }
-.timeline-lane-note { position: absolute; inset: 0; display: flex; align-items: center; padding-left: var(--space-3); color: var(--text-muted); font-size: var(--step-0); }
+/* The track is a fixed height, so a note that outgrows it was being sliced
+   through the middle of a word on narrow screens. Truncate on purpose instead;
+   the track's aria-label and the text-equivalent disclosure below both carry
+   the complete reading. */
+.timeline-lane-note { position: absolute; inset: 0; display: flex; align-items: center; padding-inline: var(--space-3); color: var(--text-muted); font-size: var(--step-0); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .timeline-lane-note[data-evidence="absent"] { color: var(--text-secondary); font-weight: var(--weight-bold); }
 .timeline-cutline { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed var(--text-secondary); pointer-events: none; }
 .timeline-rubric-summary { margin: var(--space-3) 0 var(--space-4); color: var(--text-secondary); font-size: var(--step-0); }
@@ -888,6 +892,10 @@
 
 @media (max-width: 40rem) {
   .timeline-lane { grid-template-columns: 3.5rem minmax(0, 1fr); gap: var(--space-2); }
+  /* A criterion name needs more than 3.5rem to be recognisable, but less than
+     the desktop 9rem, so the note beside it keeps somewhere to live. */
+  .timeline-lane.is-rubric { grid-template-columns: 6.5rem minmax(0, 1fr); }
+  .timeline-lane.is-rubric .timeline-lane-label { max-width: 6.5rem; }
   .timeline-axis { margin-left: calc(3.5rem + var(--space-2)); }
 }
 /* Saved review keeps the plot primary and exposes its complete text equivalent

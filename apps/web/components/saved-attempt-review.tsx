@@ -236,12 +236,24 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
         </div>
         <p className="saved-section-intro">The saved attempt retains clock positions for delivery cues. It does not retain word-level timing, so rubric citations stay visible above but are not given an invented timestamp here.</p>
         <div className="attempt-timeline saved-attempt-timeline" aria-label={`Timeline lasting ${formatClock(timelineDurationMs)} with rubric, voice, and camera lanes`}>
-          <div className="timeline-lane is-rubric">
-            <span className="timeline-lane-label">Rubric</span>
-            <div className="timeline-track" data-evidence={citedCount > 0 ? 'found' : 'absent'}>
-              <span className="timeline-lane-note" data-evidence={citedCount > 0 ? 'found' : 'absent'}>{citedCount > 0 ? `${citedCount} cited; clock position not retained` : 'no evidence cited'}</span>
+          {/* One lane per retained criterion. A single aggregate "Rubric" lane
+              told the reader how many criteria were cited but never which, and
+              an uncited criterion disappeared into the count — the one fact
+              worth carrying forward to the next rehearsal. Word timing is not
+              retained on a saved attempt, so each lane says that plainly rather
+              than being given an invented position. */}
+          {review.evidence.map((item) => <div className="timeline-lane is-rubric" key={item.criterionId}>
+            <span className="timeline-lane-label" title={item.criterionName}>{item.criterionName}</span>
+            <div
+              className="timeline-track"
+              data-evidence={evidenceState(item)}
+              aria-label={`${item.criterionName}: ${item.citedSpan ? 'evidence cited' : 'no evidence cited'}`}
+            >
+              <span className="timeline-lane-note" data-evidence={evidenceState(item)}>
+                {item.citedSpan ? 'cited; clock position not retained' : 'no evidence cited'}
+              </span>
             </div>
-          </div>
+          </div>)}
           {timelineLanes.map((lane) => (
             <div className="timeline-lane" key={lane.id}>
               <span className="timeline-lane-label">{lane.label}</span>

@@ -110,7 +110,6 @@ export function MultimodalReview({
     { id: 'camera' as const, label: 'Camera', events: replayEvents.filter((event) => event.lane === 'camera') },
   ];
   const rubricEntries = rubricTimeline ?? [];
-  const timedRubricEntries = rubricEntries.filter((entry) => entry.evidence?.startMs != null);
   const coverage = summarizeRubricCoverage(rubricEntries);
   const limitMs = targetDurationMs != null && targetDurationMs > 0 ? targetDurationMs : null;
   const cutPercent = limitMs !== null && limitMs < timelineDurationMs
@@ -163,35 +162,50 @@ export function MultimodalReview({
         <span className="timeline-duration">{formatTime(timelineDurationMs)} total{limitMs !== null ? ` · ${formatTime(limitMs)} limit` : ''}</span>
       </div>
       <p className="timeline-legend">
-        <span data-evidence="found"><i aria-hidden="true" />cited rubric passage</span>
+        <span data-evidence="found"><i aria-hidden="true" />evidence cited</span>
+        <span data-evidence="reused"><i aria-hidden="true" />quote shared with another criterion</span>
+        <span data-evidence="absent"><i aria-hidden="true" />nothing cited</span>
         <span className="timeline-legend-observation"><i aria-hidden="true" />browser observation</span>
         {cutPercent !== null && <span className="timeline-legend-cut"><i aria-hidden="true" />stated limit</span>}
       </p>
+      {/* One lane per criterion, and never a lane that hides because it has
+          nothing to say. Folding the whole rubric into a single "Rubric" track
+          made every criterion look identical and made an uncited one vanish
+          entirely — which is precisely the criterion the student needs to see.
+          The empty lane IS the finding, so it stays on screen and says so. */}
       <div className="attempt-timeline review-attempt-timeline" aria-label={`Timeline lasting ${formatTime(timelineDurationMs)} with rubric, voice, and camera lanes`}>
-        <div className="timeline-lane is-rubric">
-          <span className="timeline-lane-label">Rubric</span>
-          <div className="timeline-track" data-evidence={coverage.found + coverage.reused > 0 ? 'found' : 'absent'} aria-label={`${coverage.found + coverage.reused} of ${coverage.total} criteria cite a transcript span; ${coverage.timed} citations have an estimated time`}>
-            {cutPercent !== null && <i className="timeline-cutline" style={{ left: `${cutPercent}%` }} aria-hidden="true" />}
-            {timedRubricEntries.map((entry) => {
-              const startMs = entry.evidence?.startMs ?? 0;
-              const endMs = entry.evidence?.endMs ?? startMs;
-              return <button
-                className="timeline-mark is-evidence"
-                key={entry.criterionId}
-                type="button"
-                style={{
-                  left: `${Math.min(99, (startMs / timelineDurationMs) * 100)}%`,
-                  width: `${Math.max((endMs - startMs) / timelineDurationMs * 100, 1.5)}%`,
-                }}
-                onClick={() => playFrom(startMs)}
-                title={`${formatTime(startMs)} · ${entry.label}`}
-                aria-label={`Around ${formatTime(startMs)}, cited evidence for ${entry.label}. ${recordingUrl ? 'Play from two seconds before this.' : 'No replay was recorded.'}`}
-                disabled={!recordingUrl}
-              />;
-            })}
-            {timedRubricEntries.length === 0 && <span className="timeline-lane-note" data-evidence={coverage.absent === coverage.total ? 'absent' : 'found'}>{rubricEntries.length === 0 ? 'rubric timing unavailable' : coverage.absent === coverage.total ? 'no evidence cited' : 'citations saved without a clock position'}</span>}
-          </div>
-        </div>
+        {rubricEntries.map((entry) => {
+          const startMs = entry.evidence?.startMs ?? null;
+          const endMs = entry.evidence?.endMs ?? startMs;
+          return <div className="timeline-lane is-rubric" key={entry.criterionId}>
+            <span className="timeline-lane-label" title={entry.label}>{entry.label}</span>
+            <div
+              className="timeline-track"
+              data-evidence={entry.state}
+              aria-label={`${entry.label}: ${entry.state === 'absent' ? 'no evidence cited' : entry.state === 'reused' ? 'cites a quote shared with another criterion' : 'evidence cited'}`}
+            >
+              {cutPercent !== null && <i className="timeline-cutline" style={{ left: `${cutPercent}%` }} aria-hidden="true" />}
+              {startMs !== null
+                ? <button
+                  className="timeline-mark is-evidence"
+                  type="button"
+                  style={{
+                    left: `${Math.min(99, (startMs / timelineDurationMs) * 100)}%`,
+                    width: `${Math.max(((endMs ?? startMs) - startMs) / timelineDurationMs * 100, 1.5)}%`,
+                  }}
+                  onClick={() => playFrom(startMs)}
+                  title={`${formatTime(startMs)} · ${entry.label}`}
+                  aria-label={`Around ${formatTime(startMs)}, cited evidence for ${entry.label}. ${recordingUrl ? 'Play from two seconds before this.' : 'No replay was recorded.'}`}
+                  disabled={!recordingUrl}
+                />
+                : <span className="timeline-lane-note" data-evidence={entry.state}>
+                  {entry.evidence
+                    ? 'cited; this transcript has no clock position'
+                    : 'no evidence cited'}
+                </span>}
+            </div>
+          </div>;
+        })}
         {timelineLanes.map((lane) => <div className="timeline-lane" key={lane.id}>
           <span className="timeline-lane-label">{lane.label}</span>
           <div className="timeline-track" aria-label={`${lane.label}: ${lane.events.length} timestamped ${lane.events.length === 1 ? 'cue' : 'cues'}`}>
