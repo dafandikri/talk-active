@@ -359,16 +359,24 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
    its own only ever reads as a sticker sliding around. Its tint is the state,
    so the card is legible from across a booth before anyone reads the words. */
 .focus-coach::before {
-  content: ""; position: absolute; z-index: 0; inset: 16% 10% 6%;
-  background: var(--accent-sun-wash); border-radius: var(--radius-lg);
+  content: ""; position: absolute; z-index: 0; inset: 6% 0 0;
+  /* A halo, not a panel. A solid fill at this size reads as an empty card
+     sitting behind the bird — depth has to look like light, not like a second
+     object competing with the subject. */
+  background: radial-gradient(58% 46% at 50% 58%, var(--accent-sun-wash), transparent 72%);
+  opacity: .32;
   transform: translateZ(-90px);
   animation: coach-plate 4.8s var(--ease) infinite;
 }
-.focus-coach:has(.focus-mascot[data-coach="gap"])::before { background: var(--absence-wash); }
+.focus-coach:has(.focus-mascot[data-coach="gap"])::before {
+  background: radial-gradient(58% 46% at 50% 58%, var(--absence-wash), transparent 72%);
+}
 /* Deliberately not --evidence-wash. That hue is reserved for cited spans and
    verdicts; spending it on a mascot backdrop is how a reserved colour stops
    meaning anything. */
-.focus-coach:has(.focus-mascot[data-coach="supported"])::before { background: var(--accent-leaf-wash); }
+.focus-coach:has(.focus-mascot[data-coach="supported"])::before {
+  background: radial-gradient(58% 46% at 50% 58%, var(--accent-leaf-wash), transparent 72%);
+}
 .focus-mascot {
   position: relative; z-index: 1;
   width: 100%; height: 100%; display: block; object-fit: contain; object-position: center bottom;
