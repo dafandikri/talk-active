@@ -8,6 +8,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relative) => readFileSync(join(ROOT, relative), 'utf8');
 
 const review = read('apps/web/components/multimodal-review.tsx');
+const practiceRoom = read('apps/web/components/practice-room.tsx');
 const styles = read('src/styles.css');
 const shell = read('apps/web/app/shell.css');
 
@@ -42,6 +43,14 @@ test('live review shows replay below the timeline and progressively discloses de
   assert.ok(review.indexOf('<ReadingComposition', fullDetailsAt) > fullDetailsAt);
   assert.ok(review.indexOf('performance-details', fullDetailsAt) > fullDetailsAt);
   assert.ok(review.indexOf('What these observations cannot say', fullDetailsAt) > fullDetailsAt);
+});
+
+test('presentation and interview both supply the complete rubric to the shared timeline', () => {
+  assert.match(practiceRoom, /buildInterviewRubricTimeline\(/u);
+  assert.match(practiceRoom, /interviewTurns\.map\(\(turn\) => \(\{/u);
+  assert.match(practiceRoom, /rubricTimeline=\{rubricTimeline\}/u);
+  assert.doesNotMatch(practiceRoom, /rubricTimeline=\{rehearsalFormat === 'presentation'/u);
+  assert.match(review, /use their answer windows on the interview clock/u);
 });
 
 test('every playable live timestamp seeks with context and scrolls the replay into view', () => {

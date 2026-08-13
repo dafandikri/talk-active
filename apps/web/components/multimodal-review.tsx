@@ -104,6 +104,9 @@ export function MultimodalReview({
   ];
   const rubricEntries = rubricTimeline ?? [];
   const coverage = summarizeRubricCoverage(rubricEntries);
+  const answerWindowCount = rubricEntries.filter(
+    (entry) => entry.evidence?.clockSource === 'answer-window',
+  ).length;
   const limitMs = targetDurationMs != null && targetDurationMs > 0 ? targetDurationMs : null;
   const cutPercent = limitMs !== null && limitMs < timelineDurationMs
     ? (limitMs / timelineDurationMs) * 100
@@ -212,7 +215,11 @@ export function MultimodalReview({
         </div>)}
         <p className="timeline-axis" aria-hidden="true"><span>0:00</span><span>{formatTime(timelineDurationMs / 2)}</span><span>{formatTime(timelineDurationMs)}</span></p>
       </div>
-      <p className="timeline-rubric-summary">{coverage.found + coverage.reused} of {coverage.total} criteria cite a span. {coverage.timed > 0 ? `${coverage.timed} could be placed on the clock from coarse dictation timing; use it to find the moment, not to sync a word.` : 'No citation was assigned a clock position; none is invented.'}</p>
+      <p className="timeline-rubric-summary">{coverage.found + coverage.reused} of {coverage.total} criteria cite a span. {answerWindowCount > 0
+        ? `${answerWindowCount} use their answer windows on the interview clock; review the whole window because no word-level time is invented.`
+        : coverage.timed > 0
+          ? `${coverage.timed} could be placed on the clock from coarse dictation timing; use it to find the moment, not to sync a word.`
+          : 'No citation was assigned a clock position; none is invented.'}</p>
       {limitMs !== null && <p className="timeline-bell-note" role="note">
         {cutPercent === null
           ? <>This attempt finished {formatTime(limitMs - timelineDurationMs)} inside the {formatTime(limitMs)} limit.</>
