@@ -15,10 +15,12 @@ import {
 } from '@/lib/contracts';
 import {
   parseSavedSessions,
+  buildCriterionTrails,
   compareAttemptEvidence,
   PRODUCTION_SESSIONS_KEY,
   summarizeRecurringWeaknesses,
 } from '@/lib/progress';
+import { CoverageTrend, CriterionSparkline } from './progress-charts';
 
 type SyncState = 'local' | 'loading' | 'synced' | 'unavailable';
 
@@ -81,13 +83,24 @@ function ComparisonEvidence({
 }
 
 function AttemptDiff({ comparison }: Readonly<{ comparison: AttemptComparison }>) {
+  // Only criteria that actually moved get the full two-column evidence. The
+  // rest used to render both sides of an identical quote, so a rubric where
+  // nothing changed produced the longest page on the site and buried the one
+  // criterion that did move. The unchanged ones are still named, because
+  // "these held" is information — it just is not worth two quotes each.
+  const moved = comparison.criteria.filter((criterion) => criterion.direction !== 'unchanged');
+  const held = comparison.criteria.filter((criterion) => criterion.direction === 'unchanged');
+
   return <section className="surface attempt-diff-card" aria-labelledby="attemptDiffTitle">
     <div className="section-title-row"><div><p className="overline">Latest evidence change</p><h2 id="attemptDiffTitle">What changed between the last two reviewed attempts</h2></div><span className="session-status">{attemptDate(comparison.previousCreatedAt)} → {attemptDate(comparison.currentCreatedAt)}</span></div>
-    <p className="attempt-diff-intro">Each row compares retained transcript evidence for the same rubric criterion. Movement describes explicit coverage in these attempts—not confidence or ability.</p>
-    <div className="attempt-diff-list">{comparison.criteria.map((criterion) => <article className="attempt-diff-item" key={criterion.criterionId} data-direction={criterion.direction}>
-      <div className="attempt-diff-heading"><h3>{criterion.criterionName}</h3><span>{movementLabel(criterion)}{criterion.direction === 'added' || criterion.direction === 'removed' ? '' : ` · ${criterion.coverageDelta >= 0 ? '+' : ''}${Math.round(criterion.coverageDelta * 100)} points`}</span></div>
-      <div className="attempt-diff-evidence"><ComparisonEvidence label="Previous attempt" criterion={criterion.previous} /><ComparisonEvidence label="Current attempt" criterion={criterion.current} /></div>
-    </article>)}</div>
+    <p className="attempt-diff-intro">Movement describes explicit coverage in these two attempts—not confidence or ability.</p>
+    {moved.length === 0
+      ? <p className="empty-list">Explicit coverage held steady on every criterion between these two attempts.</p>
+      : <div className="attempt-diff-list">{moved.map((criterion) => <article className="attempt-diff-item" key={criterion.criterionId} data-direction={criterion.direction}>
+        <div className="attempt-diff-heading"><h3>{criterion.criterionName}</h3><span>{movementLabel(criterion)}{criterion.direction === 'added' || criterion.direction === 'removed' ? '' : ` · ${criterion.coverageDelta >= 0 ? '+' : ''}${Math.round(criterion.coverageDelta * 100)} points`}</span></div>
+        <div className="attempt-diff-evidence"><ComparisonEvidence label="Previous attempt" criterion={criterion.previous} /><ComparisonEvidence label="Current attempt" criterion={criterion.current} /></div>
+      </article>)}</div>}
+    {held.length > 0 && <p className="attempt-diff-held"><strong>Unchanged:</strong> {held.map((criterion) => criterion.criterionName).join(', ')}. Their retained evidence is on each saved attempt.</p>}
   </section>;
 }
 
@@ -138,9 +151,14 @@ export function ProgressView() {
   const previous = trendPoints.at(-2);
   const delta = latest && previous ? latest.evidenceScore - previous.evidenceScore : null;
   const primaryWeakness = recurringWeaknesses[0];
-  const latestComparison = syncState === 'synced'
-    ? synced?.attemptComparisons.at(-1)
-    : localComparisons.at(-1);
+  const comparisons = syncState === 'synced' ? synced?.attemptComparisons ?? [] : localComparisons;
+  const latestComparison = comparisons.at(-1);
+  // Rebuilt from the same comparisons already on the page, so a recurring gap
+  // can show its direction without another request.
+  const trails = useMemo(
+    () => new Map(buildCriterionTrails(comparisons).map((trail) => [trail.criterionId, trail])),
+    [comparisons],
+  );
   const syncedArchive = synced?.attempts ?? [];
 
   return <section className="view is-visible" aria-labelledby="progressTitle">
@@ -164,16 +182,22 @@ export function ProgressView() {
         : <div className="recurring-list">{recurringWeaknesses.map((weakness, index) => <article className="recurring-item" key={weakness.criterionId}>
           <div className="recurring-rank" aria-hidden="true">{index + 1}</div>
           <div className="recurring-copy">
-            <div className="recurring-heading"><h3>{weakness.criterionName}</h3>{weakness.averageCoverage !== null && <span>{Math.round(weakness.averageCoverage * 100)}% average explicit coverage</span>}</div>
-            <p>{weakness.summaryOnly
-              ? `${weakness.gapCount} saved ${weakness.gapCount === 1 ? 'session named' : 'sessions named'} this as the weakest criterion.`
-              : `${weakness.gapCount} of ${weakness.attemptCount} reviewed ${weakness.attemptCount === 1 ? 'attempt stayed' : 'attempts stayed'} below complete explicit coverage.`}</p>
+            <div className="recurring-heading"><h3>{weakness.criterionName}</h3><span>{weakness.summaryOnly
+              ? `${weakness.gapCount} saved ${weakness.gapCount === 1 ? 'session' : 'sessions'}`
+              : `${weakness.gapCount} of ${weakness.attemptCount} attempts`}{weakness.averageCoverage !== null ? ` · ${Math.round(weakness.averageCoverage * 100)}% average coverage` : ''}</span></div>
+            {/* The count says a criterion is a problem. The line says whether it
+                is becoming less of one — the part that decides whether to change
+                tactics or keep going. */}
+            {(() => {
+              const trail = trails.get(weakness.criterionId);
+              return trail ? <CriterionSparkline trail={trail} /> : null;
+            })()}
             <WeaknessEvidence weakness={weakness} />
           </div>
         </article>)}</div>}
     </section>
 
-    <section className="surface progress-chart-card"><div className="section-title-row"><div><p className="overline">Evidence trend</p><h2>Rubric coverage by attempt</h2></div><span className="session-status">{historyLabel(syncState)}</span></div><div className="chart" aria-label="Evidence coverage chart">{trendPoints.length === 0 ? <p className="chart-empty">Save a practice session to begin the evidence trend.</p> : trendPoints.map((session, index) => <div className="chart-column" key={session.id}><span className="chart-value">{session.evidenceScore}%</span><i className="chart-bar" style={{ height: `${Math.max(4, session.evidenceScore * 2)}px` }} /><span className="chart-label">Attempt {index + 1}</span></div>)}</div></section>
+    <section className="surface progress-chart-card"><div className="section-title-row"><div><p className="overline">Evidence trend</p><h2 id="coverageTrendTitle">Rubric coverage by attempt</h2></div><span className="session-status">{historyLabel(syncState)}</span></div><CoverageTrend points={trendPoints} labelledBy="coverageTrendTitle" /></section>
 
     {syncState === 'synced'
       ? <section className="surface history-card"><div className="section-title-row"><div><p className="overline">Session archive</p><h2>Every synced attempt</h2></div></div><div className="session-list full-session-list">{syncedArchive.length === 0

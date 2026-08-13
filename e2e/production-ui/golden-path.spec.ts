@@ -80,7 +80,11 @@ test('production guest completes attempt → evidence → defense → progress',
   await page.getByRole('button', { name: /Save this session/i }).click();
 
   await expect(page).toHaveURL(/\/progress$/u);
-  await expect(page.getByText('Attempt 1')).toBeVisible();
+  // The trend was a row of columns labelled "Attempt 1", "Attempt 2" with their
+  // heights set in raw pixels. It is now a line on a labelled 0–100 axis, so the
+  // saved attempt shows up as a plotted point rather than a caption.
+  await expect(page.locator('.coverage-trend-dot')).toHaveCount(1);
+  await expect(page.locator('.coverage-trend-latest')).toBeVisible();
   await expect(page.locator('.full-session-list .session-status').getByText('defensible', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'The criteria that keep returning' })).toBeVisible();
   await expect(page.getByText(/before Talk-Active calls any gap recurring/i)).toBeVisible();
@@ -431,7 +435,12 @@ test('progress names a weakness only after it recurs and retains its evidence', 
   await expect(feasibilityDiff.locator('blockquote')).toHaveText('The deterministic fallback keeps the demo usable.');
   await expect(feasibilityDiff).toContainText('Still missing: measured cost.');
   await expect(page.locator('.recurring-item')).toHaveCount(1);
-  await expect(page.locator('.recurring-item')).toContainText('2 of 2 reviewed attempts stayed below complete explicit coverage.');
+  // The sentence became a stat line so the criterion's trajectory could take
+  // its place. Both facts it carried — how often, and how far below — are still
+  // on screen, and the direction is now there too.
+  await expect(page.locator('.recurring-item')).toContainText('2 of 2 attempts');
+  await expect(page.locator('.recurring-item')).toContainText('25% average coverage');
+  await expect(page.locator('.recurring-item .criterion-spark')).toHaveAttribute('data-direction', 'rising');
   await expect(page.locator('.recurring-evidence blockquote')).toHaveText('The deterministic fallback keeps the demo usable.');
   await expect(page.getByText(/Latest explicit gaps: measured cost/i)).toBeVisible();
   await expectVisibleControlsHitTest(page);

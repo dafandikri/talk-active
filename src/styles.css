@@ -987,16 +987,43 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .progress-chart-card, .history-card { padding: var(--space-6); margin-bottom: var(--space-5); }
 .progress-chart-card, .history-card { border: 2px solid var(--text-primary); }
 .progress-chart-card select { width: 250px; }
-.chart {
-  min-height: 250px; display: flex; align-items: end; gap: clamp(0.75rem, 3vw, 2.125rem);
-  margin-top: var(--space-6); padding: var(--space-5) var(--space-5) 0;
-  border-bottom: 1px solid var(--border);
-}
-.chart-empty { align-self: center; width: 100%; color: var(--text-muted); font-size: var(--step-0); text-align: center; }
-.chart-column { height: 210px; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: end; min-width: 38px; }
-.chart-value { margin-bottom: var(--space-1); color: var(--accent-sky); font-size: var(--step-0); font-weight: var(--weight-heavy); }
-.chart-bar { width: min(52px, 80%); min-height: 4px; background: var(--accent-sky); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
-.chart-label { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); white-space: nowrap; }
+.chart-empty { width: 100%; margin-top: var(--space-6); color: var(--text-muted); font-size: var(--step-0); text-align: center; }
+
+/* COVERAGE OVER TIME.
+   The bar chart here set each column's height in raw pixels — no axis, no
+   baseline, no way to read a value except the number printed above it. That
+   makes the drawing decorative and the number the actual chart. A line against
+   a 0–100 axis puts the trend back in the graphic.
+   `currentColor` throughout, so the booth theme inherits the hue for free. */
+.coverage-trend { margin: var(--space-6) 0 0; color: var(--accent-sky); }
+.coverage-trend-frame { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-3); }
+.coverage-trend-plotwrap { position: relative; min-width: 0; }
+.coverage-trend-plot { width: 100%; height: 180px; display: block; overflow: visible; }
+.coverage-trend-guide { stroke: var(--border); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.coverage-trend-area { fill: var(--accent-sky-wash); }
+.coverage-trend-line { fill: none; stroke: currentColor; stroke-width: 2px; stroke-linejoin: round; stroke-linecap: round; }
+/* Positioned in percentages over the plot rather than drawn inside it, so a
+   stretched viewBox cannot turn the points into ellipses. */
+.coverage-trend-dot { position: absolute; width: 11px; height: 11px; background: var(--surface); border: 2px solid currentColor; border-radius: var(--radius-full); transform: translate(-50%, 50%); }
+.coverage-trend-scale { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; color: var(--text-muted); font-size: var(--step-0); font-variant-numeric: tabular-nums; }
+.coverage-trend-axis { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); margin: var(--space-3) 0 0; padding-top: var(--space-3); border-top: 1px solid var(--border); color: var(--text-muted); font-size: var(--step-0); }
+.coverage-trend-latest { color: var(--text-secondary); }
+.coverage-trend-latest strong { color: var(--text-primary); font-size: var(--step-2); font-variant-numeric: tabular-nums; }
+
+/* A RECURRING GAP, WITH ITS DIRECTION.
+   Not coloured by direction: green-up/red-down is the grammar of grading, and
+   this product does not grade. The numbers beside the line carry the direction
+   in words, which also survives a colourblind reader and a print stylesheet. */
+.criterion-spark { display: flex; align-items: center; gap: var(--space-4); margin: var(--space-3) 0; }
+.criterion-spark-plotwrap { position: relative; flex: 1; min-width: 0; color: var(--text-secondary); }
+.criterion-spark-plot { width: 100%; height: 34px; display: block; overflow: visible; }
+.criterion-spark-line { fill: none; stroke: currentColor; stroke-width: 2px; stroke-linejoin: round; stroke-linecap: round; }
+.criterion-spark-head { position: absolute; right: 0; width: 9px; height: 9px; background: var(--surface); border: 2px solid currentColor; border-radius: var(--radius-full); transform: translate(50%, 50%); }
+.criterion-spark-read { flex: none; display: grid; color: var(--text-primary); font-size: var(--step-0); font-weight: var(--weight-heavy); font-variant-numeric: tabular-nums; text-align: right; }
+.criterion-spark-read small { color: var(--text-muted); font-weight: var(--weight-regular); }
+
+.attempt-diff-held { margin: var(--space-4) 0 0; padding-top: var(--space-4); border-top: 1px solid var(--border); color: var(--text-muted); font-size: var(--step-0); }
+.attempt-diff-held strong { color: var(--text-secondary); }
 .full-session-list .session-row { grid-template-columns: 44px minmax(180px, 1.3fr) minmax(120px, .7fr) 120px 24px; }
 .saved-attempt-link { color: inherit; text-decoration: none; }
 .saved-attempt-link:hover { background: var(--surface-sunken); }

@@ -176,3 +176,66 @@ export function summarizeRecurringWeaknesses(sessions: SavedSession[]): Recurrin
       || left.criterionName.localeCompare(right.criterionName);
   });
 }
+
+export interface CriterionTrailPoint {
+  readonly attemptId: string;
+  readonly at: string;
+  readonly coverage: number;
+}
+
+export interface CriterionTrail {
+  readonly criterionId: string;
+  readonly criterionName: string;
+  readonly points: readonly CriterionTrailPoint[];
+}
+
+/**
+ * One coverage series per criterion, rebuilt from the pairwise comparisons.
+ *
+ * The progress response carries adjacent-attempt comparisons, not per-criterion
+ * histories — but each attempt appears twice across the chain (as the `current`
+ * of one comparison and the `previous` of the next), so the full series is
+ * recoverable without a new query or a new column.
+ *
+ * This is what lets a recurring gap show its shape. "Differentiation was weak in
+ * 3 of 4 attempts" and "Differentiation has been climbing for three attempts"
+ * are different pieces of advice, and only the second one tells you to keep
+ * doing what you are doing.
+ */
+export function buildCriterionTrails(
+  comparisons: readonly AttemptComparison[],
+): CriterionTrail[] {
+  const trails = new Map<string, { name: string; points: Map<string, CriterionTrailPoint> }>();
+
+  for (const comparison of comparisons) {
+    for (const criterion of comparison.criteria) {
+      const entry = trails.get(criterion.criterionId)
+        ?? { name: criterion.criterionName, points: new Map<string, CriterionTrailPoint>() };
+      // Keyed by attempt so the shared attempt between two consecutive
+      // comparisons contributes one point, not two.
+      if (criterion.previous) {
+        entry.points.set(comparison.previousAttemptId, {
+          attemptId: comparison.previousAttemptId,
+          at: comparison.previousCreatedAt,
+          coverage: criterion.previous.coverage,
+        });
+      }
+      if (criterion.current) {
+        entry.points.set(comparison.currentAttemptId, {
+          attemptId: comparison.currentAttemptId,
+          at: comparison.currentCreatedAt,
+          coverage: criterion.current.coverage,
+        });
+      }
+      entry.name = criterion.criterionName;
+      trails.set(criterion.criterionId, entry);
+    }
+  }
+
+  return [...trails].map(([criterionId, entry]) => ({
+    criterionId,
+    criterionName: entry.name,
+    points: [...entry.points.values()].sort((left, right) =>
+      left.at.localeCompare(right.at) || left.attemptId.localeCompare(right.attemptId)),
+  }));
+}
