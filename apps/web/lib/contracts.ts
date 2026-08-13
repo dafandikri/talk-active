@@ -254,12 +254,132 @@ export const CapabilitiesResponseSchema = z.object({
   persistence: z.enum(['local', 'neon']),
   accounts: z.boolean(),
   sourceDocuments: z.boolean(),
+  recordings: z.boolean(),
   semantic: z.object({
     rubric: z.boolean(),
     evidence: z.boolean(),
     question: z.boolean(),
     defense: z.boolean(),
   }),
+});
+
+export const VisionModeSchema = z.enum(['interview', 'presentation']);
+export const DeliveryEventSourceSchema = z.enum([
+  'acoustic',
+  'interim-transcript',
+  'combined',
+  'vision',
+]);
+export const RecordingStatusSchema = z.enum(['pending', 'ready', 'failed']);
+
+export const AttemptDeliveryReviewSchema = z.object({
+  attemptId: IdSchema,
+  mode: VisionModeSchema,
+  vocalScore: z.number().int().min(0).max(100),
+  visualScore: z.number().int().min(0).max(100).nullable(),
+  trackingCoveragePercent: z.number().int().min(0).max(100).nullable(),
+  fillerCount: z.number().int().nonnegative(),
+  repeatedWordCount: z.number().int().nonnegative(),
+  boundary: z.string().trim().min(1).max(2_000),
+  createdAt: TimestampSchema,
+});
+
+const AttemptDeliveryEventObjectSchema = z.object({
+  id: IdSchema,
+  attemptId: IdSchema,
+  source: DeliveryEventSourceSchema,
+  kind: z.string().trim().min(1).max(64),
+  startMs: z.number().int().min(0).max(3_600_000),
+  endMs: z.number().int().min(0).max(3_600_000),
+  label: z.string().trim().min(1).max(200),
+  evidence: z.string().trim().min(1).max(2_000),
+  createdAt: TimestampSchema,
+});
+
+export const AttemptDeliveryEventSchema = AttemptDeliveryEventObjectSchema.refine((value) => value.endMs >= value.startMs, {
+  path: ['endMs'],
+  message: 'A delivery event must end at or after it starts.',
+});
+
+export const AttemptRecordingSchema = z.object({
+  id: IdSchema,
+  attemptId: IdSchema,
+  status: RecordingStatusSchema,
+  contentType: z.enum(['video/webm', 'video/mp4']),
+  sizeBytes: z.number().int().positive().max(250_000_000).nullable(),
+  durationMs: z.number().int().positive().max(3_600_000),
+  expiresAt: TimestampSchema,
+  createdAt: TimestampSchema,
+  uploadedAt: OptionalTimestampSchema,
+});
+
+const NewAttemptDeliveryEventSchema = AttemptDeliveryEventObjectSchema.omit({
+  id: true,
+  attemptId: true,
+  createdAt: true,
+}).refine((value) => value.endMs >= value.startMs, {
+  path: ['endMs'],
+  message: 'A delivery event must end at or after it starts.',
+});
+
+export const SaveAttemptDeliveryReviewRequestSchema = AttemptDeliveryReviewSchema.omit({
+  attemptId: true,
+  createdAt: true,
+}).extend({
+  events: z.array(NewAttemptDeliveryEventSchema).max(500),
+});
+
+export const SaveAttemptDeliveryReviewResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  deliveryReview: AttemptDeliveryReviewSchema,
+  deliveryEvents: z.array(AttemptDeliveryEventSchema).max(500),
+});
+
+export const RecordingInitRequestSchema = z.object({
+  contentType: z.string().trim().min(1).max(200),
+  durationMs: z.number().int().positive().max(3_600_000),
+});
+
+export const RecordingInitResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  recording: AttemptRecordingSchema,
+  uploadPathname: z.string().trim().min(1).max(1_000),
+});
+
+export const RecordingFinalizeRequestSchema = z.object({
+  pathname: z.string().trim().min(1).max(1_000),
+  url: z.url(),
+  contentType: z.string().trim().min(1).max(200),
+  sizeBytes: z.number().int().positive().max(250_000_000),
+  durationMs: z.number().int().positive().max(3_600_000),
+});
+
+export const RecordingFinalizeResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  recording: AttemptRecordingSchema,
+});
+
+export const AttemptReviewEvidenceSchema = z.object({
+  criterionId: IdSchema,
+  criterionName: z.string().trim().min(1).max(200),
+  verdict: EvidenceVerdictValueSchema,
+  coverageScore: CoverageScoreSchema,
+  citedSpan: z.string().max(12_000).nullable(),
+  missingEvidence: z.array(z.string().trim().min(1).max(200)).max(40),
+});
+
+export const AttemptReviewResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  attempt: AttemptSchema,
+  deliveryReview: AttemptDeliveryReviewSchema.nullable(),
+  deliveryEvents: z.array(AttemptDeliveryEventSchema).max(500),
+  recording: AttemptRecordingSchema.nullable(),
+  evidence: z.array(AttemptReviewEvidenceSchema).max(20),
+});
+
+export const AttemptRecordingDeleteResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  deleted: z.literal(true),
 });
 
 export const RubricParseRequestSchema = z.object({
@@ -736,6 +856,8 @@ export const ProgressPointSchema = z.object({
   attemptId: IdSchema,
   createdAt: TimestampSchema,
   coverage: z.number().min(0).max(1),
+  hasDeliveryReview: z.boolean(),
+  recordingStatus: RecordingStatusSchema.nullable(),
 });
 
 export const RecurringWeaknessSchema = z.object({
@@ -903,6 +1025,9 @@ export const WorkspaceExportSchema = z.object({
   questions: z.array(QuestionSchema),
   defenseAnswers: z.array(DefenseAnswerSchema),
   sourceDocuments: z.array(ExportedSourceDocumentSchema),
+  deliveryReviews: z.array(AttemptDeliveryReviewSchema),
+  deliveryEvents: z.array(AttemptDeliveryEventSchema),
+  recordings: z.array(AttemptRecordingSchema),
 });
 
 export const DeleteAccountRequestSchema = z.object({
@@ -994,4 +1119,17 @@ export type CriterionComparisonDirection = z.infer<typeof CriterionComparisonDir
 export type CriterionAttemptComparison = z.infer<typeof CriterionAttemptComparisonSchema>;
 export type AttemptComparison = z.infer<typeof AttemptComparisonSchema>;
 export type CapabilitiesResponse = z.infer<typeof CapabilitiesResponseSchema>;
+export type VisionMode = z.infer<typeof VisionModeSchema>;
+export type DeliveryEventSource = z.infer<typeof DeliveryEventSourceSchema>;
+export type AttemptDeliveryReview = z.infer<typeof AttemptDeliveryReviewSchema>;
+export type AttemptDeliveryEvent = z.infer<typeof AttemptDeliveryEventSchema>;
+export type AttemptRecording = z.infer<typeof AttemptRecordingSchema>;
+export type SaveAttemptDeliveryReviewRequest = z.infer<typeof SaveAttemptDeliveryReviewRequestSchema>;
+export type SaveAttemptDeliveryReviewResponse = z.infer<typeof SaveAttemptDeliveryReviewResponseSchema>;
+export type RecordingInitRequest = z.infer<typeof RecordingInitRequestSchema>;
+export type RecordingInitResponse = z.infer<typeof RecordingInitResponseSchema>;
+export type RecordingFinalizeRequest = z.infer<typeof RecordingFinalizeRequestSchema>;
+export type RecordingFinalizeResponse = z.infer<typeof RecordingFinalizeResponseSchema>;
+export type AttemptReviewResponse = z.infer<typeof AttemptReviewResponseSchema>;
+export type AttemptRecordingDeleteResponse = z.infer<typeof AttemptRecordingDeleteResponseSchema>;
 export type WorkspaceExport = z.infer<typeof WorkspaceExportSchema>;

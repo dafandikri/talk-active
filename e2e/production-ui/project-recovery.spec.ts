@@ -48,6 +48,7 @@ test('signed-in remount restores the owned project, rubric, and source list with
       persistence: 'neon',
       accounts: true,
       sourceDocuments: true,
+      recordings: false,
       semantic: { rubric: false, evidence: false, question: false, defense: false },
     });
     if (pathname === '/api/projects/current' && request.method() === 'GET') {
@@ -105,6 +106,7 @@ test('a failed project recovery keeps the capabilities the server confirmed', as
           persistence: 'neon',
           accounts: true,
           sourceDocuments: true,
+          recordings: false,
           semantic: { rubric: false, evidence: false, question: false, defense: false },
         }),
       });
@@ -137,6 +139,7 @@ test('guest capability never probes SQL project recovery', async ({ page }) => {
           persistence: 'local',
           accounts: true,
           sourceDocuments: false,
+          recordings: false,
           semantic: { rubric: false, evidence: false, question: false, defense: false },
         }),
       });

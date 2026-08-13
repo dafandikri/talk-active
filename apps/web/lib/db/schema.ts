@@ -56,6 +56,14 @@ export const questionBasis = pgEnum('question_basis', [
   'source-document',
   'legacy-unknown',
 ]);
+export const visionMode = pgEnum('vision_mode', ['interview', 'presentation']);
+export const deliveryEventSource = pgEnum('delivery_event_source', [
+  'acoustic',
+  'interim-transcript',
+  'combined',
+  'vision',
+]);
+export const recordingStatus = pgEnum('recording_status', ['pending', 'ready', 'failed']);
 
 export const projects = pgTable('projects', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -126,6 +134,101 @@ export const attempts = pgTable('attempts', {
   check(
     'attempts_legacy_coverage_domain',
     sql`${table.legacyEvidenceCoverage} is null or (${table.legacyEvidenceCoverage} >= 0 and ${table.legacyEvidenceCoverage} <= 100)`,
+  ),
+]);
+
+// Delivery observations are supporting rehearsal context. They are stored
+// separately from the rubric verdicts so deleting a raw replay never deletes
+// the inspectable observations or changes evidence coverage.
+export const attemptDeliveryReviews = pgTable('attempt_delivery_reviews', {
+  attemptId: uuid('attempt_id')
+    .primaryKey()
+    .references(() => attempts.id, { onDelete: 'cascade' }),
+  mode: visionMode('mode').notNull(),
+  vocalScore: integer('vocal_score').notNull(),
+  visualScore: integer('visual_score'),
+  trackingCoveragePercent: integer('tracking_coverage_percent'),
+  fillerCount: integer('filler_count').notNull(),
+  repeatedWordCount: integer('repeated_word_count').notNull(),
+  boundary: text('boundary').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+    .defaultNow()
+    .notNull(),
+}, (table) => [
+  check('attempt_delivery_reviews_vocal_score_domain', sql`${table.vocalScore} between 0 and 100`),
+  check(
+    'attempt_delivery_reviews_visual_score_domain',
+    sql`${table.visualScore} is null or ${table.visualScore} between 0 and 100`,
+  ),
+  check(
+    'attempt_delivery_reviews_tracking_domain',
+    sql`${table.trackingCoveragePercent} is null or ${table.trackingCoveragePercent} between 0 and 100`,
+  ),
+  check(
+    'attempt_delivery_reviews_counts_nonnegative',
+    sql`${table.fillerCount} >= 0 and ${table.repeatedWordCount} >= 0`,
+  ),
+  check('attempt_delivery_reviews_boundary_length', sql`char_length(${table.boundary}) between 1 and 2000`),
+]);
+
+export const attemptDeliveryEvents = pgTable('attempt_delivery_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  attemptId: uuid('attempt_id')
+    .notNull()
+    .references(() => attempts.id, { onDelete: 'cascade' }),
+  source: deliveryEventSource('source').notNull(),
+  kind: varchar('kind', { length: 64 }).notNull(),
+  startMs: integer('start_ms').notNull(),
+  endMs: integer('end_ms').notNull(),
+  label: varchar('label', { length: 200 }).notNull(),
+  evidence: text('evidence').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+    .defaultNow()
+    .notNull(),
+}, (table) => [
+  index('attempt_delivery_events_attempt_start_idx').on(table.attemptId, table.startMs),
+  check('attempt_delivery_events_time_order', sql`${table.endMs} >= ${table.startMs}`),
+  check(
+    'attempt_delivery_events_time_domain',
+    sql`${table.startMs} >= 0 and ${table.endMs} <= 3600000`,
+  ),
+  check('attempt_delivery_events_evidence_length', sql`char_length(${table.evidence}) between 1 and 2000`),
+]);
+
+export const attemptRecordings = pgTable('attempt_recordings', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  attemptId: uuid('attempt_id')
+    .notNull()
+    .references(() => attempts.id, { onDelete: 'cascade' }),
+  status: recordingStatus('status').default('pending').notNull(),
+  blobUrl: text('blob_url'),
+  pathname: text('pathname').notNull(),
+  contentType: varchar('content_type', { length: 32 }).notNull(),
+  sizeBytes: integer('size_bytes'),
+  durationMs: integer('duration_ms').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'string' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true, mode: 'string' })
+    .defaultNow()
+    .notNull(),
+  uploadedAt: timestamp('uploaded_at', { withTimezone: true, mode: 'string' }),
+}, (table) => [
+  uniqueIndex('attempt_recordings_attempt_id_unique').on(table.attemptId),
+  uniqueIndex('attempt_recordings_pathname_unique').on(table.pathname),
+  check(
+    'attempt_recordings_size_domain',
+    sql`${table.sizeBytes} is null or (${table.sizeBytes} > 0 and ${table.sizeBytes} <= 250000000)`,
+  ),
+  check(
+    'attempt_recordings_duration_domain',
+    sql`${table.durationMs} > 0 and ${table.durationMs} <= 3600000`,
+  ),
+  check(
+    'attempt_recordings_content_type_allowed',
+    sql`${table.contentType} in ('video/webm', 'video/mp4')`,
+  ),
+  check(
+    'attempt_recordings_ready_metadata_consistent',
+    sql`(${table.status} = 'ready') = (${table.blobUrl} is not null and ${table.sizeBytes} is not null and ${table.uploadedAt} is not null)`,
   ),
 ]);
 

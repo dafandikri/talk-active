@@ -43,16 +43,20 @@ test('transcript observations expose configured fillers and adjacent repeated wo
 test('filler variants include English and Indonesian cues without double-counting repeats', () => {
   const result = analyzeDeliveryMetrics({
     durationSeconds: 20,
-    transcript: 'Um umm uhhh ee eeee emm ahh anu kayak gitu apa ya basically finish.',
+    transcript: 'Um umm uhhh ee eeee eeh emm hmm mm ahh err anu kayak gitu apa ya basically finish.',
   });
 
-  assert.equal(result.fillerCount, 12);
+  assert.equal(result.fillerCount, 16);
   assert.deepEqual(result.fillers, [
     { label: 'um', count: 2 },
     { label: 'uh', count: 1 },
     { label: 'ee', count: 2 },
+    { label: 'eh', count: 1 },
     { label: 'emm', count: 1 },
+    { label: 'hmm', count: 1 },
+    { label: 'mm', count: 1 },
     { label: 'ah', count: 1 },
+    { label: 'er', count: 1 },
     { label: 'anu', count: 1 },
     { label: 'kayak', count: 1 },
     { label: 'gitu', count: 1 },
@@ -76,37 +80,29 @@ test('vocal observations calculate pace, pauses, pitch, and energy with full cov
 
   assert.equal(result.wordsPerMinute, 120);
   assert.equal(result.vocal.measurementCoverage, 100);
-  assert.equal(metric(result.vocal, 'pace').observedValue, 120);
+  assert.equal(metric(result.vocal, 'pace').rehearsalScore, 100);
   assert.equal(metric(result.vocal, 'pause-ratio').observedValue, 16.7);
+  assert.equal(metric(result.vocal, 'pause-ratio').rehearsalScore, 100);
   assert.equal(metric(result.vocal, 'pitch-variation').available, true);
   assert.equal(metric(result.vocal, 'energy-variation').available, true);
 });
 
-test('missing audio observations stay unavailable without fabricating a delivery grade', () => {
+test('missing audio observations stay unavailable and remaining weights are renormalized', () => {
   const result = analyzeDeliveryMetrics({
     durationSeconds: 30,
     transcript: Array.from({ length: 60 }, (_, index) => `word${index}`).join(' '),
   });
 
-  assert.equal(result.vocal.measurementCoverage, 50);
+  assert.equal(result.vocal.measurementCoverage, 55);
+  assert.equal(result.vocal.rehearsalScore, 100);
   for (const id of ['pause-ratio', 'pitch-variation', 'energy-variation']) {
     const observation = metric(result.vocal, id);
     assert.equal(observation.available, false);
-    assert.equal(observation.observedValue, null);
-  }
-  for (const forbidden of [
-    'score',
-    'overallScore',
-    'overallRehearsalScore',
-    'rehearsalScore',
-    'vocalScore',
-    'visualScore',
-  ]) {
-    assert.equal(forbidden in result, false, `${forbidden} must not be fabricated`);
+    assert.equal(observation.rehearsalScore, null);
   }
 });
 
-test('presentation vision observations retain each inspectable denominator', () => {
+test('presentation vision observations retain each denominator and weighted contribution', () => {
   const result = analyzeDeliveryMetrics({
     durationSeconds: 30,
     transcript: 'A short recognized transcript for the rehearsal.',
@@ -124,9 +120,10 @@ test('presentation vision observations retain each inspectable denominator', () 
   assert.equal(metric(result.visual, 'tracking-coverage').observedValue, 90);
   assert.equal(metric(result.visual, 'framing-coverage').observedValue, 80);
   assert.equal(metric(result.visual, 'movement-activity').observedValue, 30);
+  assert.equal(result.visual.rehearsalScore, 89);
 });
 
-test('movement stays a raw observation rather than a mode-specific quality grade', () => {
+test('movement bands differ explicitly between interview and presentation modes', () => {
   const base = {
     durationSeconds: 30,
     transcript: 'A short recognized transcript for comparison.',
@@ -147,9 +144,12 @@ test('movement stays a raw observation rather than a mode-specific quality grade
   });
 
   assert.ok(interview.visual && presentation.visual);
-  assert.equal(metric(interview.visual, 'movement-activity').observedValue, 50);
-  assert.equal(metric(presentation.visual, 'movement-activity').observedValue, 50);
-  assert.equal('target' in metric(interview.visual, 'movement-activity'), false);
+  assert.ok(
+    metric(interview.visual, 'movement-activity').rehearsalScore
+      < metric(presentation.visual, 'movement-activity').rehearsalScore,
+  );
+  assert.match(metric(interview.visual, 'movement-activity').target, /interview/u);
+  assert.match(metric(presentation.visual, 'movement-activity').target, /presentation/u);
 });
 
 test('zero tracked frames do not fabricate framing or movement observations', () => {
@@ -166,10 +166,10 @@ test('zero tracked frames do not fabricate framing or movement observations', ()
   });
 
   assert.ok(result.visual);
-  assert.equal(result.visual.measurementCoverage, 33);
-  assert.equal(metric(result.visual, 'tracking-coverage').observedValue, 0);
-  assert.equal(metric(result.visual, 'framing-coverage').observedValue, null);
-  assert.equal(metric(result.visual, 'movement-activity').observedValue, null);
+  assert.equal(result.visual.measurementCoverage, 35);
+  assert.equal(metric(result.visual, 'tracking-coverage').rehearsalScore, 0);
+  assert.equal(metric(result.visual, 'framing-coverage').rehearsalScore, null);
+  assert.equal(metric(result.visual, 'movement-activity').rehearsalScore, null);
 });
 
 test('mismatched recognizer timestamps are withheld instead of attached to the wrong word', () => {

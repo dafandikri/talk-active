@@ -196,6 +196,7 @@ test('local guest workspace uses stateless semantic review when the capability i
       persistence: 'local',
       accounts: false,
       sourceDocuments: false,
+      recordings: false,
       semantic: { rubric: false, evidence: true, question: true, defense: false },
     });
     if (pathname === '/api/analyze' && request.method() === 'POST') {
@@ -285,6 +286,7 @@ test('private source upload grounds the saved judge question with visible proven
       persistence: 'neon',
       accounts: false,
       sourceDocuments: true,
+      recordings: false,
       semantic: { rubric: false, evidence: false, question: false, defense: false },
     });
     // This visitor has no owned project to restore. The route still has to

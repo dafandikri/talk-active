@@ -71,14 +71,22 @@ of the product worthy of it.**
 5. **Pitch + Q&A** — 7-minute script, live demo choreography, drilled answers.
 6. **Experimental multimodal rehearsal (lead-approved integration, 13 Aug)** — opt-in browser
    dictation plus on-device MediaPipe face/pose landmarks and Web Audio observations. Results
-   keep rubric substance, vocal signals, and visual signals separately inspectable; raw frames
-   and audio are not persisted. The manual transcript path remains the demo-safe fallback.
+   keep rubric substance, vocal signals, and visual signals separately inspectable. Possible
+   prolonged-vocalization and clustered stop-start cues are timestamped experimental
+   observations, never a medical diagnosis or speaking-ability judgment. The manual transcript
+   path remains the demo-safe fallback.
+7. **Private attempt replay (captain-approved branch, 13 Aug)** — a separate, explicit opt-in
+   records the rehearsal camera and microphone so a signed-in student can revisit timestamped
+   delivery observations. A guest can review the in-memory replay only for the current page;
+   durable upload requires an owned account, Postgres, and configured private Blob storage.
+   Recording/upload failure is non-blocking and never prevents rubric analysis or saving the
+   text-based attempt.
 
 ### Out — decided, not deferred by accident
 
-Accounts and auth · cloud sync · stored audio/video · identity recognition · emotion,
-personality, confidence, health, gaze, or hiring inference · candidate ranking · streaks or
-gamification · institutional dashboards · payment.
+Identity recognition · emotion, personality, confidence, health, gaze, or hiring inference ·
+candidate ranking · background recording · mandatory recording · streaks or gamification ·
+institutional dashboards · payment.
 
 > Adding scope during a four-day sprint is how demos break. INV-6 is in force. Any addition
 > to this list requires the lead's sign-off and a note in this file.
@@ -97,7 +105,9 @@ gamification · institutional dashboards · payment.
 | **AD-6** | The client adds one pinned vision dependency, `@mediapipe/tasks-vision@1.0.1`; its WASM and model assets are vendored same-origin. | One reviewed dependency buys the visible camera feature while avoiding a CDN/model-download failure on stage. |
 | **AD-7** | Semantic capability is exposed only when a model and an enforced paid-route boundary are configured. Every response names semantic or deterministic provenance. | A missing key, model, or rate-limit boundary must never spend unexpectedly or masquerade as semantic analysis. |
 | **AD-8** | Multimodal rehearsal is optional and fail-open. MediaPipe/WASM/model assets are same-origin; browser speech recognition may use the browser vendor's speech service. | The stage path survives denied permissions, unsupported dictation, or failed landmark tracking without losing typed rubric analysis. |
-| **AD-9** | Multimodal results remain raw, separately labelled observations with explicit missing-measurement coverage. They never change rubric verdicts and are never combined into a rehearsal, confidence, or ability score. | Landmarks and acoustic samples are supporting rehearsal context, not a defensible measure of student quality. |
+| **AD-9** | A rehearsal summary may combine substance, vocal, and visual readings under a disclosed 50/25/25 weighting. It describes one attempt, never the speaker: it is never labelled as ability, confidence, skill, or a grade, it never changes a rubric verdict, and it never appears without its weighting, its three components with their own evidence, and the list of what could not be measured. | A single figure is only defensible while a judge can take it apart. The moment it reads as a rating of the person rather than a description of one attempt, it is a claim we cannot source, and INV-6 puts it back out of scope. |
+| **AD-10** | Saved replay is opt-in, private, ownership-checked on every metadata and media request, and retained separately from delivery observations. Each recording carries a 30-day target expiry timestamp and an explicit delete control; account deletion removes the private blob before database ownership cascades. | Camera and microphone data need a stronger boundary than derived feedback. Deleting a replay keeps its transcript, rubric evidence, and delivery observations useful. Expiry metadata is implemented, but automatic physical cleanup is not claimed until a cleanup job is deployed and verified. |
+| **AD-11** | Replay and timestamped delivery observations are supporting context only. Recording availability, upload success, and replay deletion do not change rubric coverage, vocal, visual, or composite results. | Storage state is not evidence of presentation quality, and a private-storage outage must not change a student's feedback. |
 
 ### Data flow (target)
 

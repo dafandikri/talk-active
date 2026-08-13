@@ -88,8 +88,17 @@ front of judges.
 
 ### INV-6 — Scope stays explicitly bounded
 The out-of-scope list is why the feasibility argument held. Body-language scoring, streaks,
-generic speaking drills, institutional dashboards, and any numeric ability score stay out
-until the core loop is validated. Adding scope during a four-day sprint is how demos break.
+generic speaking drills, institutional dashboards, and any score presented as a measure of the
+speaker stay out until the core loop is validated. Adding scope during a four-day sprint is how
+demos break.
+
+**Amended 13 August 2026.** This line previously read "any numeric ability score". The
+multimodal work now shows a summary figure over the observations from one attempt, so the
+boundary is drawn around the claim rather than the arithmetic. A number may describe what was
+observed in a single rehearsal. It may not describe the person. Any such figure has to name its
+own weighting, show each component with its evidence, and say what it could not measure, beside
+the number and not behind a link. The moment a summary reads as a rating of the speaker, it is
+back out of scope.
 
 ### INV-7 — Analysis fails loudly, never silently
 Invalid input raises a typed error. A silent wrong answer on stage is worse than a visible
@@ -188,8 +197,14 @@ tests, and give every autonomous loop an explicit stop condition.
 
 - The differentiating loop is project → rubric → attempt → evidence → hardest question → saved progress.
 - Feedback is formative and traceable; never claim an objective confidence or ability score.
-- Delivery metrics are supporting context, not the core value proposition.
-- Raw audio is not persisted. Production needs consent, expiry, and deletion.
+  A summary figure describes one rehearsal, never the speaker, and always carries its weighting,
+  its per-component evidence, and what went unmeasured.
+- Delivery metrics are supporting context. Rubric evidence stays the headline: a delivery reading
+  never changes a criterion verdict, and no delivery figure outranks the evidence card on screen.
+- Camera-and-microphone replay is persisted only after explicit opt-in, signed-in ownership
+  checks, private storage, expiry metadata, and an independent delete control.
+- Every capture signal is consented separately. Camera, microphone, dictation, and saved replay
+  are four independent choices, and none of them implies another.
 
 ## Guardrails
 

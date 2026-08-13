@@ -25,6 +25,11 @@ export async function GET(request: Request) {
     sourceDocuments: Boolean(
       databaseAvailable && userId && process.env.BLOB_READ_WRITE_TOKEN?.trim(),
     ),
+    recordings: Boolean(
+      process.env.DATABASE_URL?.trim()
+      && process.env.BLOB_READ_WRITE_TOKEN?.trim()
+      && process.env.BETTER_AUTH_SECRET?.trim(),
+    ),
     semantic: {
       rubric: semanticAvailable && Boolean(process.env.AI_RUBRIC_MODEL?.trim()),
       evidence: semanticAvailable && Boolean(process.env.AI_EVIDENCE_MODEL?.trim()),

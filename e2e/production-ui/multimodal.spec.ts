@@ -59,7 +59,7 @@ async function openMultimodalAttempt(page: Page) {
   await page.goto('/practice');
   await page.getByRole('button', { name: /Begin this attempt/i }).click();
   await page.getByRole('tab', { name: /Camera \+ voice/i }).click();
-  await expect(page.getByRole('heading', { name: 'Add camera or voice context.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Rehearse the whole performance.' })).toBeVisible();
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
@@ -156,7 +156,7 @@ test('multimodal media stays off until Start and each consent is independent at 
   await expectNoHorizontalOverflow(page);
 });
 
-test('camera-only capture renders raw observations without a composite score at 390px', async ({ page }) => {
+test('camera-only capture renders observations and a fully disclosed summary at 390px', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openMultimodalAttempt(page);
   await page.getByLabel('Practice transcript').fill(
@@ -167,7 +167,7 @@ test('camera-only capture renders raw observations without a composite score at 
 
   await page.getByRole('checkbox', { name: /Local camera landmarks/i }).check();
   await page.getByRole('button', { name: 'Start selected capture' }).click();
-  const finishCapture = page.getByRole('button', { name: 'Finish local capture', exact: true });
+  const finishCapture = page.getByRole('button', { name: 'Finish & assemble review', exact: true });
   await expect(finishCapture).toBeVisible({ timeout: 20_000 });
   await page.waitForTimeout(1_200);
 
@@ -175,7 +175,7 @@ test('camera-only capture renders raw observations without a composite score at 
   await expect(landmarkCanvas).toBeVisible();
 
   await finishCapture.click();
-  await expect(page.locator('.studio-status')).toContainText('Local observations captured');
+  await expect(page.locator('.studio-status')).toContainText('Rehearsal captured');
   await expect(page.locator('.studio-hud')).toContainText(/find the camera frame/i);
 
   // Canvas pixels are deliberately not asserted here. drawOverlay clears the
@@ -193,14 +193,25 @@ test('camera-only capture renders raw observations without a composite score at 
   await page.getByRole('button', { name: /Review this attempt/i }).click();
   const review = page.locator('.multimodal-review');
   await expect(review).toBeVisible();
-  await expect(review.getByRole('heading', { name: 'What the local sensors observed' })).toBeVisible();
-  await expect(review.getByText('Voice observations', { exact: true })).toBeVisible();
-  await expect(review.getByText('Camera observations', { exact: true })).toBeVisible();
-  await expect(review.getByText(/raw, device-dependent observations—not a performance rating/i)).toBeVisible();
-  await expect(review.getByText(/frames, landmark arrays, pitch samples, and raw audio are discarded/i)).toBeVisible();
-  await expect(review.locator('.overall-grade, .performance-score-grid')).toHaveCount(0);
-  await expect(review.getByText('Overall rehearsal', { exact: true })).toHaveCount(0);
-  expect(await review.innerText()).not.toMatch(/\b\d+(?:\.\d+)?\s*\/\s*100\b/u);
+  await expect(review.getByRole('heading', { name: 'How the attempt came across' })).toBeVisible();
+  await expect(review.getByRole('heading', { name: 'Voice evidence' })).toBeVisible();
+  await expect(review.getByRole('heading', { name: 'Camera evidence' })).toBeVisible();
+  await expect(review.getByText(/not emotion, confidence, health, skill, or hiring suitability/i)).toBeVisible();
+  // A summary figure is allowed, but only while a judge can take it apart. Each
+  // clause below is one of the conditions AD-9 puts on showing the number at all.
+  const summary = review.locator('.overall-grade');
+  await expect(summary).toHaveCount(1);
+  await expect(summary.getByText('Overall rehearsal', { exact: true })).toBeVisible();
+  await expect(review.getByText('50% rubric substance · 25% vocal signals · 25% visual signals')).toBeVisible();
+  await expect(review.getByText(/describes one rehearsal attempt, not your ability/i)).toBeVisible();
+  await expect(review.getByText(/excluded from the mean rather than counted as zero/i)).toBeVisible();
+  for (const component of ['Substance', 'Vocal delivery', 'Visual delivery']) {
+    await expect(review.locator('.performance-score-grid').getByText(component, { exact: true })).toBeVisible();
+  }
+  // The number never gets to call itself a verdict on the person. Scoped to the
+  // figure's own label: the boundary paragraph says these words on purpose, to
+  // deny them.
+  expect(await summary.innerText()).not.toMatch(/\b(ability|confidence|skill|grade)\b/iu);
 
   const reviewBox = await review.boundingBox();
   expect(reviewBox, 'the local-observation review must have rendered bounds').not.toBeNull();

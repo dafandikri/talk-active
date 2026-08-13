@@ -77,12 +77,22 @@ test('stop waits for the final recognition result emitted before onend', async (
 
   const stopResult = await session.stop();
 
-  assert.deepEqual(stopResult, {
+  // observedAtMs is a live clock reading, so it is checked for shape rather than
+  // value. It exists because disruption events need a timeline to sit on.
+  const { observedAtMs, ...stopTranscript } = stopResult;
+  assert.deepEqual(stopTranscript, {
     finalTranscript: 'kalimat final saat berhenti',
     interimTranscript: '',
     transcript: 'kalimat final saat berhenti',
   });
-  assert.deepEqual(session.snapshot(), stopResult);
+  assert.ok(Number.isFinite(observedAtMs) && observedAtMs >= 0, 'a snapshot must carry a usable timestamp');
+  // Each snapshot() reads the clock afresh, so compare the transcript fields
+  // from one snapshot rather than two.
+  const { observedAtMs: laterObservedAtMs, ...laterTranscript } = session.snapshot();
+  assert.deepEqual(laterTranscript, stopTranscript);
+  assert.ok(laterObservedAtMs >= observedAtMs, 'the clock must not run backwards between snapshots');
   assert.deepEqual(states, ['starting', 'listening', 'stopping', 'idle']);
-  assert.deepEqual(transcripts.at(-1), stopResult);
+  const { observedAtMs: emittedObservedAtMs, ...emittedTranscript } = transcripts.at(-1);
+  assert.deepEqual(emittedTranscript, stopTranscript);
+  assert.ok(Number.isFinite(emittedObservedAtMs), 'each emitted snapshot carries its own reading');
 });

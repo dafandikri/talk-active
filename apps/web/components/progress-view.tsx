@@ -141,6 +141,7 @@ export function ProgressView() {
   const latestComparison = syncState === 'synced'
     ? synced?.attemptComparisons.at(-1)
     : localComparisons.at(-1);
+  const syncedArchive = synced?.attempts ?? [];
 
   return <section className="view is-visible" aria-labelledby="progressTitle">
     <header className="page-header compact-header workflow-header"><div className="workflow-heading"><img className="workflow-mark" src={logo.src} alt="" /><div><p className="overline">Practice history</p><h1 id="progressTitle">See what changed between attempts.</h1><p className="page-lede">Track explicit evidence and recurring weak claims without inventing a universal speaking score.</p></div></div><Link className="button button-primary" href="/practice">New practice</Link></header>
@@ -174,7 +175,24 @@ export function ProgressView() {
 
     <section className="surface progress-chart-card"><div className="section-title-row"><div><p className="overline">Evidence trend</p><h2>Rubric coverage by attempt</h2></div><span className="session-status">{historyLabel(syncState)}</span></div><div className="chart" aria-label="Evidence coverage chart">{trendPoints.length === 0 ? <p className="chart-empty">Save a practice session to begin the evidence trend.</p> : trendPoints.map((session, index) => <div className="chart-column" key={session.id}><span className="chart-value">{session.evidenceScore}%</span><i className="chart-bar" style={{ height: `${Math.max(4, session.evidenceScore * 2)}px` }} /><span className="chart-label">Attempt {index + 1}</span></div>)}</div></section>
 
-    <section className="surface history-card"><div className="section-title-row"><div><p className="overline">Session archive</p><h2>Every locally saved attempt</h2></div></div><div className="session-list full-session-list">{scopedSessions.length === 0 ? <p className="empty-list">No sessions saved in the production guest workspace yet.</p> : [...scopedSessions].reverse().map((session) => { const date = new Date(session.createdAt); return <article className="session-row" key={session.id}><span className="session-date">{date.getDate()}<br />{date.toLocaleString('en', { month: 'short' })}</span><span><strong>Talk-Active · RISTEK Finals</strong><small>Focus: {session.weakest}</small></span><span className="session-score"><span className="score-track"><i style={{ width: `${session.evidenceScore}%` }} /></span>{session.evidenceScore}%</span><span className="session-status">{session.defenseStatus ?? 'review only'}</span><span aria-hidden="true">→</span></article>; })}</div></section>
+    {syncState === 'synced'
+      ? <section className="surface history-card"><div className="section-title-row"><div><p className="overline">Session archive</p><h2>Every synced attempt</h2></div></div><div className="session-list full-session-list">{syncedArchive.length === 0
+        ? <p className="empty-list">No attempts have been saved to this project yet.</p>
+        : [...syncedArchive].reverse().map((attempt) => {
+          const date = new Date(attempt.createdAt);
+          const reviewable = attempt.hasDeliveryReview || attempt.recordingStatus !== null;
+          const row = <>
+            <span className="session-date">{date.getDate()}<br />{date.toLocaleString('en', { month: 'short' })}</span>
+            <span><strong>Talk-Active · RISTEK Finals</strong><small>{attempt.hasDeliveryReview ? 'Delivery observations and rubric evidence saved' : 'Rubric evidence saved'}</small></span>
+            <span className="session-score"><span className="score-track"><i style={{ width: `${Math.round(attempt.coverage * 100)}%` }} /></span>{Math.round(attempt.coverage * 100)}%</span>
+            <span className="session-status">{attempt.recordingStatus ? `replay ${attempt.recordingStatus}` : attempt.hasDeliveryReview ? 'review saved' : 'rubric only'}</span>
+            <span aria-hidden="true">{reviewable ? '→' : '·'}</span>
+          </>;
+          return reviewable
+            ? <Link className="session-row saved-attempt-link" href={`/attempts/${encodeURIComponent(attempt.attemptId)}`} key={attempt.attemptId} aria-label={`Review saved attempt from ${attemptDate(attempt.createdAt)}`}>{row}</Link>
+            : <article className="session-row" key={attempt.attemptId}>{row}</article>;
+        })}</div></section>
+      : <section className="surface history-card"><div className="section-title-row"><div><p className="overline">Session archive</p><h2>Every locally saved attempt</h2></div></div><div className="session-list full-session-list">{scopedSessions.length === 0 ? <p className="empty-list">No sessions saved in the production guest workspace yet.</p> : [...scopedSessions].reverse().map((session) => { const date = new Date(session.createdAt); return <article className="session-row" key={session.id}><span className="session-date">{date.getDate()}<br />{date.toLocaleString('en', { month: 'short' })}</span><span><strong>Talk-Active · RISTEK Finals</strong><small>Focus: {session.weakest}</small></span><span className="session-score"><span className="score-track"><i style={{ width: `${session.evidenceScore}%` }} /></span>{session.evidenceScore}%</span><span className="session-status">{session.defenseStatus ?? 'review only'}</span><span aria-hidden="true">·</span></article>; })}</div></section>}
     <p className="production-boundary-note">Synced progress is aggregated from saved verdict rows with zero model calls. Older local summaries remain labelled when their original criterion evidence was never retained.</p>
   </section>;
 }

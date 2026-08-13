@@ -1,3 +1,5 @@
+import { matchFillerTokens, tokenizeSpeech } from './rehearsal/filler-cues.ts';
+
 export type VisionMode = 'interview' | 'presentation';
 
 export interface TimedTranscriptWord {
@@ -49,10 +51,14 @@ export interface DeliveryMetricResult {
   available: boolean;
   observedValue: number | null;
   unit: string;
+  rehearsalScore: number | null;
+  weight: number;
+  target: string;
   explanation: string;
 }
 
 export interface DeliveryMetricGroup {
+  rehearsalScore: number | null;
   measurementCoverage: number;
   metrics: DeliveryMetricResult[];
 }
@@ -79,6 +85,7 @@ export interface DeliveryMetricsResult {
   repeatedWordEvents: RepeatedWordEvent[];
   vocal: DeliveryMetricGroup;
   visual: DeliveryMetricGroup | null;
+  overallRehearsalScore: number | null;
   measurementCoverage: number;
   boundary: string;
 }
@@ -103,24 +110,18 @@ interface FillerMatch {
   tokenIndexes: number[];
 }
 
-const FILLER_TOKEN_PATTERNS: ReadonlyArray<Readonly<{
-  label: string;
-  pattern: RegExp;
-}>> = [
-  { label: 'um', pattern: /^u+m+$/u },
-  { label: 'uh', pattern: /^u+h+$/u },
-  { label: 'ee', pattern: /^e{2,}$/u },
-  { label: 'emm', pattern: /^e+m+$/u },
-  { label: 'ah', pattern: /^a+h+$/u },
-  { label: 'anu', pattern: /^anu$/u },
-  { label: 'kayak', pattern: /^kayak$/u },
-  { label: 'gitu', pattern: /^gitu$/u },
-  { label: 'basically', pattern: /^basically$/u },
-];
+interface WeightedComponent {
+  score: number | null;
+  weight: number;
+}
 
 const BOUNDARY = 'These are configurable rehearsal heuristics from observable speech and camera signals. '
   + 'They do not infer emotion, personality, intent, health, or speaking ability; repeated-word events '
   + 'can also come from deliberate repetition or transcription errors.';
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value));
+}
 
 function round(value: number, decimals = 0): number {
   const factor = 10 ** decimals;
@@ -128,10 +129,7 @@ function round(value: number, decimals = 0): number {
 }
 
 function tokenize(value: string): string[] {
-  return value
-    .toLocaleLowerCase('id-ID')
-    .normalize('NFKC')
-    .match(/[\p{L}\p{N}]+/gu) ?? [];
+  return tokenizeSpeech(value);
 }
 
 function assertFiniteNonNegative(value: number, field: string): void {
@@ -195,20 +193,7 @@ function normalizeTokens(
 }
 
 function findFillers(tokens: readonly NormalizedToken[]): FillerMatch[] {
-  const matches: FillerMatch[] = [];
-  for (let index = 0; index < tokens.length; index += 1) {
-    const current = tokens[index]?.value;
-    const next = tokens[index + 1]?.value;
-    if (current === 'apa' && next === 'ya') {
-      matches.push({ label: 'apa ya', tokenIndexes: [index, index + 1] });
-      index += 1;
-      continue;
-    }
-    if (!current) continue;
-    const definition = FILLER_TOKEN_PATTERNS.find(({ pattern }) => pattern.test(current));
-    if (definition) matches.push({ label: definition.label, tokenIndexes: [index] });
-  }
-  return matches;
+  return matchFillerTokens(tokens.map((token) => token.value));
 }
 
 function summarizeFillers(matches: readonly FillerMatch[]): FillerBreakdown[] {
@@ -251,6 +236,25 @@ function findRepeatedWords(
   return events;
 }
 
+function scoreAtMost(value: number, fullCreditThrough: number, zeroAt: number): number {
+  if (value <= fullCreditThrough) return 100;
+  return round(clamp(100 * (zeroAt - value) / (zeroAt - fullCreditThrough), 0, 100));
+}
+
+function scoreTargetBand(
+  value: number,
+  lowerTarget: number,
+  upperTarget: number,
+  lowerZero: number,
+  upperZero: number,
+): number {
+  if (value >= lowerTarget && value <= upperTarget) return 100;
+  if (value < lowerTarget) {
+    return round(clamp(100 * (value - lowerZero) / (lowerTarget - lowerZero), 0, 100));
+  }
+  return round(clamp(100 * (upperZero - value) / (upperZero - upperTarget), 0, 100));
+}
+
 function coefficientOfVariation(samples: readonly number[] | undefined): number | null {
   if (!samples) return null;
   const voiced = samples.filter((sample) => sample > 0);
@@ -266,23 +270,50 @@ function makeMetric(
   label: string,
   observedValue: number | null,
   unit: string,
+  rehearsalScore: number | null,
+  weight: number,
+  target: string,
   explanation: string,
 ): DeliveryMetricResult {
   return {
     id,
     label,
-    available: observedValue !== null,
+    available: observedValue !== null && rehearsalScore !== null,
     observedValue,
     unit,
+    rehearsalScore,
+    weight,
+    target,
     explanation,
   };
 }
 
-function makeGroup(metrics: DeliveryMetricResult[]): DeliveryMetricGroup {
+function weightedResult(components: readonly WeightedComponent[]): {
+  score: number | null;
+  coverage: number;
+} {
+  const totalWeight = components.reduce((sum, component) => sum + component.weight, 0);
+  const available = components.filter((component) => component.score !== null);
+  const availableWeight = available.reduce((sum, component) => sum + component.weight, 0);
+  if (totalWeight === 0 || availableWeight === 0) return { score: null, coverage: 0 };
+  const weightedTotal = available.reduce(
+    (sum, component) => sum + (component.score ?? 0) * component.weight,
+    0,
+  );
   return {
-    measurementCoverage: metrics.length === 0
-      ? 0
-      : round(100 * metrics.filter((metric) => metric.available).length / metrics.length),
+    score: round(weightedTotal / availableWeight),
+    coverage: round(100 * availableWeight / totalWeight),
+  };
+}
+
+function makeGroup(metrics: DeliveryMetricResult[]): DeliveryMetricGroup {
+  const result = weightedResult(metrics.map((metric) => ({
+    score: metric.rehearsalScore,
+    weight: metric.weight,
+  })));
+  return {
+    rehearsalScore: result.score,
+    measurementCoverage: result.coverage,
     metrics,
   };
 }
@@ -310,6 +341,9 @@ function vocalMetrics(
       'Speaking pace',
       round(wordsPerMinute),
       'words/min',
+      scoreTargetBand(wordsPerMinute, 105, 165, 50, 240),
+      0.20,
+      '105–165 words/min practice band',
       `${wordCount} recognized words across ${round(durationSeconds, 1)} seconds.`,
     ),
     makeMetric(
@@ -317,6 +351,9 @@ function vocalMetrics(
       'Filler frequency',
       round(fillersPerMinute, 1),
       'events/min',
+      scoreAtMost(fillersPerMinute, 2, 12),
+      0.20,
+      'At most 2 detected events/min',
       `${fillerCount} configured filler event${fillerCount === 1 ? '' : 's'} found in the transcript.`,
     ),
     makeMetric(
@@ -324,6 +361,9 @@ function vocalMetrics(
       'Adjacent repeated words',
       round(repeatsPerHundredWords, 1),
       'events/100 words',
+      scoreAtMost(repeatsPerHundredWords, 0.5, 8),
+      0.15,
+      'At most 0.5 adjacent repeats/100 words',
       `${repeatedWordCount} additional adjacent word occurrence${repeatedWordCount === 1 ? '' : 's'} detected.`,
     ),
     makeMetric(
@@ -331,6 +371,9 @@ function vocalMetrics(
       'Pause ratio',
       pauseRatio === null ? null : round(pauseRatio * 100, 1),
       '% of session',
+      pauseRatio === null ? null : scoreTargetBand(pauseRatio, 0.08, 0.28, 0, 0.65),
+      0.15,
+      '8–28% configured practice band',
       pauseRatio === null
         ? 'Audio pause observations were not supplied.'
         : `${round(audio?.pauseSeconds ?? 0, 1)} seconds were marked as pauses.`,
@@ -340,6 +383,9 @@ function vocalMetrics(
       'Pitch variation',
       pitchVariation === null ? null : round(pitchVariation * 100, 1),
       'coefficient %',
+      pitchVariation === null ? null : scoreTargetBand(pitchVariation, 0.08, 0.30, 0.01, 0.75),
+      0.15,
+      '8–30% configured variation band',
       pitchVariation === null
         ? 'At least five voiced pitch samples are required.'
         : 'Calculated as standard deviation divided by mean pitch for voiced samples.',
@@ -349,6 +395,9 @@ function vocalMetrics(
       'Energy variation',
       energyVariation === null ? null : round(energyVariation * 100, 1),
       'coefficient %',
+      energyVariation === null ? null : scoreTargetBand(energyVariation, 0.12, 0.55, 0.01, 1.25),
+      0.15,
+      '12–55% configured variation band',
       energyVariation === null
         ? 'At least five non-silent energy samples are required.'
         : 'Calculated as standard deviation divided by mean RMS energy for non-silent samples.',
@@ -366,12 +415,19 @@ function visualMetrics(vision: VisionObservations): DeliveryMetricGroup {
   const movementRatio = vision.trackedFrames === 0
     ? null
     : vision.movementActiveFrames / vision.trackedFrames;
+  const movementTarget = vision.mode === 'presentation'
+    ? { lower: 0.08, upper: 0.60, upperZero: 0.95, label: '8–60% presentation practice band' }
+    : { lower: 0.02, upper: 0.30, upperZero: 0.80, label: '2–30% interview practice band' };
+
   return makeGroup([
     makeMetric(
       'tracking-coverage',
       'Tracking coverage',
       trackingRatio === null ? null : round(trackingRatio * 100, 1),
       '% of sampled frames',
+      trackingRatio === null ? null : round(trackingRatio * 100),
+      0.35,
+      'At least 90% of sampled frames',
       trackingRatio === null
         ? 'No camera frames were sampled.'
         : `${vision.trackedFrames} of ${vision.sampledFrames} sampled frames contained usable landmarks.`,
@@ -381,6 +437,9 @@ function visualMetrics(vision: VisionObservations): DeliveryMetricGroup {
       'Framing coverage',
       framingRatio === null ? null : round(framingRatio * 100, 1),
       '% of tracked frames',
+      framingRatio === null ? null : round(framingRatio * 100),
+      0.40,
+      'At least 90% of tracked frames',
       framingRatio === null
         ? 'Usable landmarks are required before framing can be measured.'
         : `${vision.framedFrames} of ${vision.trackedFrames} tracked frames met the mode framing rule.`,
@@ -390,6 +449,17 @@ function visualMetrics(vision: VisionObservations): DeliveryMetricGroup {
       'Movement activity',
       movementRatio === null ? null : round(movementRatio * 100, 1),
       '% of tracked frames',
+      movementRatio === null
+        ? null
+        : scoreTargetBand(
+          movementRatio,
+          movementTarget.lower,
+          movementTarget.upper,
+          0,
+          movementTarget.upperZero,
+        ),
+      0.25,
+      movementTarget.label,
       movementRatio === null
         ? 'Usable landmarks are required before movement can be measured.'
         : `${vision.movementActiveFrames} tracked frames crossed the calibrated movement threshold.`,
@@ -458,8 +528,13 @@ export function analyzeDeliveryMetrics(input: DeliveryMetricsInput): DeliveryMet
     input.audio,
   );
   const visual = input.vision ? visualMetrics(input.vision) : null;
+  const overallComponents: WeightedComponent[] = [
+    { score: vocal.rehearsalScore, weight: visual ? 0.60 : 1 },
+  ];
+  if (visual) overallComponents.push({ score: visual.rehearsalScore, weight: 0.40 });
+  const overall = weightedResult(overallComponents);
   const modalityCoverage = visual
-    ? round((vocal.measurementCoverage + visual.measurementCoverage) / 2)
+    ? round((vocal.measurementCoverage * 0.60) + (visual.measurementCoverage * 0.40))
     : vocal.measurementCoverage;
 
   return {
@@ -472,6 +547,7 @@ export function analyzeDeliveryMetrics(input: DeliveryMetricsInput): DeliveryMet
     repeatedWordEvents,
     vocal,
     visual,
+    overallRehearsalScore: overall.score,
     measurementCoverage: modalityCoverage,
     boundary: BOUNDARY,
   };

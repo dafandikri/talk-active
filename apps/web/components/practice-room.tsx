@@ -26,6 +26,7 @@ import {
   EvidenceConfirmationResponseSchema,
   EvidenceResponseSchema,
   QuestionResponseSchema,
+  SaveAttemptDeliveryReviewResponseSchema,
   SourceDocumentDeleteResponseSchema,
   SourceDocumentUploadResponseSchema,
   StatelessAnalysisResponseSchema,
@@ -34,12 +35,14 @@ import {
   type RubricSource,
   type Criterion,
   type ReusedCitation,
+  type SaveAttemptDeliveryReviewRequest,
   type SourceDocument,
 } from '@/lib/contracts';
 import {
   appendLocalEvidenceConfirmation,
   rejudgeLocalEvidence,
 } from '@/lib/evidence-confirmations';
+import { uploadAttemptRecording } from '@/lib/rehearsal/recording-upload';
 import {
   MultimodalReview,
   MultimodalStudio,
@@ -86,6 +89,44 @@ function storedRubric(): {
     criteria,
     rubricText: rubricTextFromCriteria(criteria),
     sourceType: readRubricSourceType(localStorage),
+  };
+}
+
+// Timestamped observations are saved separately from the replay they came from,
+// so deleting the media later leaves the feedback intact.
+function deliveryReviewPayload(result: MultimodalAttemptResult): SaveAttemptDeliveryReviewRequest {
+  const visual = result.visionSummary;
+  return {
+    mode: result.mode,
+    vocalScore: Math.round(result.metrics.vocal.rehearsalScore ?? 0),
+    visualScore: result.metrics.visual?.rehearsalScore === null
+      || result.metrics.visual?.rehearsalScore === undefined
+      ? null
+      : Math.round(result.metrics.visual.rehearsalScore),
+    trackingCoveragePercent: visual
+      ? Math.round(visual.metrics.trackingCoveragePercent)
+      : null,
+    fillerCount: result.metrics.fillerCount,
+    repeatedWordCount: result.metrics.repeatedWordCount,
+    boundary: result.metrics.boundary,
+    events: [
+      ...(result.speechDisruptions ?? []).map((event) => ({
+        source: event.source,
+        kind: event.kind,
+        startMs: Math.max(0, Math.round(event.startMs)),
+        endMs: Math.max(0, Math.round(event.endMs)),
+        label: event.label,
+        evidence: event.evidence,
+      })),
+      ...(visual?.events ?? []).map((event) => ({
+        source: 'vision' as const,
+        kind: event.kind,
+        startMs: Math.max(0, Math.round(event.startMs)),
+        endMs: Math.max(0, Math.round(event.endMs)),
+        label: event.label,
+        evidence: 'Derived from on-device camera landmarks; review the surrounding replay before interpreting it.',
+      })),
+    ],
   };
 }
 
@@ -194,6 +235,8 @@ export function PracticeRoom() {
   const [inputMethod, setInputMethod] = useState<'transcript' | 'observations'>('transcript');
   const [studioBusy, setStudioBusy] = useState(false);
   const [multimodalResult, setMultimodalResult] = useState<MultimodalAttemptResult | null>(null);
+  const [recordingsAvailable, setRecordingsAvailable] = useState(false);
+  const [recordingStatus, setRecordingStatus] = useState('');
   const [observationNote, setObservationNote] = useState('');
   const rubric = useMemo(() => parseRubric(rubricText), [rubricText]);
 
@@ -208,6 +251,7 @@ export function PracticeRoom() {
         if (cancelled) return;
         setPersistence(capabilities.persistence);
         setSourceDocumentsAvailable(capabilities.sourceDocuments);
+        setRecordingsAvailable(capabilities.recordings);
         setStatelessSemanticAvailable(
           capabilities.semantic.evidence || capabilities.semantic.question,
         );
@@ -264,6 +308,7 @@ export function PracticeRoom() {
         if (cancelled) return;
         setPersistence('local');
         setSourceDocumentsAvailable(false);
+        setRecordingsAvailable(false);
         setStatelessSemanticAvailable(false);
         setSemanticDefenseAvailable(false);
       });
@@ -271,6 +316,44 @@ export function PracticeRoom() {
       cancelled = true;
     };
   }, []);
+
+  // Observations save first and separately, so a replay upload that fails does
+  // not take the timestamped feedback down with it. Neither step can change a
+  // rubric verdict; both report what happened rather than failing silently.
+  async function syncMultimodalAttempt(attemptId: string, result: MultimodalAttemptResult) {
+    setRecordingStatus('Saving timestamped delivery observations…');
+    try {
+      await requestContract(
+        `/api/attempts/${attemptId}/review`,
+        SaveAttemptDeliveryReviewResponseSchema,
+        jsonRequest('POST', deliveryReviewPayload(result)),
+      );
+    } catch (caught) {
+      setRecordingStatus(result.recording
+        ? `Replay is available in this page but was not synced. Download it before leaving. ${caught instanceof Error ? caught.message : ''}`.trim()
+        : `Delivery observations were not synced. ${caught instanceof Error ? caught.message : ''}`.trim());
+      return;
+    }
+
+    if (!result.recording) {
+      setRecordingStatus('Timestamped delivery observations were saved with this attempt. No replay was recorded.');
+      return;
+    }
+    if (!recordingsAvailable) {
+      setRecordingStatus('Timestamped observations were saved. This replay stays in this page only; download it before leaving.');
+      return;
+    }
+
+    setRecordingStatus('Uploading the private replay… Keep this review open until it finishes.');
+    try {
+      await uploadAttemptRecording(attemptId, result.recording, {
+        onProgress: (percentage) => setRecordingStatus(`Uploading the private replay… ${Math.round(percentage)}%`),
+      });
+      setRecordingStatus('Private replay saved. It is now available from attempt history and can be deleted without deleting feedback.');
+    } catch (caught) {
+      setRecordingStatus(`The timestamped observations were saved, but the replay upload failed. Download this page copy before leaving. ${caught instanceof Error ? caught.message : ''}`.trim());
+    }
+  }
 
   async function ensureRemoteContext(): Promise<RemoteContext> {
     if (remoteContext) return remoteContext;
@@ -415,6 +498,9 @@ export function PracticeRoom() {
           ));
           setReusedCitations(evidence.reusedCitations);
           setRemoteAttemptId(created.attempt.id);
+          if (multimodalResult) {
+            void syncMultimodalAttempt(created.attempt.id, multimodalResult);
+          }
           const semanticCount = evidence.verdicts.filter((verdict) => verdict.engine === 'semantic').length;
           const deterministicCount = evidence.verdicts.length - semanticCount;
           setEngineNote(`${semanticCount} of ${evidence.verdicts.length} criteria used semantic mapping; ${deterministicCount} used deterministic fallback. Every displayed citation passed the exact-span check.`);
@@ -827,6 +913,7 @@ export function PracticeRoom() {
             <div className="capture-tabs" role="tablist" aria-label="Practice input method"><button className={inputMethod === 'transcript' ? 'is-active' : ''} type="button" role="tab" aria-selected={inputMethod === 'transcript'} disabled={studioBusy} onClick={() => setInputMethod('transcript')}>Transcript</button><button className={inputMethod === 'observations' ? 'is-active' : ''} type="button" role="tab" aria-selected={inputMethod === 'observations'} disabled={studioBusy} onClick={() => setInputMethod('observations')}><span className="record-dot" />Camera + voice · experimental</button></div>
             {inputMethod === 'observations' && <MultimodalStudio
               transcript={transcript}
+              durableRecordingAvailable={recordingsAvailable}
               onTranscriptChange={(value) => {
                 setTranscript(value);
                 if (multimodalResult && value.trim() !== multimodalResult.transcript.trim()) {
@@ -902,7 +989,7 @@ export function PracticeRoom() {
             </ul>
           ) : null}
         </section>
-        {multimodalResult && <MultimodalReview result={multimodalResult} />}
+        {multimodalResult && <MultimodalReview result={multimodalResult} substanceScore={analysis.evidenceScore} recordingStatus={recordingStatus} savedAttemptId={remoteAttemptId} />}
         <div className="review-actions"><button className="button button-secondary" type="button" onClick={() => setStage('attempt')}>Revise transcript</button><button className="button button-secondary" type="button" onClick={saveSession}>Save without Q&amp;A</button></div>
       </section>}
 

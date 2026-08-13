@@ -19,6 +19,9 @@ test('M-2 models the complete differentiating loop and stores provenance per ver
     'questions',
     'defenseAnswers',
     'sourceDocuments',
+    'attemptDeliveryReviews',
+    'attemptDeliveryEvents',
+    'attemptRecordings',
   ]) {
     assert.match(schema, new RegExp(`export const ${table} = pgTable`, 'u'), `${table} is missing`);
   }
@@ -43,7 +46,16 @@ test('M-2 encodes traceability and deletion obligations in Postgres constraints'
   assert.match(schema, /source_documents_content_type_allowed/u);
   assert.match(schema, /sourceDocumentId: uuid\('source_document_id'\)[\s\S]+onDelete: 'restrict'/u);
   assert.match(schema, /onDelete: 'cascade'/u);
-  assert.doesNotMatch(schema, /audio|recording|soft.delete|deleted_at/iu);
+  assert.match(schema, /attempt_delivery_events_time_order/u);
+  assert.match(schema, /attempt_delivery_events_time_domain/u);
+  assert.match(schema, /attempt_recordings_attempt_id_unique/u);
+  assert.match(schema, /attempt_recordings_pathname_unique/u);
+  assert.match(schema, /attempt_recordings_size_domain/u);
+  assert.match(schema, /attempt_recordings_duration_domain/u);
+  assert.match(schema, /attempt_recordings_content_type_allowed/u);
+  assert.match(schema, /attempt_recordings_ready_metadata_consistent/u);
+  assert.match(schema, /expiresAt: timestamp\('expires_at'/u);
+  assert.doesNotMatch(schema, /soft.delete|deleted_at/iu);
 });
 
 test('M-2 checks in a generated SQL migration, not only an ORM declaration', () => {
@@ -62,4 +74,15 @@ test('M-2 checks in a generated SQL migration, not only an ORM declaration', () 
   assert.match(migration, /questions_source_basis_consistent/u);
   assert.match(migration, /source_documents_size_domain/u);
   assert.match(migration, /source_documents_content_type_allowed/u);
+  assert.match(migration, /CREATE TABLE "attempt_delivery_reviews"/u);
+  assert.match(migration, /CREATE TABLE "attempt_delivery_events"/u);
+  assert.match(migration, /CREATE TABLE "attempt_recordings"/u);
+  assert.match(migration, /attempt_delivery_events_time_order/u);
+  assert.match(migration, /attempt_delivery_events_time_domain/u);
+  assert.match(migration, /attempt_recordings_attempt_id_unique/u);
+  assert.match(migration, /attempt_recordings_pathname_unique/u);
+  assert.match(migration, /attempt_recordings_size_domain/u);
+  assert.match(migration, /attempt_recordings_duration_domain/u);
+  assert.match(migration, /attempt_recordings_content_type_allowed/u);
+  assert.match(migration, /attempt_recordings_ready_metadata_consistent/u);
 });

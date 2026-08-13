@@ -51,11 +51,12 @@ test('D-2 export contract contains every persisted workspace surface', () => {
   const source = WorkspaceExportSchema._zod.def.shape;
   for (const field of [
     'projects', 'rubrics', 'criteria', 'attempts', 'verdicts', 'questions',
-    'evidenceConfirmations', 'defenseAnswers', 'sourceDocuments',
+    'evidenceConfirmations', 'defenseAnswers', 'sourceDocuments', 'deliveryReviews',
+    'deliveryEvents', 'recordings',
   ]) assert.ok(field in source, `${field} is absent from export`);
 });
 
-test('A-6 export includes source contents while hard deletion removes private blobs first', async () => {
+test('A-6 export includes source contents and safe recording metadata only', async () => {
   const service = await readFile('apps/web/lib/services/workspace.ts', 'utf8');
   const exportSlice = service.slice(
     service.indexOf('export async function exportOwnedWorkspace'),
@@ -63,12 +64,28 @@ test('A-6 export includes source contents while hard deletion removes private bl
   );
   assert.match(exportSlice, /content: await storage\.read\(document\.blobUrl\)/u);
   assert.match(exportSlice, /sourceDocuments: exportedDocuments/u);
+  assert.match(exportSlice, /deliveryReviews: deliveryReviewRows/u);
+  assert.match(exportSlice, /deliveryEvents: deliveryEventRows/u);
+  assert.match(exportSlice, /recordings: recordingMetadataRows/u);
+  const recordingSelection = exportSlice.slice(
+    exportSlice.indexOf('const recordingMetadataRows'),
+    exportSlice.indexOf('const documentRows'),
+  );
+  assert.doesNotMatch(recordingSelection, /blobUrl|pathname/u);
+});
 
+test('A-6 hard deletion removes source and recording blobs before account ownership cascades', async () => {
+  const service = await readFile('apps/web/lib/services/workspace.ts', 'utf8');
   const deleteSlice = service.slice(service.indexOf('export async function deleteOwnedAccount'));
-  const blobDeleteAt = deleteSlice.indexOf('await storage.delete');
+  const recordingBlobDeleteAt = deleteSlice.indexOf('await recordingStorage.delete');
+  const sourceBlobDeleteAt = deleteSlice.indexOf('await storage.delete');
   const accountDeleteAt = deleteSlice.indexOf('db.delete(user)');
-  assert.ok(blobDeleteAt >= 0, 'account deletion must remove source blobs');
-  assert.ok(accountDeleteAt > blobDeleteAt, 'private blobs must be removed before account metadata cascades');
+  assert.ok(recordingBlobDeleteAt >= 0, 'account deletion must remove recording blobs');
+  assert.ok(sourceBlobDeleteAt >= 0, 'account deletion must remove source blobs');
+  assert.ok(
+    accountDeleteAt > recordingBlobDeleteAt && accountDeleteAt > sourceBlobDeleteAt,
+    'every private blob must be removed before account metadata cascades',
+  );
 });
 
 test('A-5 evaluation labels are exportable in synced and local-only modes', async () => {
@@ -78,10 +95,34 @@ test('A-5 evaluation labels are exportable in synced and local-only modes', asyn
   assert.match(accountPanel, /evidenceConfirmations: localStorage\.getItem\(LOCAL_EVIDENCE_CONFIRMATIONS_KEY\)/u);
 });
 
+test('saved delivery and replay state enrich progress without changing evidence coverage', async () => {
+  const service = await readFile('apps/web/lib/services/workspace.ts', 'utf8');
+  const progressSlice = service.slice(
+    service.indexOf('export async function getProjectProgress'),
+    service.indexOf('export async function exportOwnedWorkspace'),
+  );
+  assert.match(progressSlice, /hasDeliveryReview: attemptsWithDelivery\.has\(point\.attemptId\)/u);
+  assert.match(progressSlice, /recordingStatus: recordingStatusByAttempt\.get\(point\.attemptId\) \?\? null/u);
+  const coverageExpression = progressSlice.match(/coverage: sql<number>`([^`]+)`/u)?.[1] ?? '';
+  assert.match(coverageExpression, /evidenceVerdicts\.coverageScore|evidence_verdicts/u);
+  assert.doesNotMatch(coverageExpression, /attemptRecordings|attemptDeliveryReviews/u);
+});
+
+test('private replay scope states consent, retention, deletion, and score boundaries', async () => {
+  const spec = await readFile('docs/specs/2026-08-10-innovation-week.md', 'utf8');
+  assert.match(spec, /separate, explicit opt-in/iu);
+  assert.match(spec, /durable upload requires an owned account/iu);
+  assert.match(spec, /30-day target expiry timestamp/iu);
+  assert.match(spec, /explicit delete control/iu);
+  assert.match(spec, /automatic physical cleanup is not claimed/iu);
+  assert.match(spec, /do not change rubric coverage, vocal, visual, or composite results/iu);
+});
+
 test('D-3 account deletion is an explicit hard delete protected by ownership', async () => {
   const service = await readFile('apps/web/lib/services/workspace.ts', 'utf8');
   assert.match(service, /db\.delete\(user\)\.where\(eq\(user\.id, userId\)\)/u);
   assert.match(service, /ownedSources[\s\S]+storage\.delete/u);
+  assert.match(service, /ownedRecordings[\s\S]+recordingStorage\.delete/u);
   const schema = await readFile('apps/web/lib/db/schema.ts', 'utf8');
   assert.match(schema, /references\(\(\) => authUsers\.id, \{ onDelete: 'cascade' \}\)/u);
   assert.doesNotMatch(schema, /deletedAt|softDelete/gu);
