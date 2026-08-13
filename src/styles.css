@@ -804,7 +804,8 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
    rather than a fill, so it reads as "cited, with a caveat". */
 .evidence-map a[data-evidence="reused"] { color: var(--text-primary); background: var(--surface-sunken); border-color: var(--border-strong); }
 .evidence-map a[data-evidence="reused"] .evidence-map-mark { background: transparent; border: 2px solid var(--evidence); }
-.evidence-map-count { margin: 0 0 var(--space-3); color: var(--text-muted); font-size: var(--step-0); }
+.evidence-map-count { margin: 0 0 var(--space-2); color: var(--text-muted); font-size: var(--step-0); }
+.evidence-confirm-boundary { margin: 0 0 var(--space-3); color: var(--text-secondary); font-size: var(--step-0); }
 
 .evidence-list { display: grid; grid-template-columns: 1fr; gap: var(--space-3); margin-top: var(--space-3); }
 
@@ -1021,6 +1022,14 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .criterion-spark-head { position: absolute; right: 0; width: 9px; height: 9px; background: var(--surface); border: 2px solid currentColor; border-radius: var(--radius-full); transform: translate(50%, 50%); }
 .criterion-spark-read { flex: none; display: grid; color: var(--text-primary); font-size: var(--step-0); font-weight: var(--weight-heavy); font-variant-numeric: tabular-nums; text-align: right; }
 .criterion-spark-read small { color: var(--text-muted); font-weight: var(--weight-regular); }
+
+/* Shown only when there is a second project to switch to. A dropdown holding
+   one option is a promise the product cannot keep, and the first thing anyone
+   does with a dropdown is open it. */
+.project-switcher { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-5); padding: var(--space-3) var(--space-4); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.project-switcher label { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+.project-switcher select { min-height: 44px; max-width: 100%; padding: var(--space-2) var(--space-3); color: var(--text-primary); background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); font-size: var(--step-1); font-weight: var(--weight-bold); }
+.project-switcher-meta { color: var(--text-muted); font-size: var(--step-0); }
 
 .attempt-diff-held { margin: var(--space-4) 0 0; padding-top: var(--space-4); border-top: 1px solid var(--border); color: var(--text-muted); font-size: var(--step-0); }
 .attempt-diff-held strong { color: var(--text-secondary); }

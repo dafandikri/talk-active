@@ -466,6 +466,42 @@ export const CurrentProjectResponseSchema = z.object({
   }
 });
 
+/**
+ * One row of the project switcher.
+ *
+ * The workspace has always been able to hold more than one project — the table
+ * is owner-scoped and `createOwnedProject` takes a title — but the interface
+ * offered a `<select>` with a single hardcoded `<option>` in it. A control that
+ * looks like a switcher and cannot switch is worse than no control: it teaches
+ * a user that the product is smaller than it is, and it fails the first thing a
+ * judge does with a dropdown, which is open it.
+ */
+export const ProjectSummarySchema = z.object({
+  project: ProjectSchema,
+  /** Reviewed attempts saved against this project. */
+  attemptCount: z.number().int().nonnegative(),
+  /** When the most recent attempt was saved, or null when there are none. */
+  lastAttemptAt: TimestampSchema.nullable(),
+  /** False until a rubric is confirmed; such a project cannot be practised yet. */
+  rubricConfirmed: z.boolean(),
+}).superRefine((value, context) => {
+  if (value.attemptCount === 0 && value.lastAttemptAt !== null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['lastAttemptAt'],
+      message: 'A project with no attempts cannot report when its last attempt was.',
+    });
+  }
+});
+
+// Only a signed-in owner can reach this list (M-9), so there is no guest shape
+// to describe. A signed-out visitor gets a 401 and shows its local workspace.
+export const ProjectListResponseSchema = z.object({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  identity: z.literal('account'),
+  projects: z.array(ProjectSummarySchema).max(100),
+});
+
 export const ConfirmRubricRequestSchema = z.object({
   sourceType: RubricSourceSchema,
   criteria: z.array(NewCriterionSchema).min(1).max(20),
@@ -1090,6 +1126,8 @@ export type RubricParseResponse = z.infer<typeof RubricParseResponseSchema>;
 export type CreateProjectRequest = z.infer<typeof CreateProjectRequestSchema>;
 export type CreateProjectResponse = z.infer<typeof CreateProjectResponseSchema>;
 export type CurrentProjectResponse = z.infer<typeof CurrentProjectResponseSchema>;
+export type ProjectSummary = z.infer<typeof ProjectSummarySchema>;
+export type ProjectListResponse = z.infer<typeof ProjectListResponseSchema>;
 export type ConfirmRubricRequest = z.infer<typeof ConfirmRubricRequestSchema>;
 export type ConfirmRubricResponse = z.infer<typeof ConfirmRubricResponseSchema>;
 export type CreateAttemptRequest = z.infer<typeof CreateAttemptRequestSchema>;

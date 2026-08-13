@@ -10,6 +10,7 @@ import {
   type AttemptComparison,
   type CriterionAttemptComparison,
   type ProgressResponse,
+  type ProjectSummary,
   type RecurringWeakness,
   type SavedSession,
 } from '@/lib/contracts';
@@ -21,6 +22,7 @@ import {
   summarizeRecurringWeaknesses,
 } from '@/lib/progress';
 import { CoverageTrend, CriterionSparkline } from './progress-charts';
+import { useOwnedProjects } from './use-owned-projects';
 
 type SyncState = 'local' | 'loading' | 'synced' | 'unavailable';
 
@@ -104,19 +106,34 @@ function AttemptDiff({ comparison }: Readonly<{ comparison: AttemptComparison }>
   </section>;
 }
 
+/** The one local workspace a signed-out visitor practises in. */
+const LOCAL_WORKSPACE_LABEL = 'Local workspace';
+
 export function ProgressView() {
   const [sessions, setSessions] = useState<SavedSession[]>([]);
   const [synced, setSynced] = useState<ProgressResponse | null>(null);
   const [syncState, setSyncState] = useState<SyncState>('local');
+  const { projects } = useOwnedProjects();
+  // Null means "whatever the newest saved attempt belongs to". Set once the
+  // user picks, so switching projects does not fight the default.
+  const [chosenProjectId, setChosenProjectId] = useState<string | null>(null);
 
   useEffect(() => {
-    const loaded = parseSavedSessions(localStorage.getItem(PRODUCTION_SESSIONS_KEY));
-    setSessions(loaded);
-    const projectId = latestRemoteProjectId(loaded);
-    if (!projectId) return;
+    setSessions(parseSavedSessions(localStorage.getItem(PRODUCTION_SESSIONS_KEY)));
+  }, []);
+
+  const defaultProjectId = latestRemoteProjectId(sessions) ?? projects[0]?.project.id ?? null;
+  const progressProjectId = chosenProjectId ?? defaultProjectId;
+
+  useEffect(() => {
+    if (!progressProjectId) {
+      setSynced(null);
+      setSyncState('local');
+      return;
+    }
     const abort = new AbortController();
     setSyncState('loading');
-    void requestContract(`/api/progress/${projectId}`, ProgressResponseSchema, { signal: abort.signal })
+    void requestContract(`/api/progress/${progressProjectId}`, ProgressResponseSchema, { signal: abort.signal })
       .then((progress) => {
         setSynced(progress);
         setSyncState('synced');
@@ -125,9 +142,15 @@ export function ProgressView() {
         if (!abort.signal.aborted) setSyncState('unavailable');
       });
     return () => abort.abort();
-  }, []);
+  }, [progressProjectId]);
 
-  const progressProjectId = latestRemoteProjectId(sessions);
+  // Every archive row used to be stamped "Talk-Active · RISTEK Finals" — a
+  // title compiled into the page rather than read from the project it names.
+  // With more than one project that label is simply wrong, and it was already
+  // wrong for anyone practising against a rubric of their own.
+  const activeProjectTitle = projects.find((summary) => summary.project.id === progressProjectId)
+    ?.project.title ?? LOCAL_WORKSPACE_LABEL;
+
   const scopedSessions = useMemo(() => sessions.filter((session) =>
     progressProjectId ? session.projectId === progressProjectId : session.projectId === null),
   [sessions, progressProjectId]);
@@ -163,6 +186,23 @@ export function ProgressView() {
 
   return <section className="view is-visible" aria-labelledby="progressTitle">
     <header className="page-header compact-header workflow-header"><div className="workflow-heading"><img className="workflow-mark" src={logo.src} alt="" /><div><p className="overline">Practice history</p><h1 id="progressTitle">See what changed between attempts.</h1><p className="page-lede">Track explicit evidence and recurring weak claims without inventing a universal speaking score.</p></div></div><Link className="button button-primary" href="/practice">New practice</Link></header>
+
+    {/* The workspace has always held more than one project; the interface only
+        ever admitted to one. This switcher appears once there is a second
+        project to switch to, so a single-project account is not asked to
+        operate a control with one option in it. */}
+    {projects.length > 1 && <div className="project-switcher">
+      <label htmlFor="progressProject">Project</label>
+      <select id="progressProject" value={progressProjectId ?? ''} onChange={(event) => setChosenProjectId(event.target.value)}>
+        {projects.map((summary) => <option key={summary.project.id} value={summary.project.id}>{summary.project.title}</option>)}
+      </select>
+      <span className="project-switcher-meta">{(() => {
+        const active = projects.find((summary) => summary.project.id === progressProjectId);
+        if (!active) return 'Showing locally saved history.';
+        if (active.attemptCount === 0) return 'No attempts saved to this project yet.';
+        return `${active.attemptCount} saved ${active.attemptCount === 1 ? 'attempt' : 'attempts'} · last on ${attemptDate(active.lastAttemptAt ?? active.project.updatedAt)}`;
+      })()}</span>
+    </div>}
 
     <div className="progress-stats">
       <article className="surface"><span>Sessions</span><strong>{trendPoints.length}</strong><small>{syncState === 'synced' ? 'saved to this project' : 'saved in this browser'}</small></article>
@@ -207,7 +247,7 @@ export function ProgressView() {
           const reviewable = attempt.hasDeliveryReview || attempt.recordingStatus !== null;
           const row = <>
             <span className="session-date">{date.getDate()}<br />{date.toLocaleString('en', { month: 'short' })}</span>
-            <span><strong>Talk-Active · RISTEK Finals</strong><small>{attempt.hasDeliveryReview ? 'Delivery observations and rubric evidence saved' : 'Rubric evidence saved'}</small></span>
+            <span><strong>{activeProjectTitle}</strong><small>{attempt.hasDeliveryReview ? 'Delivery observations and rubric evidence saved' : 'Rubric evidence saved'}</small></span>
             <span className="session-score"><span className="score-track"><i style={{ width: `${Math.round(attempt.coverage * 100)}%` }} /></span>{Math.round(attempt.coverage * 100)}%</span>
             <span className="session-status">{attempt.recordingStatus ? `replay ${attempt.recordingStatus}` : attempt.hasDeliveryReview ? 'review saved' : 'rubric only'}</span>
             <span aria-hidden="true">{reviewable ? '→' : '·'}</span>
@@ -216,7 +256,7 @@ export function ProgressView() {
             ? <Link className="session-row saved-attempt-link" href={`/attempts/${encodeURIComponent(attempt.attemptId)}`} key={attempt.attemptId} aria-label={`Review saved attempt from ${attemptDate(attempt.createdAt)}`}>{row}</Link>
             : <article className="session-row" key={attempt.attemptId}>{row}</article>;
         })}</div></section>
-      : <section className="surface history-card"><div className="section-title-row"><div><p className="overline">Session archive</p><h2>Every locally saved attempt</h2></div></div><div className="session-list full-session-list">{scopedSessions.length === 0 ? <p className="empty-list">No sessions saved in the production guest workspace yet.</p> : [...scopedSessions].reverse().map((session) => { const date = new Date(session.createdAt); return <article className="session-row" key={session.id}><span className="session-date">{date.getDate()}<br />{date.toLocaleString('en', { month: 'short' })}</span><span><strong>Talk-Active · RISTEK Finals</strong><small>Focus: {session.weakest}</small></span><span className="session-score"><span className="score-track"><i style={{ width: `${session.evidenceScore}%` }} /></span>{session.evidenceScore}%</span><span className="session-status">{session.defenseStatus ?? 'review only'}</span><span aria-hidden="true">·</span></article>; })}</div></section>}
+      : <section className="surface history-card"><div className="section-title-row"><div><p className="overline">Session archive</p><h2>Every locally saved attempt</h2></div></div><div className="session-list full-session-list">{scopedSessions.length === 0 ? <p className="empty-list">No sessions saved in the production guest workspace yet.</p> : [...scopedSessions].reverse().map((session) => { const date = new Date(session.createdAt); return <article className="session-row" key={session.id}><span className="session-date">{date.getDate()}<br />{date.toLocaleString('en', { month: 'short' })}</span><span><strong>{activeProjectTitle}</strong><small>Focus: {session.weakest}</small></span><span className="session-score"><span className="score-track"><i style={{ width: `${session.evidenceScore}%` }} /></span>{session.evidenceScore}%</span><span className="session-status">{session.defenseStatus ?? 'review only'}</span><span aria-hidden="true">·</span></article>; })}</div></section>}
     <p className="production-boundary-note">Synced progress is aggregated from saved verdict rows with zero model calls. Older local summaries remain labelled when their original criterion evidence was never retained.</p>
   </section>;
 }

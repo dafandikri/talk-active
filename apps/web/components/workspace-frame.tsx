@@ -6,6 +6,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 import logo from '../../../src/assets/LOGO-dashboard.png';
 import { initialsFor, readGuestIdentity } from '@/lib/guest-identity';
+import { useOwnedProjects } from './use-owned-projects';
 
 const navigation = [
   { href: '/workspace', icon: 'home', label: 'Home' },
@@ -35,6 +36,7 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
   // server and client markup disagree and React would throw out the tree.
   const [displayName, setDisplayName] = useState<string | null>(null);
   useEffect(() => { setDisplayName(readGuestIdentity()?.name ?? null); }, []);
+  const { projects } = useOwnedProjects();
 
   return (
     <div className="app-shell">
@@ -54,10 +56,27 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
             <span className="nav-icon"><NavigationIcon name="guide" /></span><span>How it works</span>
           </Link>
         </nav>
+        {/* The sidebar listed one project, and that project's name was written
+            into the markup. The workspace has always been able to hold several —
+            the table is owner-scoped — so the list is now read from the account
+            that owns them. A guest has no synced project and keeps the local
+            workspace, named for what it actually is. */}
         <div className="sidebar-projects">
-          <div className="sidebar-label-row"><span>Project</span></div>
+          <div className="sidebar-label-row"><span>{projects.length > 1 ? 'Projects' : 'Project'}</span></div>
           <div className="sidebar-project-list">
-            <Link aria-current={pathname === '/workspace' ? 'page' : undefined} className="sidebar-project is-active" href="/workspace"><i /><span>Talk-Active · RISTEK Finals</span></Link>
+            {projects.length === 0
+              ? <Link aria-current={pathname === '/workspace' ? 'page' : undefined} className="sidebar-project is-active" href="/workspace"><i /><span>Local workspace</span></Link>
+              : projects.map((summary, index) => (
+                <Link
+                  aria-current={pathname === '/workspace' && index === 0 ? 'page' : undefined}
+                  className={`sidebar-project${index === 0 ? ' is-active' : ''}`}
+                  href="/progress"
+                  key={summary.project.id}
+                  title={`${summary.attemptCount} saved ${summary.attemptCount === 1 ? 'attempt' : 'attempts'}`}
+                >
+                  <i /><span>{summary.project.title}</span>
+                </Link>
+              ))}
           </div>
         </div>
         <div className="sidebar-bottom">

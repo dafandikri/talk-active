@@ -7,6 +7,7 @@ import { DEFAULT_RUBRIC, parseRubric } from '@/lib/analyzer';
 import { jsonRequest, requestContract } from '@/lib/api/client';
 import { RubricParseResponseSchema, type RubricSource } from '@/lib/contracts';
 import { RUBRIC_TEMPLATES, type RubricTemplate } from '@/lib/rubric-library';
+import { useOwnedProjects } from './use-owned-projects';
 import {
   parseEvidencePhrases,
   readRubricSourceType,
@@ -41,6 +42,7 @@ function defaultCriteria(): EditableCriterion[] {
 }
 
 export function RubricEditor() {
+  const { projects } = useOwnedProjects();
   const [criteria, setCriteria] = useState<EditableCriterion[]>(defaultCriteria);
   const [sourceType, setSourceType] = useState<RubricSource>('manual');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -177,7 +179,7 @@ export function RubricEditor() {
     <header className="page-header compact-header"><h1 id="rubricTitle">Modify rubric</h1></header>
     <div className="rubric-layout">
       <section className="surface rubric-editor-card">
-        <h2>Talk-Active · RISTEK Finals</h2>
+        <h2>{projects[0]?.project.title ?? 'Local workspace'}</h2>
         <section className="rubric-library" aria-labelledby="rubricLibraryTitle">
           <h3 id="rubricLibraryTitle">Begin from a familiar evaluation context</h3>
           {/* A starter is not the evaluator's rubric, and a student who mistakes

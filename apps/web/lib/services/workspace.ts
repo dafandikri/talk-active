@@ -23,6 +23,7 @@ import {
   EvidenceResponseSchema,
   EvidenceVerdictSchema,
   ProgressResponseSchema,
+  ProjectListResponseSchema,
   QuestionResponseSchema,
   SourceDocumentDeleteResponseSchema,
   SourceDocumentListResponseSchema,
@@ -108,6 +109,45 @@ export async function createOwnedProject(
   }).returning();
   if (!project) throw new Error('The project insert returned no row.');
   return CreateProjectResponseSchema.parse({ contractVersion: CONTRACT_VERSION, project });
+}
+
+/**
+ * Every project this account owns, newest activity first.
+ *
+ * One grouped query rather than a lookup per project: the switcher shows an
+ * attempt count and a last-practised date per row, and doing that with a query
+ * each would put an N+1 behind a control a user opens casually.
+ *
+ * The caller is already required to be a signed-in owner (M-9: these routes
+ * reject an anonymous SQL identity, because guest rows used user_id = NULL and
+ * NULL is not an owner). So there is no guest branch here to get wrong — a
+ * signed-out visitor never reaches this function.
+ */
+export async function listOwnedProjects(db: Database, userId: string) {
+  const rows = await db.select({
+    project: projects,
+    rubricConfirmedAt: rubrics.confirmedAt,
+    attemptCount: sql<number>`count(distinct ${attempts.id})`,
+    lastAttemptAt: sql<string | null>`max(${attempts.createdAt})`,
+  })
+    .from(projects)
+    .leftJoin(rubrics, eq(rubrics.projectId, projects.id))
+    .leftJoin(attempts, eq(attempts.projectId, projects.id))
+    .where(eq(projects.userId, userId))
+    .groupBy(projects.id, rubrics.confirmedAt)
+    .orderBy(desc(projects.updatedAt), desc(projects.createdAt));
+
+  return ProjectListResponseSchema.parse({
+    contractVersion: CONTRACT_VERSION,
+    identity: 'account',
+    projects: rows.map((row) => ({
+      project: row.project,
+      attemptCount: Number(row.attemptCount),
+      // A count of zero cannot carry a date; the contract rejects that pair.
+      lastAttemptAt: Number(row.attemptCount) === 0 ? null : row.lastAttemptAt,
+      rubricConfirmed: row.rubricConfirmedAt !== null,
+    })),
+  });
 }
 
 async function assertProjectAccess(db: Database, projectId: string, userId: string | null) {

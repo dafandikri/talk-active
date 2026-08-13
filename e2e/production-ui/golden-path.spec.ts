@@ -301,6 +301,28 @@ test('private source upload grounds the saved judge question with visible proven
       contentType: 'application/json',
       body: JSON.stringify(body),
     });
+    // A workspace that reports `persistence: 'neon'` has a signed-in owner, so
+    // every surface that names a project asks which projects that owner has.
+    // Leaving it unmocked returns a 404 the console records, and the gate
+    // rightly fails on it.
+    if (url.pathname === '/api/projects' && request.method() === 'GET') return respond({
+      contractVersion: 2,
+      identity: 'account',
+      projects: [{
+        project: {
+          id: projectId,
+          userId: 'user-source-grounding',
+          title: 'Talk-Active · RISTEK Finals',
+          eventContext: null,
+          deadline: null,
+          createdAt,
+          updatedAt: createdAt,
+        },
+        attemptCount: 1,
+        lastAttemptAt: createdAt,
+        rubricConfirmed: true,
+      }],
+    });
     if (url.pathname === '/api/capabilities') return respond({
       contractVersion: 2,
       persistence: 'neon',

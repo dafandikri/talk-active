@@ -130,6 +130,13 @@ function deliveryReviewPayload(result: MultimodalAttemptResult): SaveAttemptDeli
   };
 }
 
+/** The avatar monogram, derived from the title rather than hardcoded to "TA". */
+function projectInitials(title: string): string {
+  const words = title.split(/[\s·—-]+/u).filter((word) => /^\p{L}/u.test(word));
+  const letters = words.slice(0, 2).map((word) => word[0]?.toLocaleUpperCase() ?? '').join('');
+  return letters || title.slice(0, 2).toLocaleUpperCase();
+}
+
 function SignalChips({ signals, empty }: Readonly<{ signals: string[]; empty: string }>) {
   return <>{signals.length > 0 ? signals.map((signal) => <span className="signal-chip" key={signal}>{signal}</span>) : <span className="signal-chip neutral">{empty}</span>}</>;
 }
@@ -223,6 +230,11 @@ export function PracticeRoom() {
   const [rubricText, setRubricText] = useState(DEFAULT_RUBRIC);
   const [rubricSourceType, setRubricSourceType] = useState<RubricSource>('manual');
   const [remoteContext, setRemoteContext] = useState<RemoteContext | null>(null);
+  // The project's own name, once the workspace tells us what it is. Three
+  // places on this screen used to print a title that was compiled into the
+  // page, so a user practising against their own rubric was told they were
+  // rehearsing for somebody else's competition.
+  const [projectTitle, setProjectTitle] = useState(REMOTE_PROJECT_TITLE);
   const [remoteAttemptId, setRemoteAttemptId] = useState<string | null>(null);
   const [engineNote, setEngineNote] = useState('Evidence mapped by deterministic cue matching on this device.');
   const [defenseEngineNote, setDefenseEngineNote] = useState('');
@@ -281,6 +293,7 @@ export function PracticeRoom() {
             projectId: recovered.current.project.id,
             criteria: recovered.current.criteria,
           });
+          setProjectTitle(recovered.current.project.title);
           setSourceDocuments(recovered.current.sourceDocuments);
           const recoveredRubricText = rubricTextFromCriteria(criteria);
           const localRubricText = rubricTextFromCriteria(stored.criteria);
@@ -886,7 +899,10 @@ export function PracticeRoom() {
         {stageOrder.map((item, index) => {
           const current = stageOrder.indexOf(stage);
           const state = index === current ? ' is-active' : index < current ? ' is-complete' : '';
-          return <li className={state} key={item}><span>{index + 1}</span>{item === 'setup' ? 'Set up' : item[0]?.toUpperCase() + item.slice(1)}</li>;
+          // The active step was signalled by a CSS class alone, so which step
+          // you were on was visible and not announced. aria-current is how a
+          // progress indicator reports status to everyone (Nielsen 1).
+          return <li aria-current={index === current ? 'step' : undefined} className={state} key={item}><span>{index + 1}</span>{item === 'setup' ? 'Set up' : item[0]?.toUpperCase() + item.slice(1)}</li>;
         })}
       </ol>
 
@@ -894,8 +910,8 @@ export function PracticeRoom() {
         <div className="stage-intro"><p className="overline">Before you begin</p><h2>What are you preparing for?</h2><p>Confirm the project and evaluator rubric. Both stay attached to this session.</p></div>
         <div className="setup-grid">
           <div className="surface setup-form">
-            <label htmlFor="practiceProject">Project</label><select id="practiceProject"><option>Talk-Active · RISTEK Finals</option></select>
-            <div className="setup-project-summary"><span className="project-avatar">TA</span><div><strong>Talk-Active · RISTEK Finals</strong><small>7-minute pitch · 3-minute Q&amp;A</small></div></div>
+            <p className="overline" id="practiceProjectLabel">Project</p>
+            <div className="setup-project-summary" aria-labelledby="practiceProjectLabel"><span className="project-avatar" aria-hidden="true">{projectInitials(projectTitle)}</span><div><strong>{projectTitle}</strong><small>7-minute pitch · 3-minute Q&amp;A</small></div></div>
             <button className="button button-primary button-full" type="button" onClick={() => setStage('attempt')}>Begin this attempt <span aria-hidden="true">→</span></button>
           </div>
           <aside className="surface setup-rubric">
@@ -909,7 +925,7 @@ export function PracticeRoom() {
       {stage === 'attempt' && <section className="practice-stage is-visible">
         <div className="attempt-layout">
           <div className="surface capture-panel">
-            <div className="capture-header"><div><p className="overline">Current attempt</p><h2>Talk-Active · RISTEK Finals</h2></div><div className="timer">typed</div></div>
+            <div className="capture-header"><div><p className="overline">Current attempt</p><h2>{projectTitle}</h2></div><div className="timer">typed</div></div>
             <div className="capture-tabs" role="tablist" aria-label="Practice input method"><button className={inputMethod === 'transcript' ? 'is-active' : ''} type="button" role="tab" aria-selected={inputMethod === 'transcript'} disabled={studioBusy} onClick={() => setInputMethod('transcript')}>Transcript</button><button className={inputMethod === 'observations' ? 'is-active' : ''} type="button" role="tab" aria-selected={inputMethod === 'observations'} disabled={studioBusy} onClick={() => setInputMethod('observations')}><span className="record-dot" />Camera + voice · experimental</button></div>
             {inputMethod === 'observations' && <MultimodalStudio
               transcript={transcript}
@@ -987,6 +1003,11 @@ export function PracticeRoom() {
               a summary line that hides it would undo that at a glance, which is
               the one place a judge actually looks first. */}
           <p className="evidence-map-count">{analysis.criteria.filter((criterion) => criterion.excerpt).length} of {analysis.criteria.length} criteria cite a span from this transcript{reusedCitations.length > 0 ? `, though ${reusedCitations.reduce((total, item) => total + item.criterionIds.length, 0)} of them share a quote` : ''}. Coverage counts cited spans, not quality.</p>
+          {/* Said once, before the buttons, rather than after the click. Each
+              Yes/No writes a human evaluation label and then locks — an
+              irreversible action with no warning is the classic version of this
+              mistake, and stating the limit costs one line (Nielsen 5). */}
+          <p className="evidence-confirm-boundary">Your Yes or No on a criterion is recorded once as your own evaluation label, and cannot be changed afterwards.</p>
           <div className="evidence-list">{analysis.criteria.map((criterion) => {
             const found = Boolean(criterion.excerpt);
             const criterionEngine = criterionEngines[criterion.id] ?? 'deterministic';
