@@ -48,6 +48,15 @@ const CONTENT_SECURITY_POLICY = [
   `upgrade-insecure-requests`,
 ].join('; ');
 
+// Permissions-Policy is a document policy, not a route capability that Next's
+// client-side navigation can replace. If `/workspace` denies these APIs and a
+// Link moves that same document to `/practice`, getUserMedia remains denied
+// until a hard refresh loads the practice response. Keep the same-origin APIs
+// eligible on every document instead. Eligibility is not consent: the studio
+// still requests no device until the user independently selects signals and
+// presses Start.
+const DEVICE_PERMISSIONS_POLICY = 'camera=(self), microphone=(self), geolocation=(), payment=()';
+
 const nextConfig: NextConfig = {
   // The repository's documented dev origin is 127.0.0.1. Allowing that exact
   // host keeps Turbopack/HMR functional without widening production CORS.
@@ -56,20 +65,16 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   async headers() {
-    const secured = (permissions: string) => [
+    const secured = [
       { key: 'Content-Security-Policy', value: CONTENT_SECURITY_POLICY },
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'Referrer-Policy', value: 'no-referrer' },
-      { key: 'Permissions-Policy', value: permissions },
+      { key: 'Permissions-Policy', value: DEVICE_PERMISSIONS_POLICY },
     ];
     return [
       {
-        source: '/practice',
-        headers: secured('camera=(self), microphone=(self), geolocation=(), payment=()'),
-      },
-      {
-        source: '/((?!practice(?:/|$)).*)',
-        headers: secured('camera=(), microphone=(), geolocation=(), payment=()'),
+        source: '/:path*',
+        headers: secured,
       },
     ];
   },

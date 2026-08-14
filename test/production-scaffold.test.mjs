@@ -54,6 +54,18 @@ test('M-13 the security headers survived the move to next.config.ts', () => {
   );
 });
 
+test('device permission eligibility survives client navigation into both rehearsal modes', () => {
+  const config = read('apps/web/next.config.ts');
+  assert.match(config, /source: '\/:path\*'/u, 'one document-wide header policy must cover every entry route');
+  assert.match(config, /camera=\(self\), microphone=\(self\)/u);
+  assert.doesNotMatch(
+    config,
+    /camera=\(\), microphone=\(\)/u,
+    'a document loaded outside Practice must not permanently deny capture after client navigation',
+  );
+  assert.match(config, /Eligibility is not consent/u);
+});
+
 test('P0-1 exposes one schema contract to both UI and route handlers', () => {
   const contracts = read('apps/web/lib/contracts.ts');
   const component = read('apps/web/components/production-shell.tsx');
