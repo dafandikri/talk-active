@@ -103,12 +103,16 @@ function joinReviewedTurns(
   });
 }
 
-function localInterviewAnalysis(drafts: readonly InterviewTurnDraft[]): InterviewAnalysisResponse {
+function localInterviewAnalysis(
+  drafts: readonly InterviewTurnDraft[],
+  language: InterviewLanguage,
+): InterviewAnalysisResponse {
   const reviewed = drafts.map((draft) => {
     const analysis = analyzeSpeech({
       transcript: draft.answer,
       durationSeconds: draft.durationSeconds,
       rubricText: rubricTextFromCriteria([draft.question.criterion]),
+      language,
     });
     const evidence = analysis.criteria[0];
     if (!evidence) throw new Error('The deterministic interview review returned no criterion evidence.');
@@ -316,6 +320,8 @@ export function InterviewSession({
           answerStartMs: turn.answerStartMs,
           answerEndMs: turn.answerEndMs,
         })),
+        // Kato asked in this language; the review has to answer in it too.
+        language,
       };
       let response: InterviewAnalysisResponse;
       if (semanticAvailable) {
@@ -326,10 +332,10 @@ export function InterviewSession({
             jsonRequest('POST', payload),
           );
         } catch {
-          response = localInterviewAnalysis(completedDrafts);
+          response = localInterviewAnalysis(completedDrafts, language);
         }
       } else {
-        response = localInterviewAnalysis(completedDrafts);
+        response = localInterviewAnalysis(completedDrafts, language);
       }
       const turns = joinReviewedTurns(completedDrafts, response);
       await onComplete({

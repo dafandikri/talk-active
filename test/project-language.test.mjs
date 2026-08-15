@@ -19,6 +19,8 @@ import {
   readLocalProjectLanguage,
   writeLocalProjectLanguage,
 } from '../apps/web/lib/project-preferences.ts';
+import { generateJudgeQuestion } from '../apps/web/lib/ai/question-generator.ts';
+import { statelessAnalysisCacheKey } from '../apps/web/lib/api/stateless-analysis-cache.ts';
 
 const project = {
   id: 'project-1',
@@ -189,4 +191,91 @@ test('the generated migration metadata forms one intact, locale-aware chain', ()
     notNull: true,
     default: "'id-ID'",
   });
+});
+
+// The semantic path composes its visible question in application code too
+// (question-generator.ts says so in its own system prompt: "Application code,
+// not you, writes the visible question"). So the language of what a student
+// reads is our decision on every path, semantic and deterministic alike, and
+// it has to follow the project rather than the file the template lives in.
+test('the composed judge question follows the project language on the deterministic path', async () => {
+  const criterion = {
+    id: 'validasi',
+    rubricId: 'rubric-1',
+    name: 'Validasi',
+    description: 'Bukti pengujian bersama pengguna',
+    requiredEvidence: ['jumlah pengguna yang diuji'],
+    displayOrder: 0,
+  };
+  const judgment = {
+    criterionId: 'validasi',
+    verdict: 'unsupported',
+    coverageScore: 0,
+    citedSpan: null,
+    missingEvidence: ['jumlah pengguna yang diuji'],
+    engine: 'deterministic',
+    degradedReason: null,
+  };
+
+  const indonesian = await generateJudgeQuestion('transkrip latihan', criterion, judgment, {
+    model: '',
+    language: 'id-ID',
+  });
+  const english = await generateJudgeQuestion('transkrip latihan', criterion, judgment, {
+    model: '',
+    language: 'en-US',
+  });
+
+  assert.match(indonesian.questionText, /^Bukti eksplisit apa yang bisa Anda tambahkan/u);
+  assert.match(english.questionText, /^What explicit evidence can you add/u);
+  // The cue itself is the student's own rubric text and is never translated.
+  assert.ok(indonesian.questionText.includes('jumlah pengguna yang diuji'));
+  assert.ok(english.questionText.includes('jumlah pengguna yang diuji'));
+});
+
+test('an unset question language uses the same id-ID default as the project contract', async () => {
+  const draft = await generateJudgeQuestion(
+    'transkrip latihan',
+    {
+      id: 'validasi',
+      rubricId: 'rubric-1',
+      name: 'Validasi',
+      description: 'Bukti pengujian',
+      requiredEvidence: ['jumlah pengguna'],
+      displayOrder: 0,
+    },
+    {
+      criterionId: 'validasi',
+      verdict: 'unsupported',
+      coverageScore: 0,
+      citedSpan: null,
+      missingEvidence: ['jumlah pengguna'],
+      engine: 'deterministic',
+      degradedReason: null,
+    },
+    { model: '' },
+  );
+  assert.match(draft.questionText, /^Bukti eksplisit apa/u);
+});
+
+// The cached response now depends on the language, because judgeQuestion,
+// drill and missingEvidence all do. The key already covers the system prompts,
+// but the language directive rides in the user prompt, so nothing would have
+// invalidated it. Two projects sharing a transcript and rubric would otherwise
+// serve each other's wording.
+test('the analysis cache key separates two projects that differ only in language', () => {
+  const shared = {
+    transcript: 'Kami menguji prototipe ini bersama dua belas mahasiswa.',
+    criteria: [{
+      id: 'validasi',
+      name: 'Validasi',
+      description: 'Bukti pengujian',
+      requiredEvidence: ['jumlah pengguna'],
+      displayOrder: 0,
+    }],
+  };
+  assert.notEqual(
+    statelessAnalysisCacheKey({ ...shared, language: 'id-ID' }, {}),
+    statelessAnalysisCacheKey({ ...shared, language: 'en-US' }, {}),
+  );
 });

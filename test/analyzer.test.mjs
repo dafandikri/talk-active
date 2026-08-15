@@ -30,6 +30,7 @@ test('analyzeSpeech produces an evidence map and a focused next action', () => {
     transcript: STARTER_DRAFT,
     rubricText: DEFAULT_RUBRIC,
     durationSeconds: 90,
+    language: 'en-US',
   });
 
   assert.equal(result.criterionCount, 4);
@@ -48,13 +49,16 @@ test('semantic missing-evidence sentences remain readable in the question and dr
     ],
   };
 
-  const question = makeJudgeQuestion(criterion);
-  const drill = makeDrill(criterion);
+  const question = makeJudgeQuestion(criterion, 'en-US');
+  const drill = makeDrill(criterion, 'en-US');
 
   // The wording moved when the question started being composed from a chosen
-  // cue rather than a label keyword. What this check is for has not moved: a
-  // sentence-shaped cue has to survive into the question and the drill intact
-  // and still read as English.
+  // cue rather than a label keyword, and again when the language became the
+  // project's rather than the file's. What this check is for has not moved: a
+  // sentence-shaped cue has to survive into the question and the drill intact.
+  // The language is now stated rather than assumed, because the default is
+  // id-ID and an English assertion that relies on a default is a test that
+  // will lie the next time the default moves.
   assert.match(question, /No actual rubric is shown or described/iu);
   assert.doesNotMatch(question, /make No actual/iu);
   assert.match(drill, /Evidence to add: No actual rubric/iu);
@@ -238,4 +242,66 @@ test('an unpunctuated transcript no longer gives every criterion the same quote'
       'a quote must be a passage, not the entire transcript',
     );
   }
+});
+
+// The AI layer was built so the model selects a quote and application code
+// writes the sentence the user reads. That is what makes the citation
+// guarantee hold, and it is also why the visible question was English on every
+// path: composeQuestion, makeJudgeQuestion and makeDrill are template
+// literals, not model output. The project language governs them, not the
+// language the transcript happens to be in.
+const WEAK_CRITERION = {
+  id: 'validasi',
+  label: 'Validasi',
+  requirementText: 'pengujian pengguna',
+  signals: ['pengujian', 'pengguna'],
+  score: 0,
+  status: 'missing',
+  matchedSignals: [],
+  missingSignals: ['pengujian pengguna'],
+  excerpt: '',
+};
+
+test('an Indonesian project gets an Indonesian judge question and drill', () => {
+  const question = makeJudgeQuestion(WEAK_CRITERION, 'id-ID');
+  const drill = makeDrill(WEAK_CRITERION, 'id-ID');
+  assert.match(question, /^Bukti eksplisit apa yang bisa Anda tambahkan/u);
+  assert.ok(question.includes('pengujian pengguna'), 'the cue must survive translation');
+  assert.match(drill, /^Ulangi hanya/u);
+  assert.match(drill, /klaim . bukti . mengapa itu penting/u);
+});
+
+test('an English project keeps the English wording', () => {
+  assert.match(makeJudgeQuestion(WEAK_CRITERION, 'en-US'), /^What explicit evidence can you add/u);
+  assert.match(makeDrill(WEAK_CRITERION, 'en-US'), /^Retry only/u);
+});
+
+test('the visible question follows the project language, not the transcript language', () => {
+  const indonesian = analyzeSpeech({
+    transcript: STARTER_DRAFT,
+    rubricText: DEFAULT_RUBRIC,
+    durationSeconds: 90,
+    language: 'id-ID',
+  });
+  const english = analyzeSpeech({
+    transcript: STARTER_DRAFT,
+    rubricText: DEFAULT_RUBRIC,
+    durationSeconds: 90,
+    language: 'en-US',
+  });
+  assert.match(indonesian.judgeQuestion, /Bukti/u);
+  assert.match(indonesian.drill, /Ulangi/u);
+  assert.match(english.judgeQuestion, /evidence/u);
+  assert.match(english.drill, /Retry/u);
+});
+
+test('an unset language falls back to the project contract default of Indonesian', () => {
+  // ProjectSchema.language defaults to id-ID. An analyzer that defaulted to
+  // English would disagree with the contract that creates the project.
+  const result = analyzeSpeech({
+    transcript: STARTER_DRAFT,
+    rubricText: DEFAULT_RUBRIC,
+    durationSeconds: 90,
+  });
+  assert.match(result.judgeQuestion, /Bukti/u);
 });

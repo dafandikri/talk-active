@@ -581,6 +581,11 @@ export const StatelessAnalysisRequestSchema = z.object({
   transcript: z.string().trim().min(1).max(12_000),
   criteria: z.array(StatelessInputCriterionSchema).min(1).max(20),
   durationSeconds: z.number().int().positive().max(3_600),
+  // The project's language governs what the student reads back, not the
+  // language the transcript happens to be in. Defaulted rather than required so
+  // an older client keeps working, and defaulted to the same value ProjectSchema
+  // uses so the two cannot disagree about an unstated project.
+  language: ProjectLanguageSchema.default('id-ID'),
 }).superRefine((value, context) => {
   const ids = new Set(value.criteria.map((criterion) => criterion.id));
   if (ids.size !== value.criteria.length) {
@@ -745,6 +750,10 @@ export const InterviewAnalysisTurnSchema = z.object({
 
 export const InterviewAnalysisRequestSchema = z.object({
   turns: z.array(InterviewAnalysisTurnSchema).min(1).max(5),
+  // Kato already asks in the project's language. Before this field the answer
+  // he gave back was English regardless, which is the version of the bug a
+  // student notices first.
+  language: ProjectLanguageSchema.default('id-ID'),
 }).strict().superRefine((value, context) => {
   const turnIds = new Set(value.turns.map((turn) => turn.turnId));
   if (turnIds.size !== value.turns.length) {
@@ -958,6 +967,9 @@ export const StatelessRejudgeRequestSchema = z.object({
   transcript: z.string().trim().min(1).max(12_000),
   criterion: CriterionSchema,
   rejected: RejectedStatelessJudgmentSchema,
+  // A re-judge replaces the visible question, so it needs the same language the
+  // first one was written in.
+  language: ProjectLanguageSchema.default('id-ID'),
 });
 
 export const StatelessRejudgeResponseSchema = z.object({

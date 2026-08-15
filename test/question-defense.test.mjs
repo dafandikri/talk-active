@@ -35,6 +35,10 @@ const SOURCE_DOCUMENTS = [{
 test('M-7 grounds a challenged transcript claim to the original words', async () => {
   const result = await generateJudgeQuestion(TRANSCRIPT, CRITERION, JUDGMENT, {
     model: 'test/strong-tier',
+    // This test is about grounding, not language. The wording it pins is
+    // English, so it says so rather than leaning on a default that now
+    // resolves to id-ID.
+    language: 'en-US',
     generate: async () => ({
       output: {
         challengedClaim: 'talk-active starts from the evaluator rubric',

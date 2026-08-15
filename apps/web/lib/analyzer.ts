@@ -1,3 +1,24 @@
+import type { ProjectLanguage } from './contracts.ts';
+
+// One language union, owned by the project contract. A second one declared
+// here would be free to drift away from the schema that creates the project.
+// The import is type-only, so the deterministic core still pulls in nothing at
+// runtime.
+export type AnalysisLanguage = ProjectLanguage;
+
+const DEFAULT_LANGUAGE: AnalysisLanguage = 'id-ID';
+
+/**
+ * The project governs the language, not the transcript. A student rehearsing
+ * an English pitch inside an Indonesian project still gets Indonesian
+ * coaching, because the project is the thing they chose. Unrecognised input
+ * falls back to the same default ProjectSchema uses, so the analyzer and the
+ * contract that creates the project cannot disagree.
+ */
+function languageOf(value: unknown): AnalysisLanguage {
+  return value === 'en-US' ? 'en-US' : DEFAULT_LANGUAGE;
+}
+
 // Words that cannot carry evidence on their own. Two jobs: they are dropped
 // when we derive signals from a bare label, and they decide which missing cue
 // is worth building a question around. They are never removed from a signal the
@@ -83,6 +104,7 @@ export interface AnalysisInput {
   transcript?: unknown;
   rubricText?: unknown;
   durationSeconds?: unknown;
+  language?: unknown;
 }
 
 export interface AnalysisResult {
@@ -354,8 +376,20 @@ function evidenceForCriterion(
   };
 }
 
-export function makeJudgeQuestion(criterion: EvidenceCriterion): string {
+export function makeJudgeQuestion(
+  criterion: EvidenceCriterion,
+  language: AnalysisLanguage = DEFAULT_LANGUAGE,
+): string {
   const missing = mostInformativeCue(criterion.missingSignals);
+  if (language === 'id-ID') {
+    if (missing) {
+      return `Bukti eksplisit apa yang bisa Anda tambahkan untuk “${missing}” agar memenuhi “${criterion.label}”?`;
+    }
+    if (criterion.excerpt.trim()) {
+      return `Bukti apa yang mendukung pernyataan ini dari latihan Anda: “${elideSpan(criterion.excerpt.trim())}”?`;
+    }
+    return `Bukti eksplisit apa yang memenuhi “${criterion.label}”?`;
+  }
   if (missing) {
     return `What explicit evidence can you add for “${missing}” to satisfy “${criterion.label}”?`;
   }
@@ -365,8 +399,15 @@ export function makeJudgeQuestion(criterion: EvidenceCriterion): string {
   return `What explicit evidence would satisfy “${criterion.label}”?`;
 }
 
-export function makeDrill(criterion: EvidenceCriterion): string {
+export function makeDrill(
+  criterion: EvidenceCriterion,
+  language: AnalysisLanguage = DEFAULT_LANGUAGE,
+): string {
   const cues = criterion.missingSignals.slice(0, 3);
+  if (language === 'id-ID') {
+    const cueText = cues.length > 0 ? ` Bukti yang perlu ditambahkan: ${cues.join('; ')}.` : '';
+    return `Ulangi hanya “${criterion.label}” dalam 30 detik. Gunakan klaim → bukti → mengapa itu penting.${cueText}`;
+  }
   const cueText = cues.length > 0 ? ` Evidence to add: ${cues.join('; ')}.` : '';
   return `Retry only “${criterion.label}” in 30 seconds. Use claim → evidence → why it matters.${cueText}`;
 }
@@ -388,7 +429,9 @@ export function analyzeSpeech({
   transcript,
   rubricText,
   durationSeconds,
+  language,
 }: AnalysisInput): AnalysisResult {
+  const projectLanguage = languageOf(language);
   const normalizedTranscript = String(transcript ?? '').trim();
   if (!normalizedTranscript) {
     throw new AnalysisError('empty_transcript', 'Paste a transcript or use the microphone first.');
@@ -436,8 +479,8 @@ export function analyzeSpeech({
     criterionCount: criteria.length,
     criteria,
     weakest,
-    judgeQuestion: makeJudgeQuestion(weakest),
-    drill: makeDrill(weakest),
+    judgeQuestion: makeJudgeQuestion(weakest, projectLanguage),
+    drill: makeDrill(weakest, projectLanguage),
     delivery: {
       wordCount,
       durationSeconds: seconds,

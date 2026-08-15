@@ -49,7 +49,7 @@ export async function rejudgeStatelessEvidence(
     input.transcript,
     input.criterion,
     judgment,
-    options.question,
+    { ...options.question, language: input.language },
   );
   const semanticUnits = Number(judgment.engine === 'semantic')
     + Number(question.engine === 'semantic');

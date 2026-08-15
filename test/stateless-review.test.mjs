@@ -21,6 +21,9 @@ test('A-5 stateless rejection runs one schema-bound re-judge and refreshes the q
   const response = await rejudgeStatelessEvidence({
     transcript,
     criterion: CRITERION,
+    // English transcript, English criterion, English assertion below. Stated
+    // rather than inherited, since the contract default is now id-ID.
+    language: 'en-US',
     rejected: {
       verdict: 'partial',
       coverageScore: 0.5,

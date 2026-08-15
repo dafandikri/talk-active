@@ -238,11 +238,15 @@ function strictLocalAnalysis(result: AnalysisResult): AnalysisResult {
   };
 }
 
-function analysisFromInterview(completion: InterviewCompletion): AnalysisResult {
+function analysisFromInterview(
+  completion: InterviewCompletion,
+  language: ProjectLanguage,
+): AnalysisResult {
   const local = analyzeSpeech({
     transcript: completion.transcript,
     rubricText: rubricTextFromCriteria(completion.turns.map((turn) => turn.question.criterion)),
     durationSeconds: completion.durationSeconds,
+    language,
   });
   const criteria: AnalysisResult['criteria'] = completion.turns.map((turn) => ({
     id: turn.question.criterion.id,
@@ -270,7 +274,7 @@ function analysisFromInterview(completion: InterviewCompletion): AnalysisResult 
     criteria,
     weakest,
     judgeQuestion: completion.hardestQuestion.questionText,
-    drill: makeDrill(weakest),
+    drill: makeDrill(weakest, language),
   };
 }
 
@@ -768,7 +772,12 @@ export function PracticeRoom({
     setQuestionSourceFilename(null);
     try {
       const localResult = strictLocalAnalysis(
-        analyzeSpeech({ transcript: reviewTranscript, rubricText, durationSeconds: reviewDuration }),
+        analyzeSpeech({
+          transcript: reviewTranscript,
+          rubricText,
+          durationSeconds: reviewDuration,
+          language: projectLanguage,
+        }),
       );
       const localReusedCitations = detectReusedCitations(localResult.criteria.map((criterion) => ({
         criterionId: criterion.id,
@@ -793,6 +802,7 @@ export function PracticeRoom({
                   displayOrder: criterion.displayOrder,
                 })),
                 durationSeconds: reviewDuration,
+                language: projectLanguage,
               }),
             );
             setAnalysis(response.analysis);
@@ -897,7 +907,7 @@ export function PracticeRoom({
   }
 
   function completeInterview(completion: InterviewCompletion): void {
-    const completedAnalysis = analysisFromInterview(completion);
+    const completedAnalysis = analysisFromInterview(completion, projectLanguage);
     const completedEngines = Object.fromEntries(
       completion.turns.map((turn) => [turn.question.criterion.id, turn.judgment.engine]),
     );
@@ -1121,6 +1131,7 @@ export function PracticeRoom({
                   missingEvidence: criterion.missingSignals,
                   engine: originalEngine,
                 },
+                language: projectLanguage,
               }),
             );
             replacement = response.judgment;
@@ -1313,6 +1324,7 @@ export function PracticeRoom({
             missingEvidence: criterion.missingSignals,
             engine: criterionEngines[target.criterionId] ?? 'deterministic',
           },
+          language: projectLanguage,
         }),
       );
       applyRejudgedCriterion(
