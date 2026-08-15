@@ -208,12 +208,61 @@ export function parseRubric(rubricText: unknown): RubricCriterion[] {
   });
 }
 
-function splitSentences(transcript: string): string[] {
-  const sentences = transcript
+// Browser dictation does not reliably emit terminal punctuation, and dictation
+// is the primary Indonesian capture route. Splitting only on `.!?` returned a
+// single segment for such a transcript, so evidenceForCriterion ranked that one
+// segment for every criterion and handed each of them the whole transcript as
+// its quote. That is the mechanism behind the duplicate citations in issue #32;
+// the seeded starter draft only showed a milder form of it.
+const UNSEGMENTED_TRANSCRIPT_FLOOR = 240;
+const MIN_CLAUSE_CHARS = 40;
+
+// Words that open a new clause in Indonesian or English. The boundary is placed
+// before the connective, so it travels with the clause it introduces.
+const CLAUSE_OPENER =
+  /\s+(?=(?:dan|lalu|kemudian|sedangkan|sehingga|karena|jadi|namun|tetapi|then|so|because)\s)/giu;
+
+/**
+ * Boundaries rather than pieces, so every segment can be produced by slicing
+ * the original string. An excerpt becomes a blockquote attributed to the
+ * speaker, so a segment we rejoined with our own whitespace would be a sentence
+ * we wrote for them (INV-3). Slicing keeps each one verbatim by construction.
+ */
+function clauseStarts(text: string): number[] {
+  const starts = [0];
+  for (const match of text.matchAll(CLAUSE_OPENER)) {
+    const start = (match.index ?? 0) + match[0].length;
+    const previous = starts[starts.length - 1] ?? 0;
+    // A clause shorter than the floor is not evidence, it is a fragment. Fold
+    // it forward rather than let it stand alone and be quoted as a finding.
+    if (start - previous >= MIN_CLAUSE_CHARS) starts.push(start);
+  }
+  return starts;
+}
+
+function segmentUnpunctuated(text: string): string[] {
+  const starts = clauseStarts(text);
+  const lastStart = starts[starts.length - 1] ?? 0;
+  if (starts.length > 1 && text.length - lastStart < MIN_CLAUSE_CHARS) starts.pop();
+  if (starts.length < 2) return [text];
+  return starts
+    .map((start, index) => text.slice(start, starts[index + 1] ?? text.length).trim())
+    .filter(Boolean);
+}
+
+export function splitSentences(transcript: string): string[] {
+  const trimmed = transcript.trim();
+  const sentences = trimmed
     .split(/(?<=[.!?])\s+|\r?\n+/u)
     .map((sentence) => sentence.trim())
     .filter(Boolean);
-  return sentences.length > 0 ? sentences : [transcript.trim()];
+  // A transcript the author punctuated keeps exactly the segmentation it had.
+  if (sentences.length > 1) return sentences;
+  const whole = sentences[0] ?? trimmed;
+  if (!whole) return [trimmed];
+  // A short unpunctuated answer is one utterance; splitting it would invent
+  // boundaries the speaker never made.
+  return whole.length <= UNSEGMENTED_TRANSCRIPT_FLOOR ? [whole] : segmentUnpunctuated(whole);
 }
 
 /** A cue is present only when every word in it is. Half of "existing tools" is not the cue. */

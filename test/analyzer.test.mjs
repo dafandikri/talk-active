@@ -14,6 +14,7 @@ import {
   makeDrill,
   makeJudgeQuestion,
   parseRubric,
+  splitSentences,
   tokenize,
 } from '../apps/web/lib/analyzer.ts';
 
@@ -185,4 +186,56 @@ test('paid analysis inputs have explicit prompt-cost ceilings', () => {
     ).join('\n')),
     (error) => error instanceof AnalysisError && error.code === 'too_many_criteria',
   );
+});
+
+// Dictation does not reliably emit terminal punctuation, and the Indonesian
+// capture route is where that shows most. A transcript with no `.!?` used to
+// collapse to a single segment, so evidenceForCriterion ranked that one segment
+// for every criterion and returned the whole transcript as each one's quote.
+// That is the mechanism behind issue #32, not a separate defect.
+const DICTATED_WITHOUT_PUNCTUATION = 'kami membangun talk active untuk mahasiswa indonesia yang berlatih presentasi sendirian dan kami sudah menguji prototipe ini bersama dua belas mahasiswa selama tiga minggu karena umpan balik yang mereka terima selalu datang setelah nilai keluar sehingga mereka tidak pernah tahu bagian mana yang harus diperbaiki jadi kami memetakan setiap klaim ke kriteria rubrik';
+
+test('splitSentences segments a dictated transcript that carries no terminal punctuation', () => {
+  const segments = splitSentences(DICTATED_WITHOUT_PUNCTUATION);
+  assert.ok(segments.length > 1, 'an unpunctuated dictated transcript must not stay one span');
+});
+
+test('every segment stays a verbatim contiguous substring of the transcript', () => {
+  // INV-3: the excerpt becomes a blockquote attributed to the speaker. A
+  // segment that is not a substring is a sentence we wrote for them.
+  for (const segment of splitSentences(DICTATED_WITHOUT_PUNCTUATION)) {
+    assert.ok(
+      DICTATED_WITHOUT_PUNCTUATION.includes(segment),
+      `segment is not verbatim: ${JSON.stringify(segment)}`,
+    );
+  }
+});
+
+test('a punctuated transcript keeps exactly the segmentation it had', () => {
+  assert.deepEqual(
+    splitSentences(STARTER_DRAFT),
+    STARTER_DRAFT.split(/(?<=[.!?])\s+|\r?\n+/u).map((part) => part.trim()).filter(Boolean),
+  );
+});
+
+test('a short unpunctuated answer is left as one utterance', () => {
+  const short = 'kami menguji prototipe ini bersama dua belas mahasiswa';
+  assert.deepEqual(splitSentences(short), [short]);
+});
+
+test('an unpunctuated transcript no longer gives every criterion the same quote', () => {
+  const result = analyzeSpeech({
+    transcript: DICTATED_WITHOUT_PUNCTUATION,
+    rubricText: 'Masalah | mahasiswa, presentasi\nValidasi | prototipe, menguji',
+    durationSeconds: 90,
+  });
+  const quoted = result.criteria.map((criterion) => criterion.excerpt).filter(Boolean);
+  assert.equal(quoted.length, 2, 'both criteria should still cite a span');
+  assert.notEqual(quoted[0], quoted[1], 'two criteria must not share one whole-transcript quote');
+  for (const excerpt of quoted) {
+    assert.ok(
+      excerpt.length < DICTATED_WITHOUT_PUNCTUATION.length,
+      'a quote must be a passage, not the entire transcript',
+    );
+  }
 });
