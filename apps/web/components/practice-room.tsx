@@ -1227,32 +1227,78 @@ export function PracticeRoom({
   // One pass over every criterion, so each evidence card can say what was
   // asserted for it rather than the review saying one thing about the whole
   // take. A criterion whose coaching fails degrades alone.
+  /**
+   * An interview is coached one answer at a time, never as a joined
+   * transcript. `aggregateInterviewAnswers` exists, but interview-session.ts
+   * documents why it must not be used here: a rubric cue inside Kato's
+   * question would become evidence the student is credited with supplying.
+   * Coaching each answer against its own criterion makes that structural
+   * rather than something a prompt has to remember.
+   *
+   * One request per turn, so a turn whose coaching fails degrades alone —
+   * the same shape the presentation path already has per criterion.
+   */
+  async function coachInterviewAnswers(): Promise<CriterionCoaching[]> {
+    const perTurn = await Promise.all(interviewTurns.map((turn) => requestContract(
+      '/api/coach',
+      ClaimCoachResponseSchema,
+      jsonRequest('POST', {
+        transcript: turn.answer,
+        criteria: [{
+          id: turn.question.criterion.id,
+          name: turn.question.criterion.name,
+          description: turn.question.criterion.description,
+          requiredEvidence: turn.question.criterion.requiredEvidence,
+          displayOrder: turn.question.criterion.displayOrder,
+        }],
+        language: projectLanguage,
+      }),
+    ).then(
+      (response) => response.coachings,
+      (): CriterionCoaching[] => [{
+        criterionId: turn.question.criterion.id,
+        claims: [],
+        discardedClaims: 0,
+        strongerForm: null,
+        blanks: [],
+        degradedReason: 'Coaching for this answer was unavailable. Its verdict above is unaffected.',
+        model: null,
+      }],
+    )));
+    return perTurn.flat();
+  }
+
   async function runCoach() {
-    if (!analysis || rehearsalFormat !== 'presentation' || !semanticCoachAvailable) return;
+    if (!analysis || !semanticCoachAvailable) return;
+    if (rehearsalFormat === 'interview' && interviewTurns.length === 0) return;
     setCoachBusy(true);
     setCoachNote('');
     try {
-      const response = await requestContract(
-        '/api/coach',
-        ClaimCoachResponseSchema,
-        jsonRequest('POST', {
-          transcript,
-          criteria: rubricCriteria.map((criterion) => ({
-            id: criterion.id,
-            name: criterion.name,
-            description: criterion.description,
-            requiredEvidence: criterion.requiredEvidence,
-            displayOrder: criterion.displayOrder,
-          })),
-        }),
-      );
+      const coachings = rehearsalFormat === 'interview'
+        ? await coachInterviewAnswers()
+        : (await requestContract(
+          '/api/coach',
+          ClaimCoachResponseSchema,
+          jsonRequest('POST', {
+            transcript,
+            criteria: rubricCriteria.map((criterion) => ({
+              id: criterion.id,
+              name: criterion.name,
+              description: criterion.description,
+              requiredEvidence: criterion.requiredEvidence,
+              displayOrder: criterion.displayOrder,
+            })),
+            language: projectLanguage,
+          }),
+        )).coachings;
       setCoachings(Object.fromEntries(
-        response.coachings.map((coaching) => [coaching.criterionId, coaching]),
+        coachings.map((coaching) => [coaching.criterionId, coaching]),
       ));
-      const degraded = response.coachings.filter((coaching) => coaching.degradedReason).length;
+      const degraded = coachings.filter((coaching) => coaching.degradedReason).length;
+      const unit = rehearsalFormat === 'interview' ? 'answers' : 'criteria';
       setCoachNote(degraded > 0
-        ? `${response.coachings.length - degraded} of ${response.coachings.length} criteria were coached in full. The rest say below what was rejected.`
-        : `All ${response.coachings.length} criteria were coached. Every quote shown passed the exact-span check.`);
+        ? `${coachings.length - degraded} of ${coachings.length} ${unit} were coached in full. The rest say below what was rejected.`
+        : `All ${coachings.length} ${unit} were coached. Every quote shown passed the exact-span check.`);
     } catch (caught) {
       setCoachNote(caught instanceof Error
         ? `${caught.message} The rubric verdicts above are unaffected.`
@@ -1686,16 +1732,22 @@ export function PracticeRoom({
               Yes/No writes a human evaluation label and then locks — an
               irreversible action with no warning is the classic version of this
               mistake, and stating the limit costs one line (Nielsen 5). */}
-          {semanticCoachAvailable && rehearsalFormat === 'presentation' && <div className="coach-trigger">
+          {semanticCoachAvailable && (rehearsalFormat === 'presentation' || interviewTurns.length > 0) && <div className="coach-trigger">
             <div>
-              <strong>Break this down criterion by criterion</strong>
-              <p>Every criterion gets its own reading: what you asserted for it, which of those assertions you backed with your own words, and a stronger form built only from what you already said.</p>
+              <strong>{rehearsalFormat === 'interview' ? 'Break this down answer by answer' : 'Break this down criterion by criterion'}</strong>
+              <p>{rehearsalFormat === 'interview'
+                ? 'Every answer gets its own reading: what you asserted for its criterion, which of those assertions you backed with your own words, and a stronger form built only from what you already said. Each answer is read on its own, so Kato’s wording never counts as your evidence.'
+                : 'Every criterion gets its own reading: what you asserted for it, which of those assertions you backed with your own words, and a stronger form built only from what you already said.'}</p>
             </div>
             <button className="button button-secondary" type="button" disabled={coachBusy} aria-busy={coachBusy} onClick={() => void runCoach()}>
-              {coachBusy ? 'Reading each criterion…' : Object.keys(coachings).length > 0 ? 'Read them again' : 'Break down each criterion'}
+              {coachBusy
+                ? rehearsalFormat === 'interview' ? 'Reading each answer…' : 'Reading each criterion…'
+                : Object.keys(coachings).length > 0
+                  ? 'Read them again'
+                  : rehearsalFormat === 'interview' ? 'Break down each answer' : 'Break down each criterion'}
             </button>
           </div>}
-          {rehearsalFormat === 'presentation' && coachNote && <p className="rubric-import-status" role="status">{coachNote}</p>}
+          {coachNote && <p className="rubric-import-status" role="status">{coachNote}</p>}
           <p className="evidence-confirm-boundary">Your Yes or No on a criterion is recorded once as your own evaluation label, and cannot be changed afterwards.</p>
           <div className="evidence-list">{analysis.criteria.map((criterion) => {
             const found = Boolean(criterion.excerpt);

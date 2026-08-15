@@ -615,3 +615,132 @@ test('one continuous interview capture stays paused for narration and resumes ac
   await expect(replayStatus).toContainText(/replay recording is active/i);
   await expectNoHorizontalOverflow(page);
 });
+
+// Interview mode had the whole coaching engine available and one condition on
+// rehearsalFormat kept it switched off, so a student who rehearsed by
+// answering questions got verdicts and no help writing a better answer.
+//
+// The valuable part of this test is not that the cards appear. It is that each
+// request carries exactly one answer and exactly one criterion. Kato's question
+// text names rubric cues, and interview-session.ts warns that those cues must
+// never be credited to the student. Coaching answer-locally is what makes that
+// structural instead of a rule a prompt has to keep remembering.
+test('each interview answer is coached against its own criterion, and never against another', async ({ page }) => {
+  const coachRequests: Array<{
+    transcript: string;
+    language: string;
+    criteria: Array<{ id: string; name: string }>;
+  }> = [];
+
+  await seedFiveCriterionRubric(page);
+  await page.route('**/api/capabilities', async (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      contractVersion: 2,
+      persistence: 'local',
+      accounts: false,
+      sourceDocuments: false,
+      recordings: false,
+      semantic: { rubric: false, evidence: true, question: true, defense: false, coach: true },
+    }),
+  }));
+
+  await page.route('**/api/interview/analyze', async (route) => {
+    // The turn ids are generated in the browser and the review is joined back
+    // by them, so the mock has to answer the ids it was actually sent.
+    const posted = route.request().postDataJSON() as {
+      turns: Array<{ turnId: string; criterion: { id: string; requiredEvidence: string[] } }>;
+    };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        contractVersion: 2,
+        turns: posted.turns.map((turn) => ({
+          turnId: turn.turnId,
+          criterionId: turn.criterion.id,
+          judgment: {
+            verdict: 'unsupported',
+            coverageScore: 0,
+            citedSpan: null,
+            missingEvidence: [...turn.criterion.requiredEvidence],
+            engine: 'semantic',
+            degradedReason: null,
+          },
+        })),
+        hardestQuestion: {
+          criterionId: posted.turns[0]!.criterion.id,
+          questionText: 'What explicit evidence can you add for “students”?',
+          engine: 'semantic',
+        },
+        mode: 'semantic',
+      }),
+    });
+  });
+
+  await page.route('**/api/coach', async (route) => {
+    const body = route.request().postDataJSON() as typeof coachRequests[number];
+    coachRequests.push(body);
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        contractVersion: 2,
+        coachings: body.criteria.map((criterion) => ({
+          criterionId: criterion.id,
+          claims: [],
+          discardedClaims: 0,
+          strongerForm: `Stronger form for ${criterion.name}, built from ${body.transcript.slice(0, 20)}`,
+          blanks: [],
+          degradedReason: null,
+          model: 'test/coach-model',
+        })),
+      }),
+    });
+  });
+
+  await chooseInterview(page, 5);
+  const answers = [
+    'Students receive feedback too late, so the urgency is losing the chance to revise.',
+    'The rubric isolates one weak claim and gives the student one focused retry.',
+    'Unlike a generic competitor, every verdict remains traceable to an exact answer span.',
+    'The prototype keeps privacy explicit and does not require a saved camera replay.',
+    'The measured outcome is whether the next answer makes the missing evidence explicit.',
+  ];
+  const answerBox = page.getByLabel('Your answer');
+  for (let index = 0; index < answers.length - 1; index += 1) {
+    await answerBox.fill(answers[index]!);
+    await page.getByRole('button', { name: 'Save answer & next question' }).click();
+    await expect(page.locator('.kato-question-copy blockquote')).toContainText(
+      INTERVIEW_CRITERIA[index + 1]!.name,
+    );
+  }
+  await answerBox.fill(answers[4]!);
+  await page.getByRole('button', { name: 'Submit interview for review' }).click();
+  await expect(page.getByRole('heading', { name: 'Your answer evidence, mapped across the whole rubric.' })).toBeVisible();
+
+  // The trigger has to exist at all — this is the gate that used to hide it.
+  const trigger = page.getByRole('button', { name: 'Break down each answer' });
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+  await expect(page.getByText(/All 5 answers were coached/)).toBeVisible();
+
+  expect(coachRequests).toHaveLength(5);
+  for (const [index, request] of coachRequests.entries()) {
+    expect(request.criteria, 'one answer is coached against one criterion').toHaveLength(1);
+    expect(request.transcript).toBe(answers[index]);
+    expect(request.language).toBe('en-US');
+    // Nothing from another turn, and nothing Kato said, may reach this call.
+    for (const [otherIndex, other] of answers.entries()) {
+      if (otherIndex !== index) expect(request.transcript).not.toContain(other);
+    }
+    expect(request.transcript).not.toContain('How does your project meet');
+  }
+  expect(coachRequests.map((request) => request.criteria[0]!.id))
+    .toEqual(INTERVIEW_CRITERIA.map(({ id }) => id));
+
+  const strongerForms = page.locator('.stronger-form blockquote');
+  await expect(strongerForms).toHaveCount(5);
+  await expect(strongerForms.first()).toContainText('Stronger form for Problem clarity');
+});

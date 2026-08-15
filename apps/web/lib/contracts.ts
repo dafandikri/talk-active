@@ -992,6 +992,9 @@ export const StatelessRejudgeResponseSchema = z.object({
 export const ClaimCoachRequestSchema = z.object({
   transcript: z.string().trim().min(1).max(12_000),
   criteria: z.array(StatelessInputCriterionSchema).min(1).max(20),
+  // The stronger form is spoken back by the student, so it has to be in the
+  // language they will speak it in.
+  language: ProjectLanguageSchema.default('id-ID'),
 });
 
 export const CoachedClaimSchema = z.object({
