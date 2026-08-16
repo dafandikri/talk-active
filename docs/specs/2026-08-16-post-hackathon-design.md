@@ -13,6 +13,23 @@ work; every change is additive to a green tree.
 
 ---
 
+## Status — 16 August 2026
+
+| Workstream | State |
+|---|---|
+| **B** · Indonesian-first output | **Done.** `6bce890`, `4070dab` |
+| **A** · Interview per-criterion coaching | **Done.** `4e2fd3b` |
+| **D** · Harness and docs | **Done.** `9ac8daa`. One item withdrawn as wrong — see D4 below. |
+| **E** · Issue tracker | **Done.** 14 closed, 3 refiled: #36, #37, #38 |
+| **C** · App-language translation | **Foundation done** (`1d6bc2c`, `d4fc1c7`). String extraction tracked in #36. |
+
+`pnpm check` green at each step: 455 unit and invariant tests, 69 browser checks, 17/17
+artifacts.
+
+Two things were learned by doing rather than by planning, and both are recorded in place rather
+than quietly fixed: the vanilla-CSS cleanup in D4 was wrong, and C's cookie-based locale
+collides with Cache Components in a way this document did not anticipate. See both below.
+
 ## Findings that shaped the plan
 
 ### 1. The visible English is in TypeScript, not in the prompts
@@ -269,8 +286,25 @@ state. Extracting its strings means reading all of it, which is the right moment
 along those seams. This is scoped to the file being worked in; no unrelated refactoring.
 
 **Done when.** Every user-facing string resolves through the catalogue; both locales render
-every screen with no missing-key fallback; route paths and all 13 `e2e/production-ui/` specs are
+every screen with no missing-key fallback; route paths and all `e2e/production-ui/` specs are
 unchanged; `pnpm check` green.
+
+**Discovered while building, 16 August.** The cookie has a consequence this document did not
+anticipate. Resolving it is uncached request data, and under Cache Components (`cacheComponents:
+true`, Next 16) any such access outside a `<Suspense>` boundary makes the route
+unprerenderable — the build *fails closed* rather than going quietly dynamic, which is how this
+surfaced. `setRequestLocale` cannot help without a route param, so it is unavailable to a
+cookie-based locale by construction.
+
+Streaming the localized subtree is the framework's own first remedy and is what shipped. The
+document shell stays prerendered, so the CSP reasoning in `next.config.ts` — which rests on
+these routes being static — still holds. Routes moved from `○ Static` to `◐ Partial Prerender`,
+not to `ƒ Dynamic`.
+
+`<html lang>` is the one thing that cannot sit inside that boundary, being the root element.
+The shell ships the default locale's tag and a client effect corrects it once the subtree has
+streamed. This is not cosmetic: `lang` is what a screen reader uses to choose a voice, so
+Indonesian text was being announced by an English synthesiser throughout.
 
 ### E · Issue tracker
 
