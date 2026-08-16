@@ -225,9 +225,13 @@ covers the coached review; `pnpm check` green.
    enforcing a false statement.
 3. **Fold `HANDOVER.md` into the docs that outlive it** and archive it. Its live facts are the
    production URL, the migration prerequisite, and the contributor flow.
-4. **Delete the vanilla-build leftovers** — `src/styles.css`, `src/tokens.css`,
-   `src/landing.css`, and the root `public/*.html`. **Keep `src/assets/`**, which holds the live
-   brand and mascot files.
+4. ~~**Delete the vanilla-build leftovers**~~ — **withdrawn, 16 August.** This was wrong.
+   `src/tokens.css`, `src/styles.css` and `src/landing.css` are not leftovers: `apps/web/app/layout.tsx`
+   imports all three, in that order, and `test/design-system.test.mjs` asserts the order. They are
+   the live stylesheets, which is also why the harness lists `src/styles.css` as a required
+   artifact. The root `public/*.html` files are untracked build output — `.gitignore` excludes
+   `/public/`, and `git ls-files public` returns nothing — so there is nothing to delete there
+   either. The directory looks like sprint residue and is not.
 5. **Re-verify every command named in the docs actually runs.** The `pnpm demo` incident is the
    second occurrence of a doc naming a dead command; a check that enumerates commands mentioned
    in Markdown and asserts each exists in `package.json` would make it the last.
