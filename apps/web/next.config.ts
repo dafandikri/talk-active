@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import createNextIntlPlugin from 'next-intl/plugin';
 
 // ============================================================================
 //  Security headers for the production app.
@@ -75,4 +76,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// The interface locale comes from a cookie rather than the URL, so the plugin
+// is pointed at the request config explicitly instead of a routing definition.
+const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
+
+export default withNextIntl(nextConfig);

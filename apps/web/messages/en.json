@@ -1,0 +1,8 @@
+{
+  "language": {
+    "label": "Interface language",
+    "hint": "Changes the language of the app. The project language — the one Kato asks and judges in — is set separately on the practice page.",
+    "id": "Bahasa Indonesia",
+    "en": "English"
+  }
+}

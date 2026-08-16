@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 
 import logo from '../../../src/assets/brand/talk-active-logo.svg';
 import { authClient } from '@/lib/auth-client';
+import { InterfaceLanguage } from '@/components/interface-language';
 import { jsonRequest, requestContract } from '@/lib/api/client';
 import {
   CapabilitiesResponseSchema,
@@ -157,6 +158,7 @@ export function AccountPanel() {
           </form>
         </>}
         {status && <p className="rubric-import-status" role="status">{status}</p>}
+        <InterfaceLanguage />
         <div className="production-data-tools">
           <p className="overline">Your data</p>
           <button className="button button-secondary" type="button" onClick={exportLocalData}>Export local data</button>
