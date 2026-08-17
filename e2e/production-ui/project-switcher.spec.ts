@@ -177,7 +177,7 @@ test('the switcher reports what each project actually holds', async ({ page }) =
     .toHaveText('3 synced attempts · 1 browser-only summary');
 
   await switcher.locator('select').selectOption('p-empty');
-  await expect(switcher.locator('.project-switcher-meta')).toContainText('No attempts saved to this project yet');
+  await expect(switcher.locator('.project-switcher-meta')).toContainText('Belum ada percobaan yang tersimpan di proyek ini');
 });
 
 test('the sidebar lists every owned project instead of one written-in name', async ({ page }) => {

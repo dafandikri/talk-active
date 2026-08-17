@@ -112,7 +112,7 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   await expect(page.locator('.coverage-trend-latest')).toBeVisible();
   await expect(page.locator('.full-session-list .session-status').getByText('defensible', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'The criteria that keep returning' })).toBeVisible();
-  await expect(page.getByText(/before Talk-Active calls any gap recurring/i)).toBeVisible();
+  await expect(page.getByText(/sebelum Talk-Active menyebut sebuah celah berulang/i)).toBeVisible();
   await expectVisibleControlsHitTest(page);
 
   // INV-8 is a persistence path, not merely a navigation path. A reload must
@@ -121,7 +121,7 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   await page.reload();
   await expect(page.locator('.coverage-trend-dot')).toHaveCount(1);
   await expect(page.locator('.full-session-list .session-status').getByText('defensible', { exact: true })).toBeVisible();
-  await expect(page.getByText(/before Talk-Active calls any gap recurring/i)).toBeVisible();
+  await expect(page.getByText(/sebelum Talk-Active menyebut sebuah celah berulang/i)).toBeVisible();
 });
 
 test('workspace keeps one practice action above the fold at 720p', async ({ page }) => {
@@ -486,9 +486,9 @@ test('progress names a weakness only after it recurs and retains its evidence', 
   await expect(page.getByRole('heading', { name: 'What changed between the last two reviewed attempts' })).toBeVisible();
   const feasibilityDiff = page.locator('.attempt-diff-item').filter({ hasText: 'Feasibility' });
   await expect(feasibilityDiff).toContainText('explicit coverage improved · +50 points');
-  await expect(feasibilityDiff.getByText('No cited transcript evidence.')).toBeVisible();
+  await expect(feasibilityDiff.getByText('Tidak ada kutipan bukti dari transkrip.')).toBeVisible();
   await expect(feasibilityDiff.locator('blockquote')).toHaveText('The deterministic fallback keeps the demo usable.');
-  await expect(feasibilityDiff).toContainText('Still missing: measured cost.');
+  await expect(feasibilityDiff).toContainText('Masih kurang: measured cost.');
   await expect(page.locator('.recurring-item')).toHaveCount(1);
   // The sentence became a stat line so the criterion's trajectory could take
   // its place. Both facts it carried — how often, and how far below — are still
@@ -497,7 +497,7 @@ test('progress names a weakness only after it recurs and retains its evidence', 
   await expect(page.locator('.recurring-item')).toContainText('25% average coverage');
   await expect(page.locator('.recurring-item .criterion-spark')).toHaveAttribute('data-direction', 'rising');
   await expect(page.locator('.recurring-evidence blockquote')).toHaveText('The deterministic fallback keeps the demo usable.');
-  await expect(page.getByText(/Latest explicit gaps: measured cost/i)).toBeVisible();
+  await expect(page.getByText(/Celah eksplisit terbaru: measured cost/i)).toBeVisible();
   await expectVisibleControlsHitTest(page);
 });
 

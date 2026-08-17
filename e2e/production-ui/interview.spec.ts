@@ -354,16 +354,16 @@ test('a signed-in interview summary survives synced progress reload without dupl
   // a delta between two different measurements, so the trend keeps the latest
   // format only and labels itself. Both attempts still appear in the archive.
   await expect(page.locator('.coverage-trend-dot')).toHaveCount(1);
-  await expect(page.locator('.progress-chart-card .session-status')).toHaveText('Interview answer aggregates only');
+  await expect(page.locator('.progress-chart-card .session-status')).toHaveText('Hanya gabungan jawaban wawancara');
   await expect(page.locator('.full-session-list .session-row')).toHaveCount(2);
   await expect(page.locator('.browser-only-session')).toHaveCount(1);
-  await expect(page.locator('.browser-only-session')).toContainText('Interview answer aggregate');
+  await expect(page.locator('.browser-only-session')).toContainText('Gabungan jawaban wawancara');
   await expect(page.locator('.browser-only-session .session-status')).toHaveText('browser only');
-  await expect(page.locator('.progress-stats article').filter({ hasText: 'Sessions' }).locator('strong')).toHaveText('2');
-  await expect(page.locator('.attempt-diff-card')).toContainText('Save two reviewed attempts');
-  await expect(page.locator('.recurring-card .session-status')).toHaveText('Synced SQL history');
+  await expect(page.locator('.progress-stats article').filter({ hasText: 'Sesi' }).locator('strong')).toHaveText('2');
+  await expect(page.locator('.attempt-diff-card')).toContainText('Simpan dua percobaan yang sudah ditinjau');
+  await expect(page.locator('.recurring-card .session-status')).toHaveText('Riwayat SQL tersinkron');
   await expect(page.locator('.production-boundary-note')).toContainText(
-    'Recurring gaps and exact attempt comparisons use synced verdict rows only',
+    'Celah berulang dan perbandingan percobaan yang persis hanya memakai baris putusan tersinkron',
   );
 
   // The saved interview aggregate and the dedupe identity both live in browser
@@ -375,7 +375,7 @@ test('a signed-in interview summary survives synced progress reload without dupl
   // a delta between two different measurements, so the trend keeps the latest
   // format only and labels itself. Both attempts still appear in the archive.
   await expect(page.locator('.coverage-trend-dot')).toHaveCount(1);
-  await expect(page.locator('.progress-chart-card .session-status')).toHaveText('Interview answer aggregates only');
+  await expect(page.locator('.progress-chart-card .session-status')).toHaveText('Hanya gabungan jawaban wawancara');
   await expect(page.locator('.full-session-list .session-row')).toHaveCount(2);
   await expect(page.locator('.browser-only-session')).toHaveCount(1);
 });

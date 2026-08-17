@@ -64,7 +64,12 @@ test('H-1 every asynchronous action reports that it is running', () => {
   assert.match(PRACTICE, /aria-busy=\{busy/u, 'the review action must expose a busy state');
   assert.match(PRACTICE, /Reviewing each criterion…/u, 'the busy state must say what is running');
   assert.match(PRACTICE, /Checking only this answer…/u, 'the defense action must name its own work');
-  assert.match(PROGRESS, /Checking synced history…/u, 'history loading must be visible');
+  // The words moved to the catalogues with the rest of this screen (#36). The
+  // property is unchanged and now checked in every locale, because a loading
+  // state that only exists in English leaves the default-locale reader looking
+  // at a blank panel with no explanation.
+  assert.match(PROGRESS, /t\('checkingSynced'\)/u, 'history loading must be visible');
+  everyLocaleTranslates('progressView', 'checkingSynced', 'the loading state must be named in every locale');
 });
 
 test('H-1 status messages are announced, not only drawn', () => {
