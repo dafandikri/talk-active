@@ -26,5 +26,35 @@
     "asidePoint1": "Kutipan bukti yang persis",
     "asidePoint2": "Mode analisis yang terlihat",
     "asidePoint3": "Progres tersimpan per proyek"
+  },
+  "landing": {
+    "homeLabel": "Beranda Talk-Active",
+    "title": "Latih klaim yang akan ditantang juri berikutnya.",
+    "lede": "Berlatih bersama <b>Kato</b> menghadapi rubrik yang benar-benar akan menilai Anda.",
+    "start": "Mulai berlatih",
+    "startNow": "Mulai berlatih sekarang",
+    "demoLabel": "Contoh tinjauan bukti rubrik untuk {title}",
+    "demoTopline": "Contoh tinjauan percobaan",
+    "demoEngine": "pemetaan semantik",
+    "demoCriterion": "Kriteria · Diferensiasi",
+    "demoQuote": "“Tidak seperti pelatih penyampaian pada umumnya, Talk-Active berangkat dari rubrik penilai.”",
+    "demoCitation": "Kata-kata persis dari transkrip latihan",
+    "demoGapLabel": "Masih tersirat",
+    "demoGap": "Sebutkan alternatif terdekatnya dan mekanisme yang belum dimilikinya.",
+    "demoQuestion": "Apa bedanya ini dengan memasukkan rubrik yang sama ke alat obrolan umum?",
+    "useCasesTitle": "Satu metode, berbagai situasi bertaruh tinggi.",
+    "useCase1Title": "Pitch kompetisi",
+    "useCase1Body": "Hubungkan klaim produk ke rubrik penilaian sebelum sesi tanya jawab final.",
+    "useCase2Title": "Wawancara beasiswa",
+    "useCase2Body": "Buat setiap kriteria seleksi tampak eksplisit dalam jawaban yang Anda latih.",
+    "useCase3Title": "Sidang skripsi",
+    "useCase3Body": "Temukan bagian metode atau kesimpulan yang penjelasannya masih belum kuat.",
+    "useCase4Title": "dan lainnya…",
+    "useCase4Body": "Ruangan mana pun yang hasilnya ditentukan oleh rubrik tertulis.",
+    "footerTagline": "Latihan berbasis rubrik untuk jawaban yang butuh bukti."
+  },
+  "toast": {
+    "dismiss": "Tutup notifikasi",
+    "region": "Notifikasi"
   }
 }

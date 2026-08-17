@@ -1,14 +1,16 @@
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 import logo from '../../../src/assets/brand/talk-active-logo.svg';
 import mascot from '../../../src/assets/mascot/kato-macaw-reading.svg';
 import type { Project } from '@/lib/contracts';
 
 export function ProductionShell({ project }: Readonly<{ project: Project }>) {
+  const t = useTranslations('landing');
   return (
     <main className="production-shell">
       <header className="production-shell__nav">
-        <Link className="production-shell__brand brand" href="/" aria-label="Talk-Active home">
+        <Link className="production-shell__brand brand" href="/" aria-label={t('homeLabel')}>
           <img className="brand-mark" src={logo.src} alt="" />
           <span className="brand-wordmark">Talk-<strong className="brand-wordmark-accent">Active</strong></span>
         </Link>
@@ -16,17 +18,18 @@ export function ProductionShell({ project }: Readonly<{ project: Project }>) {
 
       <section className="production-shell__hero" aria-labelledby="production-title">
         <div className="production-shell__hero-copy">
-          <h1 className="production-shell__title" id="production-title">
-            Rehearse the claim a judge will challenge next.
-          </h1>
+          <h1 className="production-shell__title" id="production-title">{t('title')}</h1>
           {/* "rubric-grounded" twice in one sentence, and the second half only
-              restated the first. One naming of Kato, one claim, no repetition. */}
+              restated the first. One naming of Kato, one claim, no repetition.
+              The emphasis on Kato is carried as rich text rather than by
+              splitting the sentence, because word order differs between the
+              two locales and a split sentence cannot survive that. */}
           <p className="production-shell__lede">
-            Practise with <b>Kato</b> against the rubric you will actually be judged against.
+            {t.rich('lede', { b: (chunks) => <b>{chunks}</b> })}
           </p>
           <div className="production-shell__actions">
             <Link className="production-shell__action" href="/enter">
-              Start practicing <span aria-hidden="true">→</span>
+              {t('start')} <span aria-hidden="true">→</span>
             </Link>
           </div>
         </div>
@@ -34,24 +37,22 @@ export function ProductionShell({ project }: Readonly<{ project: Project }>) {
         <div
           className="production-shell__demo"
           id="grounded-review"
-          aria-label={`Example rubric evidence review for ${project.title}`}
+          aria-label={t('demoLabel', { title: project.title })}
         >
           <div className="production-shell__demo-topline">
-            <span>Example attempt review</span>
-            <span className="production-shell__evidence-engine"><i /> semantic mapping</span>
+            <span>{t('demoTopline')}</span>
+            <span className="production-shell__evidence-engine"><i /> {t('demoEngine')}</span>
           </div>
-          <p className="production-shell__evidence-criterion">Criterion · Differentiation</p>
-          <blockquote>
-            “Unlike generic delivery coaches, Talk-Active starts from the evaluator rubric.”
-          </blockquote>
-          <p className="production-shell__citation">Exact words from the rehearsal transcript</p>
+          <p className="production-shell__evidence-criterion">{t('demoCriterion')}</p>
+          <blockquote>{t('demoQuote')}</blockquote>
+          <p className="production-shell__citation">{t('demoCitation')}</p>
           <div className="production-shell__gap">
-            <span>Still implicit</span>
-            <strong>Name the closest alternative and the mechanism it lacks.</strong>
+            <span>{t('demoGapLabel')}</span>
+            <strong>{t('demoGap')}</strong>
           </div>
           <div className="production-shell__question">
             <span aria-hidden="true">Q</span>
-            <p>What makes this different from putting the same rubric into a general chat tool?</p>
+            <p>{t('demoQuestion')}</p>
           </div>
           <img src={mascot.src} alt="" />
         </div>
@@ -59,26 +60,26 @@ export function ProductionShell({ project }: Readonly<{ project: Project }>) {
 
       <section className="production-shell__use-cases" aria-labelledby="use-cases-title">
         <div className="production-shell__section-intro">
-          <h2 id="use-cases-title">One method, different high-stakes scenarios.</h2>
+          <h2 id="use-cases-title">{t('useCasesTitle')}</h2>
         </div>
         <div>
-          <article><h3>Competition pitch</h3><p>Connect product claims to the scoring rubric before the final Q&amp;A.</p></article>
-          <article><h3>Scholarship interview</h3><p>Make each selection criterion explicit in the answer you rehearse.</p></article>
-          <article><h3>Thesis defense</h3><p>Find where a method or conclusion still lacks a defensible explanation.</p></article>
-          <article><h3>and more…</h3><p>Any room where a written rubric decides the outcome.</p></article>
+          <article><h3>{t('useCase1Title')}</h3><p>{t('useCase1Body')}</p></article>
+          <article><h3>{t('useCase2Title')}</h3><p>{t('useCase2Body')}</p></article>
+          <article><h3>{t('useCase3Title')}</h3><p>{t('useCase3Body')}</p></article>
+          <article><h3>{t('useCase4Title')}</h3><p>{t('useCase4Body')}</p></article>
         </div>
       </section>
 
       <section className="production-shell__final">
-        <Link className="production-shell__action" href="/enter">Start practicing now <span aria-hidden="true">→</span></Link>
+        <Link className="production-shell__action" href="/enter">{t('startNow')} <span aria-hidden="true">→</span></Link>
       </section>
 
       <footer className="production-shell__footer">
-        <Link className="production-shell__brand brand" href="/" aria-label="Talk-Active home">
+        <Link className="production-shell__brand brand" href="/" aria-label={t('homeLabel')}>
           <img className="brand-mark" src={logo.src} alt="" />
           <span className="brand-wordmark">Talk-<strong className="brand-wordmark-accent">Active</strong></span>
         </Link>
-        <p>Rubric-grounded rehearsal for answers that need evidence.</p>
+        <p>{t('footerTagline')}</p>
       </footer>
     </main>
   );

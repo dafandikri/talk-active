@@ -27,13 +27,13 @@ test('landing, entry, and workspace keep a predictable browser-back path', async
   await page.goto('/');
 
   await expect(page.getByText(/How it works/i)).toHaveCount(0);
-  await page.getByRole('link', { name: /Start practicing/i }).first().click();
+  await page.getByRole('link', { name: /Mulai berlatih/i }).first().click();
   await expect(page).toHaveURL(/\/enter$/u);
   await expect(page.getByRole('link', { name: 'Kembali ke halaman depan' })).toBeVisible();
 
   await page.goBack();
   await expect(page).toHaveURL(/\/$/u);
-  await expect(page.getByRole('link', { name: /Start practicing/i }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: /Mulai berlatih/i }).first()).toBeVisible();
 
   await page.goForward();
   await expect(page).toHaveURL(/\/enter$/u);

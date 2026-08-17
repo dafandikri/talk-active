@@ -26,5 +26,35 @@
     "asidePoint1": "Exact evidence spans",
     "asidePoint2": "Visible analysis mode",
     "asidePoint3": "Saved progress by project"
+  },
+  "landing": {
+    "homeLabel": "Talk-Active home",
+    "title": "Rehearse the claim a judge will challenge next.",
+    "lede": "Practise with <b>Kato</b> against the rubric you will actually be judged against.",
+    "start": "Start practicing",
+    "startNow": "Start practicing now",
+    "demoLabel": "Example rubric evidence review for {title}",
+    "demoTopline": "Example attempt review",
+    "demoEngine": "semantic mapping",
+    "demoCriterion": "Criterion · Differentiation",
+    "demoQuote": "“Unlike generic delivery coaches, Talk-Active starts from the evaluator rubric.”",
+    "demoCitation": "Exact words from the rehearsal transcript",
+    "demoGapLabel": "Still implicit",
+    "demoGap": "Name the closest alternative and the mechanism it lacks.",
+    "demoQuestion": "What makes this different from putting the same rubric into a general chat tool?",
+    "useCasesTitle": "One method, different high-stakes scenarios.",
+    "useCase1Title": "Competition pitch",
+    "useCase1Body": "Connect product claims to the scoring rubric before the final Q&A.",
+    "useCase2Title": "Scholarship interview",
+    "useCase2Body": "Make each selection criterion explicit in the answer you rehearse.",
+    "useCase3Title": "Thesis defense",
+    "useCase3Body": "Find where a method or conclusion still lacks a defensible explanation.",
+    "useCase4Title": "and more…",
+    "useCase4Body": "Any room where a written rubric decides the outcome.",
+    "footerTagline": "Rubric-grounded rehearsal for answers that need evidence."
+  },
+  "toast": {
+    "dismiss": "Dismiss notification",
+    "region": "Notifications"
   }
 }

@@ -82,3 +82,21 @@ test('the guest-name validation message is translated, not only the static copy'
     'Ketik nama yang ingin Anda pakai di ruang kerja ini.',
   );
 });
+
+test('the landing page follows the interface language, including its rich-text lede', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Latih klaim yang akan ditantang juri berikutnya.' })).toBeVisible();
+  // The lede carries emphasis around Kato as rich text rather than a split
+  // sentence, because word order differs between the locales. Both halves have
+  // to survive the substitution, in both languages.
+  await expect(page.locator('.production-shell__lede')).toContainText('Berlatih bersama Kato');
+  await expect(page.locator('.production-shell__lede b')).toHaveText('Kato');
+
+  await page.goto('/account');
+  await page.locator('#interfaceLanguage').selectOption('en');
+  await page.goto('/');
+
+  await expect(page.getByRole('heading', { name: 'Rehearse the claim a judge will challenge next.' })).toBeVisible();
+  await expect(page.locator('.production-shell__lede')).toContainText('Practise with Kato');
+  await expect(page.locator('.production-shell__lede b')).toHaveText('Kato');
+});

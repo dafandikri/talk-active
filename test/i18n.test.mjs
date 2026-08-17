@@ -60,13 +60,24 @@ test('every translation key a component asks for exists in both catalogues', () 
     // One namespace per component is the convention here; a file that adopts
     // several would need this widened, and the assertion below would say so
     // rather than silently checking the wrong namespace.
-    const namespaces = [...source.matchAll(/useTranslations\('([^']+)'\)/gu)].map((m) => m[1]);
+    const namespaces = [...new Set(
+      [...source.matchAll(/useTranslations\('([^']+)'\)/gu)].map((m) => m[1]),
+    )];
     if (namespaces.length === 0) continue;
-    assert.ok(
-      namespaces.length === 1,
-      `${file} uses ${namespaces.length} namespaces; this check assumes one`,
+    // A file may declare the same namespace in more than one component —
+    // toast.tsx has two — but two DIFFERENT namespaces would make the key
+    // prefix below ambiguous, and this says so rather than silently checking
+    // keys against the wrong one.
+    assert.equal(
+      namespaces.length,
+      1,
+      `${file} uses ${namespaces.length} distinct namespaces; this check assumes one`,
     );
-    for (const match of source.matchAll(/\bt\('([^']+)'\)/gu)) {
+    // `t('k')`, `t('k', {…})` and `t.rich('k', {…})` all resolve a key. An
+    // earlier version matched only the first form, which would have let a
+    // missing key behind t.rich reach a user unnoticed — the exact failure
+    // this test exists to prevent.
+    for (const match of source.matchAll(/\bt(?:\.rich|\.markup)?\('([^']+)'\s*[,)]/gu)) {
       lookups.push({ file, key: `${namespaces[0]}.${match[1]}` });
     }
   }
