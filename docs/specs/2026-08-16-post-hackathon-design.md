@@ -280,10 +280,25 @@ the language they rehearse in.
    | 6 | `workspace/page`, `multimodal-studio` | ~1450 |
    | 7 | `practice-room` | ~1800 |
 
-**Targeted improvement, taken during step 7 and not before.** `practice-room.tsx` is 1804 lines
-and holds presentation practice, the interview flow, defence, coaching, and project-language
-state. Extracting its strings means reading all of it, which is the right moment to split it
-along those seams. This is scoped to the file being worked in; no unrelated refactoring.
+**~~Targeted improvement, taken during step 7~~ — reclassified 17 August, moved to #39.**
+
+This paragraph originally said `practice-room.tsx` would be split during step 7, on the
+grounds that extracting its strings means reading all of it anyway. That was a fair
+description of a refactor living inside one file and an unfair description of the actual work.
+Measured rather than estimated, the file holds **55 `useState` hooks**, 22 handlers and five
+stage render blocks, and it is the file INV-8's demo path runs through.
+
+Two things follow. First, it is architectural, not a targeted improvement, so it gets its own
+design instead of riding along inside a translation pass. Second — and this is what the
+original plan would have got wrong — **the seams are not where the stage render blocks are.**
+`analysis`, `rubricCriteria`, `selectedProjectId`, `projectLanguage` and `remoteContext` are
+each read by three or four of the five stages, so splitting at the render boundary relocates
+that state into props and prop-drills it back: five files, no less coupling, harder to follow.
+The seam has to be found in the state graph.
+
+For this spec, step 7 is a **translation-only** pass on `practice-room.tsx`. The split is #39,
+blocked on this workstream finishing, so that a translation bug and a state-ordering bug cannot
+arrive in the same diff looking alike.
 
 **Done when.** Every user-facing string resolves through the catalogue; both locales render
 every screen with no missing-key fallback; route paths and all `e2e/production-ui/` specs are
