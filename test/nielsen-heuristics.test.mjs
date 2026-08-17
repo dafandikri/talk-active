@@ -34,6 +34,27 @@ const STYLES = read('src/styles.css');
 const SHELL_STYLES = read('apps/web/app/shell.css');
 const SURFACES = [PRACTICE, PROGRESS, RUBRIC, FRAME, STUDIO].join('\n');
 
+// As user-facing copy moves into the message catalogues (issue #36), a
+// heuristic asserted by grepping a component for its English sentence stops
+// finding it. The property being asserted has not moved — the user can still
+// always leave — so the assertion follows the copy rather than being dropped.
+// Checking every locale is the stricter version of what was there before: an
+// escape hatch that exists only in English is not an escape hatch for the
+// audience this product is for.
+const CATALOGUES = ['id', 'en'].map(
+  (locale) => JSON.parse(read(`apps/web/messages/${locale}.json`)),
+);
+
+function everyLocaleTranslates(namespace, key, message) {
+  for (const [index, catalogue] of CATALOGUES.entries()) {
+    const value = catalogue[namespace]?.[key];
+    assert.ok(
+      typeof value === 'string' && value.trim().length > 0,
+      `${message} (missing ${namespace}.${key} in ${['id', 'en'][index]}.json)`,
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 //  1. Visibility of system status
 // ---------------------------------------------------------------------------
@@ -82,7 +103,9 @@ test('H-3 every stage of the practice flow has a marked exit', () => {
   assert.match(PRACTICE, /Revise transcript/u, 'review must be able to return to the attempt');
   assert.match(PRACTICE, /Back to attempt review/u, 'the Q&A drill must be able to go back');
   assert.match(STUDIO, /Finish &amp; assemble review/u, 'a running capture must be stoppable by the user');
-  assert.match(ENTRY, /Back to landing/u, 'the entry decision must offer a visible return to the landing page');
+  // The link itself is still asserted in the component; only its words moved.
+  assert.match(ENTRY, /className="entry-back" href="\/"/u, 'the entry decision must link back to the landing page');
+  everyLocaleTranslates('entryGate', 'back', 'the entry decision must offer a visible return to the landing page');
   assert.match(FRAME, /Back to Talk-Active landing page/u, 'workspace chrome must always return to the landing page');
 });
 

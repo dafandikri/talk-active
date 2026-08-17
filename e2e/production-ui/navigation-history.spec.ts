@@ -29,7 +29,7 @@ test('landing, entry, and workspace keep a predictable browser-back path', async
   await expect(page.getByText(/How it works/i)).toHaveCount(0);
   await page.getByRole('link', { name: /Start practicing/i }).first().click();
   await expect(page).toHaveURL(/\/enter$/u);
-  await expect(page.getByRole('link', { name: 'Back to landing' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Kembali ke halaman depan' })).toBeVisible();
 
   await page.goBack();
   await expect(page).toHaveURL(/\/$/u);
@@ -37,7 +37,7 @@ test('landing, entry, and workspace keep a predictable browser-back path', async
 
   await page.goForward();
   await expect(page).toHaveURL(/\/enter$/u);
-  await page.getByRole('button', { name: 'Continue without a name' }).click();
+  await page.getByRole('button', { name: 'Lanjut tanpa nama' }).click();
   await expect(page).toHaveURL(/\/workspace$/u);
   const landingLink = page.getByRole('link', { name: 'Back to Talk-Active landing page' }).last();
   await expect(landingLink).toBeVisible();
@@ -48,9 +48,9 @@ test('landing, entry, and workspace keep a predictable browser-back path', async
 
   await page.goBack();
   await expect(page).toHaveURL(/\/enter$/u);
-  await expect(page.getByRole('heading', { name: 'Put your name on this workspace.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Beri nama ruang kerja ini.' })).toBeVisible();
 
-  await page.getByRole('link', { name: 'Back to landing' }).click();
+  await page.getByRole('link', { name: 'Kembali ke halaman depan' }).click();
   await expect(page).toHaveURL(/\/$/u);
 });
 

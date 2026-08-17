@@ -42,7 +42,7 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   await expect(page.getByRole('heading', { name: 'Rehearse the claim a judge will challenge next.' })).toBeVisible();
   await page.getByRole('link', { name: /^Start practicing\b/i }).first().click();
   await expect(page).toHaveURL(/\/enter$/u);
-  await page.getByRole('button', { name: 'Continue without a name' }).click();
+  await page.getByRole('button', { name: 'Lanjut tanpa nama' }).click();
   await expect(page).toHaveURL(/\/workspace$/u);
   await expect(page.getByRole('heading', { name: 'Make your next answer harder to challenge.' })).toBeVisible();
   await expect(page.locator('.focus-mascot')).toHaveJSProperty('complete', true);

@@ -53,3 +53,32 @@ test('an unrecognised cookie falls back to Indonesian rather than failing', asyn
   await expect(page.locator('html')).toHaveAttribute('lang', 'id-ID');
   await expect(page.locator('#interfaceLanguage')).toHaveValue('id');
 });
+
+// Surface 1 of the extraction (issue #36). The entry gate is the first screen a
+// guest sees, so it is the first place the interface language has to be real
+// rather than a setting that changes one dropdown.
+test('the entry gate reads in Indonesian by default and in English on request', async ({ page }) => {
+  await page.goto('/enter');
+  await expect(page.getByRole('heading', { name: 'Beri nama ruang kerja ini.' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Masuk ke ruang kerja/ })).toBeVisible();
+  await expect(page.getByLabel('Nama Anda')).toBeVisible();
+
+  await page.goto('/account');
+  await page.locator('#interfaceLanguage').selectOption('en');
+  await page.goto('/enter');
+
+  await expect(page.getByRole('heading', { name: 'Put your name on this workspace.' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Enter the workspace/ })).toBeVisible();
+});
+
+test('the guest-name validation message is translated, not only the static copy', async ({ page }) => {
+  // Error strings are the ones a bulk extraction misses, because they are not
+  // on screen when anyone looks at the page.
+  await page.goto('/enter');
+  await page.getByRole('button', { name: /Masuk ke ruang kerja/ }).click();
+  // Scoped to the form's own alert: Next mounts a route announcer with the
+  // same role, so a bare getByRole('alert') matches two elements.
+  await expect(page.locator('.entry-error')).toHaveText(
+    'Ketik nama yang ingin Anda pakai di ruang kerja ini.',
+  );
+});

@@ -175,8 +175,23 @@ test('INV-2 the guest entry never collects credentials and routes sync to real a
     'authentication calls belong to the real account surface');
   assert.match(gate, /href=["']\/account["']/u,
     'the optional sync path must route to the Better Auth-backed account surface');
-  assert.match(gate, /stay in this browser/iu,
-    'the guest path must state its local-storage boundary');
+
+  // The boundary disclosure moved into the message catalogues with the rest of
+  // this screen's copy (issue #36). It is checked in EVERY locale rather than
+  // in the component, which is stricter than before and is the point: under
+  // INV-4 a boundary stated only in English is not stated to the audience this
+  // product is for. The English wording is pinned so the sentence cannot be
+  // softened into a claim about privacy it does not make.
+  const boundaries = {
+    id: /tersimpan di browser ini/iu,
+    en: /stay in this browser/iu,
+  };
+  for (const [locale, pattern] of Object.entries(boundaries)) {
+    const catalogue = read(`apps/web/messages/${locale}.json`);
+    assert.ok(catalogue, `the ${locale} catalogue must exist`);
+    assert.match(JSON.parse(catalogue).entryGate?.intro ?? '', pattern,
+      `the guest path must state its local-storage boundary in ${locale}`);
+  }
 });
 
 const AUTHENTICATION_CLAIMS = [
