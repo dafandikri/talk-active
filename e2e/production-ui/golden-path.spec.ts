@@ -579,9 +579,9 @@ test('account sync is optional and fails closed when secrets are absent', async 
     sessions: [],
   })));
   await page.goto('/account');
-  await expect(page.getByRole('heading', { name: 'Account sync is not configured here.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sinkronisasi akun belum dikonfigurasi di sini.' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Continue as guest' })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Start a local rehearsal' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Mulai latihan lokal' })).toBeVisible();
   await expectVisibleControlsHitTest(page);
 
   const session = await request.get('/api/auth/get-session');
@@ -593,7 +593,7 @@ test('account sync is optional and fails closed when secrets are absent', async 
   const sourceBefore = await page.evaluate(() => localStorage.getItem('talkactive.workspace.v1'));
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: 'Export local data' }).click(),
+    page.getByRole('button', { name: 'Ekspor data lokal' }).click(),
   ]);
   expect(download.suggestedFilename()).toBe('talk-active-local-export.json');
   await expect.poll(() => page.evaluate(() => localStorage.getItem('talkactive.workspace.v1'))).toBe(sourceBefore);

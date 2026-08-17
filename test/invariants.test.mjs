@@ -228,6 +228,39 @@ test('INV-2 account language stays on the screens that own it', () => {
     }
   }
 
+  // Scanning components alone stopped being sufficient once copy moved into
+  // the message catalogues (issue #36): the words a screen shows are no longer
+  // in the file that renders it. The namespace is what identifies the screen
+  // now, so the same rule is applied namespace by namespace. Without this, an
+  // extraction silently carries account language onto a screen that has no
+  // business implying an account exists — the exact thing this test is for.
+  const NAMESPACE_OWNERS = new Set(['entryGate', 'account']);
+  const INDONESIAN_AUTHENTICATION_CLAIMS = [
+    /\bakun\b/iu,
+    /\bkata sandi\b/iu,
+    /\bmasuk ke akun\b/iu,
+    /\bdaftar akun\b/iu,
+  ];
+  for (const [locale, patterns] of [
+    ['id', INDONESIAN_AUTHENTICATION_CLAIMS],
+    ['en', AUTHENTICATION_CLAIMS],
+  ]) {
+    const catalogue = read(`apps/web/messages/${locale}.json`);
+    assert.ok(catalogue, `the ${locale} catalogue must exist`);
+    for (const [namespace, entries] of Object.entries(JSON.parse(catalogue))) {
+      if (NAMESPACE_OWNERS.has(namespace)) continue;
+      for (const [key, value] of Object.entries(entries)) {
+        for (const pattern of patterns) {
+          assert.ok(
+            !pattern.test(String(value)),
+            `${locale}.json:${namespace}.${key} implies authentication (${pattern}); `
+            + 'only the entry and account screens may.',
+          );
+        }
+      }
+    }
+  }
+
   const accountPanel = read('apps/web/components/account-panel.tsx');
   const authRoute = read('apps/web/app/api/auth/[...all]/route.ts');
   const authSchema = read('apps/web/lib/db/auth-schema.generated.ts');

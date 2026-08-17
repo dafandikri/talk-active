@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import logo from '../../../src/assets/brand/talk-active-logo.svg';
+import { useTranslations } from 'next-intl';
+
 import { authClient } from '@/lib/auth-client';
 import { InterfaceLanguage } from '@/components/interface-language';
 import { jsonRequest, requestContract } from '@/lib/api/client';
@@ -19,6 +21,15 @@ import {
   RUBRIC_STORAGE_KEY,
 } from '@/lib/rubric-storage';
 
+/**
+ * Typed by the user and compared byte-for-byte before anything is deleted, so
+ * it is a literal rather than a translated string. A phrase that changed with
+ * the interface language would silently invalidate the guard for anyone who
+ * switched locale mid-session, and an irreversible action is the last place to
+ * accept that risk.
+ */
+const DELETE_CONFIRMATION_PHRASE = 'DELETE MY TALK-ACTIVE DATA';
+
 type FormMode = 'sign-in' | 'sign-up';
 
 interface SessionUser {
@@ -27,6 +38,7 @@ interface SessionUser {
 }
 
 export function AccountPanel() {
+  const t = useTranslations('account');
   const [accountsAvailable, setAccountsAvailable] = useState(false);
   const [checked, setChecked] = useState(false);
   const [mode, setMode] = useState<FormMode>('sign-in');
@@ -70,13 +82,13 @@ export function AccountPanel() {
       const result = mode === 'sign-up'
         ? await authClient.signUp.email({ name: name.trim(), email: email.trim(), password })
         : await authClient.signIn.email({ email: email.trim(), password });
-      if (result.error) throw new Error(result.error.message ?? 'The account request could not be completed.');
+      if (result.error) throw new Error(result.error.message ?? t('statusRequestFailed'));
       const user = result.data?.user;
       if (user) setSessionUser({ name: user.name, email: user.email });
       setPassword('');
-      setStatus(mode === 'sign-up' ? 'Account created. This browser can now sync work when persistence is enabled.' : 'Signed in.');
+      setStatus(mode === 'sign-up' ? t('statusCreated') : t('statusSignedIn'));
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : 'The account request could not be completed.');
+      setStatus(caught instanceof Error ? caught.message : t('statusRequestFailed'));
     } finally {
       setBusy(false);
     }
@@ -87,11 +99,11 @@ export function AccountPanel() {
     const result = await authClient.signOut();
     setBusy(false);
     if (result.error) {
-      setStatus(result.error.message ?? 'Sign-out could not be completed.');
+      setStatus(result.error.message ?? t('statusSignOutFailed'));
       return;
     }
     setSessionUser(null);
-    setStatus('Signed out. Local guest mode remains available.');
+    setStatus(t('statusSignedOut'));
   }
 
   function exportLocalData() {
@@ -110,7 +122,7 @@ export function AccountPanel() {
     anchor.download = 'talk-active-local-export.json';
     anchor.click();
     URL.revokeObjectURL(url);
-    setStatus('Local browser data exported. Nothing was deleted.');
+    setStatus(t('statusExported'));
   }
 
   async function importLegacy() {
@@ -119,9 +131,12 @@ export function AccountPanel() {
     try {
       const payload: unknown = JSON.parse(legacyWorkspace);
       const imported = await requestContract('/api/data/import/local', LegacyImportResponseSchema, jsonRequest('POST', payload));
-      setStatus(`${imported.importedProjects} projects and ${imported.importedSessions} session summaries imported. The original browser data is still here.`);
+      setStatus(t('statusImported', {
+        projects: imported.importedProjects,
+        sessions: imported.importedSessions,
+      }));
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : 'The local workspace could not be imported.');
+      setStatus(caught instanceof Error ? caught.message : t('statusImportFailed'));
     } finally {
       setBusy(false);
     }
@@ -135,45 +150,45 @@ export function AccountPanel() {
       }));
       setSessionUser(null);
       setDeleteConfirmation('');
-      setStatus('Synced account data was permanently deleted. Local browser data was left untouched.');
+      setStatus(t('statusDeleted'));
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : 'The account data could not be deleted.');
+      setStatus(caught instanceof Error ? caught.message : t('statusDeleteFailed'));
     } finally {
       setBusy(false);
     }
   }
 
   return <section className="view is-visible" aria-labelledby="accountTitle">
-    <header className="page-header compact-header"><div className="workflow-heading"><img className="workflow-mark" src={logo.src} alt="" /><div><p className="overline">Optional account sync</p><h1 id="accountTitle">Practise first. Sync only when it helps.</h1><p className="page-lede">An account is for continuity across devices. It never gates a first rehearsal.</p></div></div></header>
+    <header className="page-header compact-header"><div className="workflow-heading"><img className="workflow-mark" src={logo.src} alt="" /><div><p className="overline">{t('overline')}</p><h1 id="accountTitle">{t('title')}</h1><p className="page-lede">{t('lede')}</p></div></div></header>
     <div className="production-account-layout">
       <section className="surface production-account-card">
-        {!checked ? <p role="status">Checking account availability…</p> : !accountsAvailable ? <div className="production-account-empty"><p className="overline">Guest mode active</p><h2>Account sync is not configured here.</h2><p>Your local workspace remains fully usable. When the deployment has Postgres and an auth secret, this same screen enables account creation and sign-in.</p><Link className="button button-primary" href="/practice">Start a local rehearsal</Link></div> : sessionUser ? <div className="production-account-empty"><p className="overline">Signed in</p><h2>{sessionUser.name}</h2><p>{sessionUser.email}</p><button className="button button-secondary" type="button" disabled={busy} onClick={() => void signOut()}>Sign out</button></div> : <>
-          <div className="capture-tabs" role="tablist" aria-label="Account action"><button className={mode === 'sign-in' ? 'is-active' : ''} type="button" role="tab" aria-selected={mode === 'sign-in'} onClick={() => setMode('sign-in')}>Sign in</button><button className={mode === 'sign-up' ? 'is-active' : ''} type="button" role="tab" aria-selected={mode === 'sign-up'} onClick={() => setMode('sign-up')}>Create account</button></div>
+        {!checked ? <p role="status">{t('checking')}</p> : !accountsAvailable ? <div className="production-account-empty"><p className="overline">{t('guestOverline')}</p><h2>{t('guestTitle')}</h2><p>{t('guestBody')}</p><Link className="button button-primary" href="/practice">{t('guestAction')}</Link></div> : sessionUser ? <div className="production-account-empty"><p className="overline">{t('signedInOverline')}</p><h2>{sessionUser.name}</h2><p>{sessionUser.email}</p><button className="button button-secondary" type="button" disabled={busy} onClick={() => void signOut()}>{t('signOut')}</button></div> : <>
+          <div className="capture-tabs" role="tablist" aria-label={t('tablistLabel')}><button className={mode === 'sign-in' ? 'is-active' : ''} type="button" role="tab" aria-selected={mode === 'sign-in'} onClick={() => setMode('sign-in')}>{t('signIn')}</button><button className={mode === 'sign-up' ? 'is-active' : ''} type="button" role="tab" aria-selected={mode === 'sign-up'} onClick={() => setMode('sign-up')}>{t('createAccount')}</button></div>
           <form className="production-account-form" onSubmit={(event) => void submit(event)}>
-            {mode === 'sign-up' && <><label htmlFor="accountName">Name</label><input id="accountName" autoComplete="name" required maxLength={80} value={name} onChange={(event) => setName(event.target.value)} /></>}
-            <label htmlFor="accountEmail">Email</label><input id="accountEmail" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
-            <label htmlFor="accountPassword">Password</label><input id="accountPassword" type="password" minLength={10} maxLength={128} autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'} required value={password} onChange={(event) => setPassword(event.target.value)} />
-            <p className="production-field-note">Use 10–128 characters. Passwords are handled by Better Auth; Talk-Active does not place them in project or transcript records.</p>
-            <button className="button button-primary button-full" type="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'sign-up' ? 'Create account' : 'Sign in'}</button>
+            {mode === 'sign-up' && <><label htmlFor="accountName">{t('nameLabel')}</label><input id="accountName" autoComplete="name" required maxLength={80} value={name} onChange={(event) => setName(event.target.value)} /></>}
+            <label htmlFor="accountEmail">{t('emailLabel')}</label><input id="accountEmail" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+            <label htmlFor="accountPassword">{t('passwordLabel')}</label><input id="accountPassword" type="password" minLength={10} maxLength={128} autoComplete={mode === 'sign-up' ? 'new-password' : 'current-password'} required value={password} onChange={(event) => setPassword(event.target.value)} />
+            <p className="production-field-note">{t('passwordNote')}</p>
+            <button className="button button-primary button-full" type="submit" disabled={busy}>{busy ? t('wait') : mode === 'sign-up' ? t('createAccount') : t('signIn')}</button>
           </form>
         </>}
         {status && <p className="rubric-import-status" role="status">{status}</p>}
         <InterfaceLanguage />
         <div className="production-data-tools">
-          <p className="overline">Your data</p>
-          <button className="button button-secondary" type="button" onClick={exportLocalData}>Export local data</button>
-          {sessionUser && <a className="button button-secondary" href="/api/data/export" download>Export synced data</a>}
-          {sessionUser && legacyWorkspace && legacyProjectCount > 0 && <button className="button button-secondary" type="button" disabled={busy} onClick={() => void importLegacy()}>Bring in {legacyProjectCount} browser project{legacyProjectCount === 1 ? '' : 's'}</button>}
+          <p className="overline">{t('dataOverline')}</p>
+          <button className="button button-secondary" type="button" onClick={exportLocalData}>{t('exportLocal')}</button>
+          {sessionUser && <a className="button button-secondary" href="/api/data/export" download>{t('exportSynced')}</a>}
+          {sessionUser && legacyWorkspace && legacyProjectCount > 0 && <button className="button button-secondary" type="button" disabled={busy} onClick={() => void importLegacy()}>{t('importLegacy', { count: legacyProjectCount })}</button>}
         </div>
         {sessionUser && <div className="production-delete-zone">
-          <p className="overline">Permanent deletion</p>
-          <p>Type <strong>DELETE MY TALK-ACTIVE DATA</strong> to remove the account, sessions, projects, and synced transcripts by database cascade. Local browser data is separate.</p>
-          <label htmlFor="deleteConfirmation">Confirmation phrase</label>
+          <p className="overline">{t('deleteOverline')}</p>
+          <p>{t.rich('deleteInstruction', { phrase: () => <strong>{DELETE_CONFIRMATION_PHRASE}</strong> })}</p>
+          <label htmlFor="deleteConfirmation">{t('deleteLabel')}</label>
           <input id="deleteConfirmation" value={deleteConfirmation} onChange={(event) => setDeleteConfirmation(event.target.value)} />
-          <button className="button button-danger" type="button" disabled={busy || deleteConfirmation !== 'DELETE MY TALK-ACTIVE DATA'} onClick={() => void deleteAccountData()}>Delete synced account data</button>
+          <button className="button button-danger" type="button" disabled={busy || deleteConfirmation !== DELETE_CONFIRMATION_PHRASE} onClick={() => void deleteAccountData()}>{t('deleteAction')}</button>
         </div>}
       </section>
-      <aside className="surface rubric-guide"><p className="overline">What changes</p><ul><li><span>1</span><div><strong>Guest stays available</strong><small>No account is required for a first run.</small></div></li><li><span>2</span><div><strong>Identity is separate</strong><small>Account records live in the configured Postgres deployment, not inside transcripts.</small></div></li><li><span>3</span><div><strong>Inference is disclosed separately</strong><small>Signing in does not change where configured model providers process criterion-scoped text.</small></div></li></ul><div className="guide-note"><strong>Data boundary</strong><p>A camera-and-microphone replay is saved only after you opt in. Durable replay requires a signed-in owner and private storage; deleting it keeps the text feedback. Local work is separate.</p></div></aside>
+      <aside className="surface rubric-guide"><p className="overline">{t('guideOverline')}</p><ul><li><span>1</span><div><strong>{t('guide1Title')}</strong><small>{t('guide1Body')}</small></div></li><li><span>2</span><div><strong>{t('guide2Title')}</strong><small>{t('guide2Body')}</small></div></li><li><span>3</span><div><strong>{t('guide3Title')}</strong><small>{t('guide3Body')}</small></div></li></ul><div className="guide-note"><strong>{t('boundaryTitle')}</strong><p>{t('boundaryBody')}</p></div></aside>
     </div>
   </section>;
 }
