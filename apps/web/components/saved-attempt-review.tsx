@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -13,6 +15,8 @@ import {
 
 type LoadState = 'loading' | 'ready' | 'error';
 type ReviewEvidence = AttemptReviewResponse['evidence'][number];
+
+type Translate = (key: string) => string;
 
 function formatClock(milliseconds: number): string {
   const totalSeconds = Math.max(0, Math.floor(milliseconds / 1_000));
@@ -31,20 +35,20 @@ function dateLabel(value: string): string {
   });
 }
 
-function sourceLabel(source: AttemptDeliveryEvent['source']): string {
-  if (source === 'interim-transcript') return 'Live transcript';
-  if (source === 'combined') return 'Speech cues';
+function sourceLabel(source: AttemptDeliveryEvent['source'], t: Translate): string {
+  if (source === 'interim-transcript') return t('liveTranscript');
+  if (source === 'combined') return t('speechCues');
   if (source === 'vision') return 'Camera';
   return 'Voice';
 }
 
-function verdictLabel(verdict: ReviewEvidence['verdict']): string {
-  if (verdict === 'supported') return 'Evidence cited';
-  if (verdict === 'partial') return 'Evidence still partial';
-  return 'Evidence gap';
+function verdictLabel(verdict: ReviewEvidence['verdict'], t: Translate): string {
+  if (verdict === 'supported') return t('evidenceCited');
+  if (verdict === 'partial') return t('evidenceStillPartial');
+  return t('evidenceGap');
 }
 
-function languageLabel(language: AttemptReviewResponse['project']['language']): string {
+function languageLabel(language: AttemptReviewResponse['project']['language'], t: Translate): string {
   return language === 'id-ID' ? 'Bahasa Indonesia' : 'English';
 }
 
@@ -54,38 +58,41 @@ function evidenceState(item: ReviewEvidence): 'found' | 'partial' | 'absent' {
   return 'absent';
 }
 
-function recordingMessage(recording: AttemptReviewResponse['recording']): string {
-  if (!recording) return 'No replay was saved. The transcript, rubric evidence, and delivery observations remain available.';
-  if (recording.status === 'pending') return 'The private replay is still being prepared. The saved evidence is already available.';
-  if (recording.status === 'failed') return 'The replay could not be stored. The transcript, rubric evidence, and delivery observations were kept.';
+function recordingMessage(recording: AttemptReviewResponse['recording'], t: Translate): string {
+  if (!recording) return t('replayNotSaved');
+  if (recording.status === 'pending') return t('replayPreparing');
+  if (recording.status === 'failed') return t('replayStoreFailed');
   return '';
 }
 
 function ReviewLoading() {
+  const t = useTranslations('savedReview');
   return (
     <section className="view is-visible saved-review-state" aria-live="polite" aria-busy="true">
-      <p className="overline">Saved attempt</p>
-      <h1>Loading the evidence trail…</h1>
-      <p>Checking access to this private review.</p>
+      <p className="overline">{t('savedAttempt')}</p>
+      <h1>{t('loading')}</h1>
+      <p>{t('checkingAccess')}</p>
     </section>
   );
 }
 
 function ReviewError({ message, onRetry }: Readonly<{ message: string; onRetry: () => void }>) {
+  const t = useTranslations('savedReview');
   return (
     <section className="view is-visible saved-review-state" aria-labelledby="savedReviewErrorTitle">
-      <p className="overline">Saved attempt</p>
-      <h1 id="savedReviewErrorTitle">This review could not be opened.</h1>
+      <p className="overline">{t('savedAttempt')}</p>
+      <h1 id="savedReviewErrorTitle">{t('couldNotOpen')}</h1>
       <p className="form-error" role="alert">{message}</p>
       <div className="saved-review-actions">
-        <button className="button button-primary" type="button" onClick={onRetry}>Try again</button>
-        <Link className="button button-secondary" href="/progress">Back to progress</Link>
+        <button className="button button-primary" type="button" onClick={onRetry}>{t('tryAgain')}</button>
+        <Link className="button button-secondary" href="/progress">{t('backToProgress')}</Link>
       </div>
     </section>
   );
 }
 
 export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }>) {
+  const t = useTranslations('savedReview');
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [review, setReview] = useState<AttemptReviewResponse | null>(null);
   const [error, setError] = useState('');
@@ -107,7 +114,7 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
       setLoadState('ready');
     }).catch((problem: unknown) => {
       if (abort.signal.aborted) return;
-      setError(problem instanceof Error ? problem.message : 'The server did not return a readable attempt review.');
+      setError(problem instanceof Error ? problem.message : t('unreadable'));
       setLoadState('error');
     });
     return () => abort.abort();
@@ -150,9 +157,9 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
       );
       setReview({ ...review, recording: null });
       setConfirmingDelete(false);
-      setPlaybackNote('The replay was deleted. Delivery observations, transcript, and rubric evidence were kept.');
+      setPlaybackNote(t('deleted'));
     } catch (problem) {
-      setError(problem instanceof Error ? problem.message : 'The recording could not be deleted.');
+      setError(problem instanceof Error ? problem.message : t('deleteFailed'));
     } finally {
       setDeleting(false);
     }
@@ -160,11 +167,11 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
 
   if (loadState === 'loading') return <ReviewLoading />;
   if (loadState === 'error' || !review) {
-    return <ReviewError message={error || 'The saved review was empty.'} onRetry={() => setRetryKey((value) => value + 1)} />;
+    return <ReviewError message={error || t('emptyReview')} onRetry={() => setRetryKey((value) => value + 1)} />;
   }
 
   const delivery = review.deliveryReview;
-  const replayUnavailable = recordingMessage(review.recording);
+  const replayUnavailable = recordingMessage(review.recording, t);
   const citedCount = review.evidence.filter((item) => item.citedSpan).length;
   const progressHref = `/progress?project=${encodeURIComponent(review.project.id)}`;
   const nextGap = review.evidence.find((item) => item.verdict === 'unsupported')
@@ -173,13 +180,13 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
 
   return (
     <section className="view is-visible saved-review" aria-labelledby="savedReviewTitle">
-      <Link className="saved-review-back" href={progressHref}><span aria-hidden="true">←</span> Back to progress</Link>
+      <Link className="saved-review-back" href={progressHref}><span aria-hidden="true">←</span> {t('backToProgress')}</Link>
       <header className="page-header compact-header saved-review-header">
         <div>
-          <p className="overline">{review.project.title} · {languageLabel(review.project.language)}</p>
+          <p className="overline">{review.project.title} · {languageLabel(review.project.language, t)}</p>
           <p className="saved-review-date">Saved attempt · {dateLabel(review.attempt.createdAt)}</p>
-          <h1 id="savedReviewTitle">Start with the proof. Fix one gap.</h1>
-          <p className="page-lede">The exact rubric evidence comes first. Delivery observations remain supporting context and never change a criterion verdict.</p>
+          <h1 id="savedReviewTitle">{t('startWithProof')}</h1>
+          <p className="page-lede">{t('evidenceFirst')}</p>
         </div>
       </header>
 
@@ -188,38 +195,38 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
           <div>
             <p className="overline">Rubric evidence</p>
             <h2 id="rubricEvidenceTitle">{citedCount} of {review.evidence.length} criteria cite your exact words</h2>
-            <p className="saved-boundary">This is evidence coverage in one transcript—not confidence, intelligence, or speaking ability.</p>
+            <p className="saved-boundary">{t('coverageBoundary')}</p>
           </div>
           <aside className="saved-next-gap" aria-labelledby="savedNextGapTitle">
-            <span>Focus next</span>
-            <h3 id="savedNextGapTitle">{nextGap?.criterionName ?? 'Every criterion cites evidence'}</h3>
+            <span>{t('focusNext')}</span>
+            <h3 id="savedNextGapTitle">{nextGap?.criterionName ?? t('everyCriterionCites')}</h3>
             {nextGap
               ? <>
-                <p>Make this evidence explicit in the next rehearsal.</p>
+                <p>{t('makeExplicitNext')}</p>
                 <ul>{nextGap.missingEvidence.map((cue) => <li key={cue}>{cue}</li>)}</ul>
               </>
-              : <p>Keep the cited claims defensible and rehearse the hardest judge follow-up.</p>}
+              : <p>{t('keepDefensible')}</p>}
           </aside>
         </div>
 
         {review.evidence.length === 0
-          ? <p className="empty-list">No rubric verdicts were retained for this attempt.</p>
+          ? <p className="empty-list">{t('noVerdicts')}</p>
           : <>
-            <ol className="saved-evidence-map" aria-label="Every rubric criterion and its evidence state">
+            <ol className="saved-evidence-map" aria-label={t('everyCriterionAndState')}>
               {review.evidence.map((item) => <li key={item.criterionId}>
                 <a href={`#saved-evidence-${item.criterionId}`} data-evidence={evidenceState(item)}>
                   <i aria-hidden="true" />
                   <span>{item.criterionName}</span>
-                  <strong>{verdictLabel(item.verdict)}</strong>
+                  <strong>{verdictLabel(item.verdict, t)}</strong>
                 </a>
               </li>)}
             </ol>
             <div className="saved-rubric-list">{review.evidence.map((item) => <article id={`saved-evidence-${item.criterionId}`} data-evidence={evidenceState(item)} key={item.criterionId}>
-              <div className="saved-rubric-heading"><h3>{item.criterionName}</h3><span>{verdictLabel(item.verdict)}</span></div>
+              <div className="saved-rubric-heading"><h3>{item.criterionName}</h3><span>{verdictLabel(item.verdict, t)}</span></div>
               {item.citedSpan
-                ? <blockquote><span>“{item.citedSpan}”</span><cite>Exact transcript span retained with this verdict</cite></blockquote>
-                : <p className="saved-no-citation">No transcript span supports this verdict.</p>}
-              {item.missingEvidence.length > 0 && <div className="saved-missing-evidence"><strong>{item.citedSpan ? 'Still make explicit' : 'Cues that were missing'}</strong><ul>{item.missingEvidence.map((cue) => <li key={cue}>{cue}</li>)}</ul></div>}
+                ? <blockquote><span>“{item.citedSpan}”</span><cite>{t('exactSpanRetained')}</cite></blockquote>
+                : <p className="saved-no-citation">{t('noSpanSupports')}</p>}
+              {item.missingEvidence.length > 0 && <div className="saved-missing-evidence"><strong>{item.citedSpan ? t('stillMakeExplicit') : t('cuesMissing')}</strong><ul>{item.missingEvidence.map((cue) => <li key={cue}>{cue}</li>)}</ul></div>}
             </article>)}</div>
           </>}
 
@@ -231,10 +238,10 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
 
       <section className="surface saved-timeline-card" aria-labelledby="timelineTitle">
         <div className="section-title-row">
-          <div><p className="overline">One synchronized timeline</p><h2 id="timelineTitle">Rubric, voice, and camera on one clock</h2></div>
+          <div><p className="overline">{t('oneTimeline')}</p><h2 id="timelineTitle">{t('rubricVoiceCamera')}</h2></div>
           <span className="session-status">{formatClock(timelineDurationMs)} · {events.length} {events.length === 1 ? 'cue' : 'cues'}</span>
         </div>
-        <p className="saved-section-intro">The saved attempt retains clock positions for delivery cues. It does not retain word-level timing, so rubric citations stay visible above but are not given an invented timestamp here.</p>
+        <p className="saved-section-intro">{t('timelineBoundary')}</p>
         <div className="attempt-timeline saved-attempt-timeline" aria-label={`Timeline lasting ${formatClock(timelineDurationMs)} with rubric, voice, and camera lanes`}>
           {/* One lane per retained criterion. A single aggregate "Rubric" lane
               told the reader how many criteria were cited but never which, and
@@ -258,7 +265,7 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
             <div className="timeline-lane" key={lane.id}>
               <span className="timeline-lane-label">{lane.label}</span>
               <div className="timeline-track" aria-label={`${lane.label}: ${lane.events.length} timestamped ${lane.events.length === 1 ? 'cue' : 'cues'}`}>
-                {lane.events.length === 0 && <span className="timeline-lane-note">No timestamped cue</span>}
+                {lane.events.length === 0 && <span className="timeline-lane-note">{t('noTimestampedCue')}</span>}
                 {lane.events.map((event) => {
                   const left = Math.min(99, (event.startMs / timelineDurationMs) * 100);
                   const span = Math.max(0, (event.endMs - event.startMs) / timelineDurationMs) * 100;
@@ -271,7 +278,7 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
                       onClick={() => seekToEvent(event)}
                       disabled={!recordingReady}
                       title={`${formatClock(event.startMs)} · ${event.label}`}
-                      aria-label={`${formatClock(event.startMs)}, ${event.label}. ${recordingReady ? 'Play the replay from two seconds before this.' : 'The replay is not available, so this cue cannot be played.'}`}
+                      aria-label={`${formatClock(event.startMs)}, ${event.label}. ${recordingReady ? t('playFromBefore') : t('replayUnavailableCue')}`}
                     />
                   );
                 })}
@@ -282,15 +289,15 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
             <span>0:00</span><span>{formatClock(timelineDurationMs / 2)}</span><span>{formatClock(timelineDurationMs)}</span>
           </p>
         </div>
-        {!recordingReady && events.length > 0 && <p className="saved-timeline-boundary">The observations remain readable without a replay. Timeline marks become playable only when the private video is ready.</p>}
+        {!recordingReady && events.length > 0 && <p className="saved-timeline-boundary">{t('observationsWithoutReplay')}</p>}
         <details className="saved-disclosure saved-timeline-disclosure">
           <summary><span>Read every timeline observation</span><strong>{events.length} {events.length === 1 ? 'item' : 'items'}</strong></summary>
           {events.length === 0
-            ? <p className="empty-list">No timestamped delivery cue was retained for this attempt.</p>
+            ? <p className="empty-list">{t('noTimestampedRetained')}</p>
             : <ul className="saved-timeline-list">{events.map((event) => <li key={event.id}>
-              <button type="button" onClick={() => seekToEvent(event)} disabled={!recordingReady} aria-label={`${recordingReady ? 'Play' : 'Saved observation at'} ${formatClock(event.startMs)}: ${event.label}`}>
+              <button type="button" onClick={() => seekToEvent(event)} disabled={!recordingReady} aria-label={`${recordingReady ? 'Play' : t('savedObservationAt')} ${formatClock(event.startMs)}: ${event.label}`}>
                 <time dateTime={`PT${Math.floor(event.startMs / 1_000)}S`}>{formatClock(event.startMs)}</time>
-                <span className="saved-timeline-copy"><strong>{event.label}</strong><small>{sourceLabel(event.source)} · {event.evidence}</small></span>
+                <span className="saved-timeline-copy"><strong>{event.label}</strong><small>{sourceLabel(event.source, t)} · {event.evidence}</small></span>
                 <span aria-hidden="true">{recordingReady ? 'Play →' : 'Saved'}</span>
               </button>
             </li>)}</ul>}
@@ -298,7 +305,7 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
       </section>
 
       <details className="surface saved-disclosure saved-replay-card" ref={replayDetailsRef}>
-        <summary><span><small>Private replay</small>Open the attempt video</span><strong>{recordingReady ? formatClock(review.recording?.durationMs ?? 0) : review.recording?.status ?? 'Not saved'}</strong></summary>
+        <summary><span><small>{t('privateReplay')}</small>{t('openVideo')}</span><strong>{recordingReady ? formatClock(review.recording?.durationMs ?? 0) : review.recording?.status ?? t('notSaved')}</strong></summary>
         <div className="saved-disclosure-body">
           {recordingReady
             ? <video
@@ -309,18 +316,18 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
               ref={videoRef}
               src={`/api/attempts/${encodeURIComponent(attemptId)}/recording/media`}
               aria-label="Private video replay of this rehearsal attempt"
-            >Your browser cannot play this saved rehearsal video.</video>
+            >{t('cannotPlay')}</video>
             : <div className="saved-replay-empty"><p>{replayUnavailable}</p></div>}
           {review.recording && <p className="saved-replay-meta">Captured duration: {formatClock(review.recording.durationMs)}. Only the signed-in attempt owner can play this private replay.</p>}
           {playbackNote && <p className="saved-playback-note" aria-live="polite">{playbackNote}</p>}
           {review.recording && <div className="saved-recording-delete">
             {!confirmingDelete
-              ? <button className="button button-danger" type="button" onClick={() => setConfirmingDelete(true)}>Delete replay</button>
-              : <div className="saved-delete-confirm" role="group" aria-label="Confirm recording deletion">
-                <p>Delete only the video? The transcript, delivery observations, and rubric evidence will remain.</p>
+              ? <button className="button button-danger" type="button" onClick={() => setConfirmingDelete(true)}>{t('deleteReplay')}</button>
+              : <div className="saved-delete-confirm" role="group" aria-label={t('confirmDeletion')}>
+                <p>{t('deleteOnlyVideo')}</p>
                 <div className="saved-review-actions">
-                  <button className="button button-danger" type="button" disabled={deleting} aria-busy={deleting} onClick={() => void deleteRecording()}>{deleting ? 'Deleting…' : 'Yes, delete replay'}</button>
-                  <button className="button button-secondary" type="button" disabled={deleting} onClick={() => setConfirmingDelete(false)}>Keep replay</button>
+                  <button className="button button-danger" type="button" disabled={deleting} aria-busy={deleting} onClick={() => void deleteRecording()}>{deleting ? t('deleting') : t('yesDelete')}</button>
+                  <button className="button button-secondary" type="button" disabled={deleting} onClick={() => setConfirmingDelete(false)}>{t('keepReplay')}</button>
                 </div>
               </div>}
             {error && <p className="form-error" role="alert">{error}</p>}
@@ -329,19 +336,19 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
       </details>
 
       <section className="saved-delivery-section" aria-labelledby="deliverySummaryTitle">
-        <p className="saved-boundary"><strong>Delivery boundary:</strong> {delivery?.boundary ?? 'No delivery observation was saved.'} These observations support review; they do not change rubric evidence or measure the speaker.</p>
+        <p className="saved-boundary"><strong>{t('deliveryBoundary')}</strong> {delivery?.boundary ?? t('noDeliveryObservation')} These observations support review; they do not change rubric evidence or measure the speaker.</p>
         <details className="surface saved-disclosure saved-delivery-summary">
-          <summary><span><small>Delivery details</small><span id="deliverySummaryTitle">Inspect the raw browser observations</span></span><strong>{delivery ? `${events.length} timestamped` : 'Unavailable'}</strong></summary>
+          <summary><span><small>{t('deliveryDetails')}</small><span id="deliverySummaryTitle">{t('rawObservations')}</span></span><strong>{delivery ? `${events.length} timestamped` : t('unavailable')}</strong></summary>
           <div className="saved-disclosure-body">
             {delivery
               ? <dl className="saved-delivery-metrics">
-                <div><dt>Capture mode</dt><dd>{delivery.mode === 'interview' ? 'Face · interview' : 'Full body · presentation'}</dd></div>
-                <div><dt>Usable tracking</dt><dd>{delivery.trackingCoveragePercent === null ? 'Not measured' : `${Math.round(delivery.trackingCoveragePercent)}%`}</dd></div>
-                <div><dt>Filler cues</dt><dd>{delivery.fillerCount}</dd></div>
+                <div><dt>{t('captureMode')}</dt><dd>{delivery.mode === 'interview' ? t('faceInterview') : t('fullBodyPresentation')}</dd></div>
+                <div><dt>{t('usableTracking')}</dt><dd>{delivery.trackingCoveragePercent === null ? t('notMeasured') : `${Math.round(delivery.trackingCoveragePercent)}%`}</dd></div>
+                <div><dt>{t('fillerCues')}</dt><dd>{delivery.fillerCount}</dd></div>
                 <div><dt>Repeated-word cues</dt><dd>{delivery.repeatedWordCount}</dd></div>
               </dl>
-              : <p className="empty-list">This attempt has rubric evidence but no saved delivery observation.</p>}
-            <p className="saved-section-intro">This saved format retains inspectable counts, capture coverage, and timestamped cues. It does not retain the component bands needed to defend an aggregate delivery reading, so no vocal, visual, or overall score is shown. Camera, microphone, framing, and tracking quality affect what could be measured.</p>
+              : <p className="empty-list">{t('evidenceButNoDelivery')}</p>}
+            <p className="saved-section-intro">{t('savedFormatBoundary')}</p>
           </div>
         </details>
       </section>

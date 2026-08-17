@@ -68,7 +68,7 @@ test('the saved review leads with traceable evidence and a predictable way back'
   await mockAttempt(page, { recordingStatus: 'ready' });
   await page.goto(`/attempts/${ATTEMPT_ID}`);
 
-  await expect(page.getByRole('link', { name: 'Back to progress' }))
+  await expect(page.getByRole('link', { name: 'Kembali ke progres' }))
     .toHaveAttribute('href', '/progress?project=019ff7f4-e54b-7aaa-baba-00000000000c');
   await expect(page.locator('.main-nav a[href="/progress"]')).toHaveAttribute('aria-current', 'page');
   await expect(page.getByText('RISTEK Finals Pitch · Bahasa Indonesia', { exact: true })).toBeVisible();
@@ -76,7 +76,7 @@ test('the saved review leads with traceable evidence and a predictable way back'
   await expect(page.getByRole('heading', { name: 'Measured impact' }).first()).toBeVisible();
   await expect(page.getByText('measured outcome', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('We map every claim back to a criterion in the evaluator rubric.', { exact: false }).first()).toBeVisible();
-  await expect(page.getByText(/not confidence, intelligence, or speaking ability/i)).toBeVisible();
+  await expect(page.getByText(/bukan kepercayaan diri, kecerdasan, atau kemampuan berbicara/i)).toBeVisible();
 
   const order = await page.locator('.saved-review').evaluate((root) => {
     const children = [...root.querySelectorAll<HTMLElement>('.saved-rubric-card, .saved-timeline-card, .saved-replay-card, .saved-delivery-section')];
@@ -159,7 +159,7 @@ test('without a replay the cues still plot, but cannot be played', async ({ page
   const marks = page.locator('.saved-attempt-timeline .timeline-mark');
   await expect(marks).toHaveCount(4);
   await expect(marks.first()).toBeDisabled();
-  await expect(marks.first()).toHaveAttribute('aria-label', /cannot be played/);
+  await expect(marks.first()).toHaveAttribute('aria-label', /tidak dapat diputar/);
 });
 
 test('raw events are disclosed on demand and remain the chart text equivalent', async ({ page }) => {
