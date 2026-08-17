@@ -201,5 +201,19 @@
     "bandDescription": "{label}: {value}, {position} {target}.",
     "inside": "di dalam",
     "outside": "di luar"
+  },
+  "micQuality": {
+    "silentTitle": "Mikrofon ini tidak mengirim suara",
+    "silentBody": "Tidak ada sinyal sama sekali. Periksa apakah mikrofon dibisukan atau perangkat lain yang terpilih.",
+    "clippingTitle": "Mikrofon ini terlalu keras dan pecah",
+    "clippingBody": "Suaranya mentok, jadi kata-katanya melebur. Mundur sedikit atau turunkan gain perangkat.",
+    "noisyFloorTitle": "Mikrofon ini tidak pernah hening",
+    "noisyFloorBody": "Ada suara terus-menerus di antara kalimat — biasanya karena mikrofon dipegang, bergetar, atau menempel di meja. Pengenal suara tidak punya jeda untuk memotong kalimat. Coba letakkan di permukaan yang stabil, atau pakai mikrofon laptop.",
+    "tooQuietTitle": "Suara ini terlalu pelan untuk dikenali",
+    "tooQuietBody": "Ada suara, tetapi terlalu lirih. Dekatkan mikrofon atau naikkan gain perangkat.",
+    "boundary": "Ini pembacaan level dari aliran rekaman kami, bukan dari mesin pengenal suara — gema dan pantulan ruangan tidak terdeteksi di sini.",
+    "typedFallback": "Anda selalu bisa mengetik transkrip sebagai gantinya.",
+    "guessedTitle": "Sebagian transkrip ini hasil tebakan",
+    "guessedBody": "Pengenal suara tidak yakin pada {count, plural, other {# bagian}}. Periksa dan perbaiki sebelum meninjau — bagian yang salah dengar akan dikutip sebagai kata-kata Anda sendiri."
   }
 }

@@ -14,6 +14,11 @@ import {
   type DeliveryMetricsResult,
   type VisionObservations,
 } from '@/lib/delivery-metrics';
+import { GuessedPassageNotice, InputQualityNotice } from '@/components/input-quality-notice';
+import {
+  assessInputQuality,
+  type InputQualityVerdict,
+} from '@/lib/rehearsal/input-quality';
 import {
   createAudioObserver,
   type AudioObservationSample,
@@ -179,6 +184,10 @@ const POSE_CONNECTIONS: ReadonlyArray<readonly [number, number]> = [
 const FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288,
   397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132,
   93, 234, 127, 162, 21, 54, 103, 67, 109];
+
+/** Ten seconds at the observer's 100ms cadence — long enough to include the
+ *  gaps between phrases, which is where a noisy floor shows up. */
+const QUALITY_WINDOW_SAMPLES = 100;
 
 function formatTime(milliseconds: number): string {
   const seconds = Math.max(0, Math.floor(milliseconds / 1_000));
@@ -414,6 +423,9 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
     const [speechState, setSpeechState] = useState<SpeechRecognitionState>('idle');
     const [frame, setFrame] = useState<VisionFrameSnapshot | null>(null);
     const [audioSample, setAudioSample] = useState<AudioObservationSample | null>(null);
+    const [inputQuality, setInputQuality] = useState<InputQualityVerdict | null>(null);
+    const [guessedPassages, setGuessedPassages] = useState(0);
+    const qualityWindowRef = useRef<{ rms: number }[]>([]);
     const [speechDisruptionCount, setSpeechDisruptionCount] = useState(0);
     const [saveReplay, setSaveReplay] = useState(false);
     const [recordingState, setRecordingState] = useState<'off' | 'recording' | 'failed'>('off');
@@ -834,6 +846,15 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
             if (emitted.length > 0) updateSpeechDisruptionCount();
             if (sample.pitchHz !== null) pitchSamplesRef.current.push(sample.pitchHz);
             if (!sample.quiet) energySamplesRef.current.push(sample.rms);
+            // Quality needs the quiet samples too — a floor that never drops
+            // is the whole signal for a handled or vibrating mic — so this
+            // keeps its own window rather than reusing energySamplesRef, which
+            // filters silence out for the energy metric.
+            qualityWindowRef.current.push({ rms: sample.rms });
+            if (qualityWindowRef.current.length > QUALITY_WINDOW_SAMPLES) {
+              qualityWindowRef.current.shift();
+            }
+            setInputQuality(assessInputQuality(qualityWindowRef.current));
           },
           onError: (failure) => setStatus(`${failure.message} The transcript and camera can continue.`),
         }) : null;
@@ -849,6 +870,10 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
               Math.max(0, snapshot.observedAtMs - startedAtRef.current),
             );
             if (emitted.length > 0) updateSpeechDisruptionCount();
+            // The recognizer reports how sure it was, per settled result. This
+            // used to be discarded, so a guessed passage looked exactly like a
+            // heard one — and INV-3 then quotes it back as the speaker's words.
+            setGuessedPassages(snapshot.lowConfidenceRanges.length);
             const next = snapshot.transcript.trim();
             if (!next) return;
             transcriptTimingRef.current.addSnapshot(
@@ -966,6 +991,8 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         <canvas ref={canvasRef} width="640" height="360" aria-hidden="true" />
         {!active && <div className="studio-camera-empty"><span aria-hidden="true">◉</span><strong>No media access before Start</strong><small>{allowReplay ? 'Analysis runs on this device. A replay is created only when you explicitly ask for one above.' : 'Analysis runs on this device. This interview does not retain a camera or microphone replay.'}</small></div>}
         {captureCamera && <div className="studio-hud"><span><i className={frame?.tracked ? 'good' : ''} />{trackingLabel}</span><span>{effectiveMode === 'presentation' ? '33-point pose' : 'face landmarks'}</span></div>}
+        <InputQualityNotice verdict={inputQuality} />
+        <GuessedPassageNotice count={guessedPassages} />
         {active && !answerCapturePaused && captureAcoustic && <div className="voice-meter" aria-label="Live voice level"><span>VOICE</span><i><b style={{ width: `${liveVoice}%` }} /></i><small>{audioSample?.pitchHz ? `${Math.round(audioSample.pitchHz)} Hz` : audioSample?.quiet ? 'pause' : 'listening'}</small><em>{speechDisruptionCount} possible cues</em></div>}
       </div>
 

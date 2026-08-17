@@ -201,5 +201,19 @@
     "bandDescription": "{label}: {value}, {position} the {target}.",
     "inside": "inside",
     "outside": "outside"
+  },
+  "micQuality": {
+    "silentTitle": "This microphone is sending nothing",
+    "silentBody": "No signal at all. Check whether it is muted, or whether another device is selected.",
+    "clippingTitle": "This microphone is too loud and distorting",
+    "clippingBody": "The level is pinned, so words run together. Move back a little or turn the device gain down.",
+    "noisyFloorTitle": "This microphone never goes quiet",
+    "noisyFloorBody": "Something is audible between every phrase — usually a mic being held, vibrating, or resting on a desk. The recognizer has no silence to break sentences on. Try a stable surface, or the laptop microphone.",
+    "tooQuietTitle": "This is too faint to recognise",
+    "tooQuietBody": "There is sound, but very little of it. Move closer or turn the device gain up.",
+    "boundary": "This reads levels from our recording stream, not from the recognizer — echo and room reverb are not detected here.",
+    "typedFallback": "You can always type the transcript instead.",
+    "guessedTitle": "Some of this transcript was guessed",
+    "guessedBody": "The recognizer was unsure about {count, plural, one {# passage} other {# passages}}. Check and correct them before reviewing — a misheard passage gets quoted back as your own words."
   }
 }
