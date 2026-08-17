@@ -134,7 +134,7 @@ test('workspace keeps one practice action above the fold at 720p', async ({ page
   expect(actionBounds, 'the dominant practice action must have rendered bounds').not.toBeNull();
   expect((actionBounds?.y ?? 720) + (actionBounds?.height ?? 0)).toBeLessThanOrEqual(720);
 
-  const skipLink = page.getByRole('link', { name: 'Skip to workspace content' });
+  const skipLink = page.getByRole('link', { name: 'Lompat ke konten ruang kerja' });
   await expect(skipLink).not.toBeInViewport();
   await page.keyboard.press('Tab');
   await expect(skipLink).toBeFocused();
@@ -563,11 +563,11 @@ test('rubric library remains editable, explicitly saved, and source-labelled', a
 test('mobile workspace exposes the complete frozen navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/workspace');
-  const nav = page.getByRole('navigation', { name: 'Mobile navigation' });
+  const nav = page.getByRole('navigation', { name: 'Navigasi seluler' });
   await expect(nav).toBeVisible();
   await expect(nav.getByRole('link')).toHaveCount(4);
   await expectVisibleControlsHitTest(page);
-  await nav.getByRole('link', { name: /Rubric/i }).click();
+  await nav.getByRole('link', { name: /Rubrik/i }).click();
   await expect(page).toHaveURL(/\/rubric$/u);
   await expect(page.getByRole('heading', { name: 'Modify rubric' })).toBeVisible();
 });

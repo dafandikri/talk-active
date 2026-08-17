@@ -101,9 +101,9 @@ test('a second project brings a switcher, and switching changes the history show
   await switcher.locator('select').selectOption('p-thesis');
 
   await expect(page).toHaveURL('/progress?project=p-thesis');
-  await expect(page.locator('.main-nav a').filter({ hasText: 'Home' }))
+  await expect(page.locator('.main-nav a').filter({ hasText: 'Beranda' }))
     .toHaveAttribute('href', '/workspace?project=p-thesis');
-  await expect(page.locator('.mobile-nav a').filter({ hasText: 'Rubric' }))
+  await expect(page.locator('.mobile-nav a').filter({ hasText: 'Rubrik' }))
     .toHaveAttribute('href', '/rubric?project=p-thesis');
   await expect(page.locator('.full-session-list')).toContainText('Thesis defence · Semester 7');
   await expect(page.locator('.full-session-list')).not.toContainText('RISTEK Finals');
@@ -216,7 +216,7 @@ test('a signed-out visitor asks for no project list and keeps its local workspac
     return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
   });
   await page.goto('/progress');
-  await expect(page.locator('.sidebar-project-list')).toContainText('Local workspace');
+  await expect(page.locator('.sidebar-project-list')).toContainText('Ruang kerja lokal');
 
   // The list route requires a synced identity, so asking as a guest would 401 —
   // and a 401 is a console error, which the demo gate treats as a broken path.

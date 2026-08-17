@@ -235,11 +235,18 @@ test('INV-2 account language stays on the screens that own it', () => {
   // extraction silently carries account language onto a screen that has no
   // business implying an account exists — the exact thing this test is for.
   const NAMESPACE_OWNERS = new Set(['entryGate', 'account']);
+  // These mirror AUTHENTICATION_CLAIMS phrase for phrase. An earlier version
+  // matched a bare /\bakun\b/, which is broader than the English rule and
+  // failed the workspace profile chip for saying "Buka opsi akun" — a string
+  // whose English original, "Open account options", the English patterns
+  // deliberately allow. Offering a route to the account screen is not claiming
+  // the user has an account; the rule is about the latter.
   const INDONESIAN_AUTHENTICATION_CLAIMS = [
-    /\bakun\b/iu,
-    /\bkata sandi\b/iu,
-    /\bmasuk ke akun\b/iu,
+    /\bakun anda\b/iu,
+    /\bbuat akun\b/iu,
     /\bdaftar akun\b/iu,
+    /\bmasuk ke akun\b/iu,
+    /\bkata sandi\b/iu,
   ];
   for (const [locale, patterns] of [
     ['id', INDONESIAN_AUTHENTICATION_CLAIMS],

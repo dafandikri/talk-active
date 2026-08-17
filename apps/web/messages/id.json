@@ -103,5 +103,25 @@
     "statusImportFailed": "Ruang kerja lokal tidak dapat diimpor.",
     "statusDeleted": "Data akun tersinkron telah dihapus permanen. Data browser lokal tidak disentuh.",
     "statusDeleteFailed": "Data akun tidak dapat dihapus."
+  },
+  "workspaceFrame": {
+    "skipLink": "Lompat ke konten ruang kerja",
+    "mainNav": "Navigasi utama",
+    "mobileNav": "Navigasi seluler",
+    "brandHome": "Kembali ke halaman depan Talk-Active",
+    "navHome": "Beranda",
+    "navPractice": "Latihan",
+    "navRubric": "Rubrik",
+    "navProgress": "Progres",
+    "navLanding": "Halaman depan",
+    "projectsOne": "Proyek",
+    "projectsMany": "Proyek",
+    "localWorkspace": "Ruang kerja lokal",
+    "privacyChip": "Ruang kerja tamu lokal",
+    "profileNamed": "Berlatih sebagai {name}. Buka opsi akun.",
+    "profileAnonymous": "Beri nama ruang kerja ini",
+    "guest": "Tamu",
+    "profileSyncHint": "Sinkronisasi akun (opsional)",
+    "profileAddName": "Tambahkan nama Anda"
   }
 }

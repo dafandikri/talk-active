@@ -106,7 +106,14 @@ test('H-3 every stage of the practice flow has a marked exit', () => {
   // The link itself is still asserted in the component; only its words moved.
   assert.match(ENTRY, /className="entry-back" href="\/"/u, 'the entry decision must link back to the landing page');
   everyLocaleTranslates('entryGate', 'back', 'the entry decision must offer a visible return to the landing page');
-  assert.match(FRAME, /Back to Talk-Active landing page/u, 'workspace chrome must always return to the landing page');
+  // Structure in the component, words in the catalogues. The brand link is
+  // rendered twice — sidebar and mobile header — so both survive a viewport
+  // that hides one of them.
+  assert.ok(
+    (FRAME.match(/className="brand" href="\/"/gu) ?? []).length >= 2,
+    'workspace chrome must always return to the landing page, on both layouts',
+  );
+  everyLocaleTranslates('workspaceFrame', 'brandHome', 'the return link must be labelled in every locale');
 });
 
 test('H-3 the attempt step opens on writing, and capture is a choice the user makes', () => {
@@ -299,7 +306,9 @@ test('H-9 an error is never signalled by colour alone', () => {
 //  10. Help and documentation
 // ---------------------------------------------------------------------------
 test('H-10 the limits of the analysis are documented in the product, not a manual', () => {
-  assert.match(FRAME, /Landing page/u, 'the public landing page must be reachable from every workspace page');
+  assert.match(FRAME, /<Link className="nav-item" href="\/">/u,
+    'the public landing page must be reachable from every workspace page');
+  everyLocaleTranslates('workspaceFrame', 'navLanding', 'the landing-page nav item must be labelled in every locale');
   assert.doesNotMatch(FRAME, /How it works/u, 'workspace navigation must not add a redundant help destination');
   assert.doesNotMatch(LANDING, /How it works/u, 'the landing page must not restore the removed explanatory section');
   assert.match(PRACTICE, /not confidence or speaking ability/u, 'the review must state what it is not');

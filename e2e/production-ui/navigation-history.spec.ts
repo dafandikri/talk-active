@@ -39,7 +39,7 @@ test('landing, entry, and workspace keep a predictable browser-back path', async
   await expect(page).toHaveURL(/\/enter$/u);
   await page.getByRole('button', { name: 'Lanjut tanpa nama' }).click();
   await expect(page).toHaveURL(/\/workspace$/u);
-  const landingLink = page.getByRole('link', { name: 'Back to Talk-Active landing page' }).last();
+  const landingLink = page.getByRole('link', { name: 'Kembali ke halaman depan Talk-Active' }).last();
   await expect(landingLink).toBeVisible();
   await landingLink.click();
   await expect(page).toHaveURL(/\/$/u);

@@ -103,5 +103,25 @@
     "statusImportFailed": "The local workspace could not be imported.",
     "statusDeleted": "Synced account data was permanently deleted. Local browser data was left untouched.",
     "statusDeleteFailed": "The account data could not be deleted."
+  },
+  "workspaceFrame": {
+    "skipLink": "Skip to workspace content",
+    "mainNav": "Main navigation",
+    "mobileNav": "Mobile navigation",
+    "brandHome": "Back to Talk-Active landing page",
+    "navHome": "Home",
+    "navPractice": "Practice",
+    "navRubric": "Rubric",
+    "navProgress": "Progress",
+    "navLanding": "Landing page",
+    "projectsOne": "Project",
+    "projectsMany": "Projects",
+    "localWorkspace": "Local workspace",
+    "privacyChip": "Local guest workspace",
+    "profileNamed": "Rehearsing as {name}. Open account options.",
+    "profileAnonymous": "Put your name on this workspace",
+    "guest": "Guest",
+    "profileSyncHint": "Optional account sync",
+    "profileAddName": "Add your name"
   }
 }
