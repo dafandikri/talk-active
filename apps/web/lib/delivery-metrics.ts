@@ -45,17 +45,33 @@ export type DeliveryMetricId =
   | 'framing-coverage'
   | 'movement-activity';
 
+/**
+ * A sentence this module does not write.
+ *
+ * Metric labels, units, target phrasings and explanations are INTERFACE
+ * vocabulary — "Filler frequency" describes the chart, not the rehearsal — so
+ * they follow the reader's interface locale, not the project language that
+ * governs rubric verdicts. Those are two different axes, and a metrics module
+ * is the wrong place to resolve either one. It emits a stable id, the variant
+ * that applies, and the numbers the sentence interpolates; the component looks
+ * the wording up.
+ */
+export interface DeliveryMetricCopy {
+  /** Catalogue variant under this metric, or null when there is only one. */
+  readonly variant: string | null;
+  /** Values the sentence interpolates. */
+  readonly values: Readonly<Record<string, number>>;
+}
+
 export interface DeliveryMetricResult {
   id: DeliveryMetricId;
-  label: string;
   available: boolean;
   observedValue: number | null;
-  unit: string;
   rehearsalScore: number | null;
   weight: number;
-  target: string;
   band: DeliveryMetricBand;
-  explanation: string;
+  target: DeliveryMetricCopy;
+  explanation: DeliveryMetricCopy;
 }
 
 export interface DeliveryMetricGroup {
@@ -301,28 +317,35 @@ function coefficientOfVariation(samples: readonly number[] | undefined): number 
 
 function makeMetric(
   id: DeliveryMetricId,
-  label: string,
   observedValue: number | null,
-  unit: string,
   rehearsalScore: number | null,
   weight: number,
-  target: string,
   band: DeliveryMetricBand,
-  explanation: string,
+  explanation: DeliveryMetricCopy,
+  target: DeliveryMetricCopy = { variant: null, values: {} },
 ): DeliveryMetricResult {
   return {
     id,
-    label,
     available: observedValue !== null && rehearsalScore !== null,
     observedValue,
-    unit,
     rehearsalScore,
     weight,
-    target,
     band,
+    target,
     explanation,
   };
 }
+
+/** Most targets are phrased entirely from the band the metric already carries. */
+function bandTarget(band: DeliveryMetricBand): DeliveryMetricCopy {
+  return { variant: null, values: { from: band.targetFrom, to: band.targetTo } };
+}
+
+function measured(values: Readonly<Record<string, number>> = {}): DeliveryMetricCopy {
+  return { variant: 'measured', values };
+}
+
+const ABSENT: DeliveryMetricCopy = { variant: 'absent', values: {} };
 
 function weightedResult(components: readonly WeightedComponent[]): {
   score: number | null;
@@ -394,75 +417,57 @@ function vocalMetrics(
   return makeGroup([
     makeMetric(
       'pace',
-      'Speaking pace',
       round(wordsPerMinute),
-      'words/min',
       scoreTargetBand(wordsPerMinute, paceBand),
       0.20,
-      '105–165 words/min practice band',
       paceBand,
-      `${wordCount} recognized words across ${round(durationSeconds, 1)} seconds.`,
+      measured({ words: wordCount, seconds: round(durationSeconds, 1) }),
+      bandTarget(paceBand),
     ),
     makeMetric(
       'fillers',
-      'Filler frequency',
       round(fillersPerMinute, 1),
-      'events/min',
       scoreAtMost(fillersPerMinute, fillerBand),
       0.20,
-      'At most 2 detected events/min',
       fillerBand,
-      `${fillerCount} configured filler event${fillerCount === 1 ? '' : 's'} found in the transcript.`,
+      measured({ count: fillerCount }),
+      bandTarget(fillerBand),
     ),
     makeMetric(
       'repeated-words',
-      'Adjacent repeated words',
       round(repeatsPerHundredWords, 1),
-      'events/100 words',
       scoreAtMost(repeatsPerHundredWords, repeatBand),
       0.15,
-      'At most 0.5 adjacent repeats/100 words',
       repeatBand,
-      `${repeatedWordCount} additional adjacent word occurrence${repeatedWordCount === 1 ? '' : 's'} detected.`,
+      measured({ count: repeatedWordCount }),
+      bandTarget(repeatBand),
     ),
     makeMetric(
       'pause-ratio',
-      'Pause ratio',
       pauseRatio === null ? null : round(pauseRatio * 100, 1),
-      '% of session',
       pauseRatio === null ? null : scoreTargetBand(pauseRatio, pauseBand),
       0.15,
-      '8–28% configured practice band',
       asPercent(pauseBand),
-      pauseRatio === null
-        ? 'Audio pause observations were not supplied.'
-        : `${round(audio?.pauseSeconds ?? 0, 1)} seconds were marked as pauses.`,
+      pauseRatio === null ? ABSENT : measured({ seconds: round(audio?.pauseSeconds ?? 0, 1) }),
+      bandTarget(asPercent(pauseBand)),
     ),
     makeMetric(
       'pitch-variation',
-      'Pitch variation',
       pitchVariation === null ? null : round(pitchVariation * 100, 1),
-      'coefficient %',
       pitchVariation === null ? null : scoreTargetBand(pitchVariation, pitchBand),
       0.15,
-      '8–30% configured variation band',
       asPercent(pitchBand),
-      pitchVariation === null
-        ? 'At least five voiced pitch samples are required.'
-        : 'Calculated as standard deviation divided by mean pitch for voiced samples.',
+      pitchVariation === null ? ABSENT : measured(),
+      bandTarget(asPercent(pitchBand)),
     ),
     makeMetric(
       'energy-variation',
-      'Energy variation',
       energyVariation === null ? null : round(energyVariation * 100, 1),
-      'coefficient %',
       energyVariation === null ? null : scoreTargetBand(energyVariation, energyBand),
       0.15,
-      '12–55% configured variation band',
       asPercent(energyBand),
-      energyVariation === null
-        ? 'At least five non-silent energy samples are required.'
-        : 'Calculated as standard deviation divided by mean RMS energy for non-silent samples.',
+      energyVariation === null ? ABSENT : measured(),
+      bandTarget(asPercent(energyBand)),
     ),
   ]);
 }
@@ -477,9 +482,12 @@ function visualMetrics(vision: VisionObservations): DeliveryMetricGroup {
   const movementRatio = vision.trackedFrames === 0
     ? null
     : vision.movementActiveFrames / vision.trackedFrames;
+  // The one target whose phrasing depends on more than its own band: the
+  // practice band differs by mode, and naming which mode's rule the shaded
+  // zone draws is the point of the label.
   const movementTarget = vision.mode === 'presentation'
-    ? { band: bandBetween(0.08, 0.60, 0, 0.95), label: '8–60% presentation practice band' }
-    : { band: bandBetween(0.02, 0.30, 0, 0.80), label: '2–30% interview practice band' };
+    ? { band: bandBetween(0.08, 0.60, 0, 0.95), variant: 'targetPresentation' }
+    : { band: bandBetween(0.02, 0.30, 0, 0.80), variant: 'targetInterview' };
   const movementPercentBand: DeliveryMetricBand = {
     axisMin: round(movementTarget.band.axisMin * 100, 1),
     axisMax: round(movementTarget.band.axisMax * 100, 1),
@@ -490,42 +498,30 @@ function visualMetrics(vision: VisionObservations): DeliveryMetricGroup {
   return makeGroup([
     makeMetric(
       'tracking-coverage',
-      'Tracking coverage',
       trackingRatio === null ? null : round(trackingRatio * 100, 1),
-      '% of sampled frames',
       trackingRatio === null ? null : round(trackingRatio * 100),
       0.35,
-      'At least 90% of sampled frames',
       bandAtLeast(90),
-      trackingRatio === null
-        ? 'No camera frames were sampled.'
-        : `${vision.trackedFrames} of ${vision.sampledFrames} sampled frames contained usable landmarks.`,
+      trackingRatio === null ? ABSENT : measured({ tracked: vision.trackedFrames, sampled: vision.sampledFrames }),
+      bandTarget(bandAtLeast(90)),
     ),
     makeMetric(
       'framing-coverage',
-      'Framing coverage',
       framingRatio === null ? null : round(framingRatio * 100, 1),
-      '% of tracked frames',
       framingRatio === null ? null : round(framingRatio * 100),
       0.40,
-      'At least 90% of tracked frames',
       bandAtLeast(90),
-      framingRatio === null
-        ? 'Usable landmarks are required before framing can be measured.'
-        : `${vision.framedFrames} of ${vision.trackedFrames} tracked frames met the mode framing rule.`,
+      framingRatio === null ? ABSENT : measured({ framed: vision.framedFrames, tracked: vision.trackedFrames }),
+      bandTarget(bandAtLeast(90)),
     ),
     makeMetric(
       'movement-activity',
-      'Movement activity',
       movementRatio === null ? null : round(movementRatio * 100, 1),
-      '% of tracked frames',
       movementRatio === null ? null : scoreTargetBand(movementRatio, movementTarget.band),
       0.25,
-      movementTarget.label,
       movementPercentBand,
-      movementRatio === null
-        ? 'Usable landmarks are required before movement can be measured.'
-        : `${vision.movementActiveFrames} tracked frames crossed the calibrated movement threshold.`,
+      movementRatio === null ? ABSENT : measured({ active: vision.movementActiveFrames }),
+      { variant: movementTarget.variant, values: { from: movementPercentBand.targetFrom, to: movementPercentBand.targetTo } },
     ),
   ]);
 }

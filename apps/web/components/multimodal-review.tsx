@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { MetricBand, ReadingComposition } from './delivery-charts';
+import { MetricBand, ReadingComposition, useMetricLabel } from './delivery-charts';
 import type { MultimodalAttemptResult } from './multimodal-studio';
 import type { DeliveryMetricResult } from '@/lib/delivery-metrics';
 import { summarizeRehearsalReading } from '@/lib/rehearsal-reading';
@@ -55,6 +55,7 @@ export function MultimodalReview({
   targetDurationMs,
   onRetakeCriterion,
 }: Readonly<MultimodalReviewProps>) {
+  const metricLabel = useMetricLabel();
   const videoRef = useRef<HTMLVideoElement>(null);
   const replayDetailsRef = useRef<HTMLDetailsElement>(null);
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
@@ -255,7 +256,7 @@ export function MultimodalReview({
               : 'Nothing measurable was observed in this attempt'}</h4>
           <p>The shaded zone is the configured practice band; the mark is this attempt. A threshold comparison, not a pass or a fail.</p>
           {unmeasuredMetrics.length > 0 && <p className="review-exception-unmeasured">
-            <strong>Not measured:</strong> {unmeasuredMetrics.map((metric) => metric.label).join(', ')}. These are excluded from every reading rather than scored as zero.
+            <strong>Not measured:</strong> {unmeasuredMetrics.map((metric) => metricLabel(metric.id)).join(', ')}. These are excluded from every reading rather than scored as zero.
           </p>}
         </div>
         {outsideBandMetrics.length > 0 && <ul className="metric-band-list">

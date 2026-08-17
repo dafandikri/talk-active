@@ -1,6 +1,8 @@
 'use client';
 
-import type { DeliveryMetricResult } from '@/lib/delivery-metrics';
+import { useTranslations } from 'next-intl';
+
+import type { DeliveryMetricId, DeliveryMetricResult } from '@/lib/delivery-metrics';
 import type { ReadingComponent, RehearsalReading } from '@/lib/rehearsal-reading';
 
 /**
@@ -26,12 +28,23 @@ function axisPosition(value: number, axisMin: number, axisMax: number): number {
   return clampPercent(((value - axisMin) / span) * 100);
 }
 
-function formatMetricValue(metric: DeliveryMetricResult): string {
-  if (metric.observedValue === null) return 'not measured';
-  // Units like "% of sampled frames" already begin with their symbol, so the
-  // usual separating space produced "0 % of sampled frames".
-  const separator = metric.unit.startsWith('%') ? '' : ' ';
-  return `${metric.observedValue}${separator}${metric.unit}`;
+/**
+ * Metric ids are kebab-case because they are a stable wire identity; catalogue
+ * namespaces are camelCase like every other one. One place converts.
+ */
+function metricKey(id: DeliveryMetricId): string {
+  return id.replace(/-([a-z])/gu, (_, letter: string) => letter.toUpperCase());
+}
+
+/**
+ * Metric names for callers that show them outside a chart. Exported as a hook
+ * rather than a raw string map so the `deliveryMetrics` namespace stays owned
+ * by this file — the caller does not adopt it, and can still take a namespace
+ * of its own when its turn to be translated comes.
+ */
+export function useMetricLabel(): (id: DeliveryMetricId) => string {
+  const t = useTranslations('deliveryMetrics');
+  return (id) => t(`${metricKey(id)}.label`);
 }
 
 /**
@@ -45,7 +58,18 @@ function formatMetricValue(metric: DeliveryMetricResult): string {
  * or a lot — is legible without arithmetic.
  */
 export function MetricBand({ metric }: Readonly<{ metric: DeliveryMetricResult }>) {
+  const t = useTranslations('deliveryMetrics');
+  const key = metricKey(metric.id);
   const { band, observedValue } = metric;
+  const label = t(`${key}.label`);
+  const unit = t(`${key}.unit`);
+  // Units like "% of sampled frames" already begin with their symbol, so the
+  // usual separating space produced "0 % of sampled frames".
+  const value = observedValue === null
+    ? t('notMeasured')
+    : `${observedValue}${unit.startsWith('%') ? '' : ' '}${unit}`;
+  const target = t(`${key}.${metric.target.variant ?? 'target'}`, metric.target.values);
+  const explanation = t(`${key}.${metric.explanation.variant}`, metric.explanation.values);
   const zoneStart = axisPosition(band.targetFrom, band.axisMin, band.axisMax);
   const zoneEnd = axisPosition(band.targetTo, band.axisMin, band.axisMax);
   const inBand = observedValue !== null
@@ -53,17 +77,22 @@ export function MetricBand({ metric }: Readonly<{ metric: DeliveryMetricResult }
     && observedValue <= band.targetTo;
 
   const description = observedValue === null
-    ? `${metric.label} was not measured this attempt. ${metric.explanation}`
-    : `${metric.label}: ${formatMetricValue(metric)}, ${inBand ? 'inside' : 'outside'} the ${metric.target}.`;
+    ? t('absentDescription', { label, explanation })
+    : t('bandDescription', {
+      label,
+      value,
+      position: inBand ? t('inside') : t('outside'),
+      target,
+    });
 
   return (
     <li className="metric-band" data-measured={observedValue === null ? 'no' : 'yes'}>
       <div className="metric-band-topline">
-        <strong>{metric.label}</strong>
-        <b className={observedValue === null ? 'is-absent' : undefined}>{formatMetricValue(metric)}</b>
+        <strong>{label}</strong>
+        <b className={observedValue === null ? 'is-absent' : undefined}>{value}</b>
       </div>
       {observedValue === null
-        ? <p className="metric-band-absent">{metric.explanation}</p>
+        ? <p className="metric-band-absent">{explanation}</p>
         : <>
           <div className="metric-band-track" role="img" aria-label={description}>
             <span
@@ -78,11 +107,11 @@ export function MetricBand({ metric }: Readonly<{ metric: DeliveryMetricResult }
           </div>
           <p className="metric-band-axis" aria-hidden="true">
             <span>{band.axisMin}</span>
-            <span className="metric-band-target">{metric.target}</span>
+            <span className="metric-band-target">{target}</span>
             <span>{band.axisMax}</span>
           </p>
         </>}
-      <small className="metric-band-note">{metric.explanation}</small>
+      <small className="metric-band-note">{explanation}</small>
     </li>
   );
 }

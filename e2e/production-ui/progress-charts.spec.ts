@@ -94,7 +94,7 @@ test('a single attempt plots a point but never implies a trend', async ({ page }
   await expect(trend.locator('.coverage-trend-dot')).toHaveCount(1);
   // One point is not a trend, so no filled area is drawn under it.
   await expect(trend.locator('.coverage-trend-area')).toHaveCount(0);
-  await expect(trend.locator('.coverage-trend-axis')).toContainText('first attempt');
+  await expect(trend.locator('.coverage-trend-axis')).toContainText('percobaan pertama');
 });
 
 test('a recurring gap shows its direction, not just its count', async ({ page }) => {
@@ -109,7 +109,7 @@ test('a recurring gap shows its direction, not just its count', async ({ page })
   // The direction is stated in words as well as drawn. Colour alone would fail
   // a colourblind reader, and this product deliberately has no green/red axis.
   await expect(spark.locator('.criterion-spark-read')).toContainText('20% → 90%');
-  await expect(spark.locator('.criterion-spark-read')).toContainText('+70 points');
+  await expect(spark.locator('.criterion-spark-read')).toContainText('+70 poin');
   await expect(spark.locator('.criterion-spark-line')).toHaveCount(1);
 });
 
@@ -122,7 +122,7 @@ test('a criterion that never moved draws a flat line and says so', async ({ page
 
   const spark = page.locator('.recurring-item').first().locator('.criterion-spark');
   await expect(spark).toHaveAttribute('data-direction', 'flat');
-  await expect(spark.locator('.criterion-spark-read')).toContainText('unchanged across these attempts');
+  await expect(spark.locator('.criterion-spark-read')).toContainText('tidak berubah sepanjang percobaan ini');
 });
 
 test('the latest diff shows what moved and only names what held', async ({ page }) => {

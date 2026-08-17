@@ -123,5 +123,83 @@
     "guest": "Guest",
     "profileSyncHint": "Optional account sync",
     "profileAddName": "Add your name"
+  },
+  "progressCharts": {
+    "trendEmpty": "Save a practice session to begin the evidence trend.",
+    "trendLatest": "latest",
+    "trendFirstAttempt": "first attempt",
+    "trendSeries": "Complete series: {series}.",
+    "trendSeriesItem": "attempt {index}, {date}, {score}%",
+    "sparkLabel": "{criterion} explicit coverage across {count} attempts: {values}.",
+    "sparkFlat": "unchanged across these attempts",
+    "sparkMoved": "{movement} points across {count} attempts"
+  },
+  "deliveryMetrics": {
+    "pace": {
+      "label": "Speaking pace",
+      "unit": "words/min",
+      "target": "{from}–{to} words/min practice band",
+      "measured": "{words} recognized words across {seconds} seconds."
+    },
+    "fillers": {
+      "label": "Filler frequency",
+      "unit": "events/min",
+      "target": "At most {to} detected events/min",
+      "measured": "{count} configured filler events found in the transcript."
+    },
+    "repeatedWords": {
+      "label": "Adjacent repeated words",
+      "unit": "events/100 words",
+      "target": "At most {to} adjacent repeats/100 words",
+      "measured": "{count} additional adjacent word occurrences detected."
+    },
+    "pauseRatio": {
+      "label": "Pause ratio",
+      "unit": "% of session",
+      "target": "{from}–{to}% configured practice band",
+      "measured": "{seconds} seconds were marked as pauses.",
+      "absent": "Audio pause observations were not supplied."
+    },
+    "pitchVariation": {
+      "label": "Pitch variation",
+      "unit": "coefficient %",
+      "target": "{from}–{to}% configured variation band",
+      "measured": "Calculated as standard deviation divided by mean pitch for voiced samples.",
+      "absent": "At least five voiced pitch samples are required."
+    },
+    "energyVariation": {
+      "label": "Energy variation",
+      "unit": "coefficient %",
+      "target": "{from}–{to}% configured variation band",
+      "measured": "Calculated as standard deviation divided by mean RMS energy for non-silent samples.",
+      "absent": "At least five non-silent energy samples are required."
+    },
+    "trackingCoverage": {
+      "label": "Tracking coverage",
+      "unit": "% of sampled frames",
+      "target": "At least {from}% of sampled frames",
+      "measured": "{tracked} of {sampled} sampled frames contained usable landmarks.",
+      "absent": "No camera frames were sampled."
+    },
+    "framingCoverage": {
+      "label": "Framing coverage",
+      "unit": "% of tracked frames",
+      "target": "At least {from}% of tracked frames",
+      "measured": "{framed} of {tracked} tracked frames met the mode framing rule.",
+      "absent": "Usable landmarks are required before framing can be measured."
+    },
+    "movementActivity": {
+      "label": "Movement activity",
+      "unit": "% of tracked frames",
+      "targetPresentation": "{from}–{to}% presentation practice band",
+      "targetInterview": "{from}–{to}% interview practice band",
+      "measured": "{active} tracked frames crossed the calibrated movement threshold.",
+      "absent": "Usable landmarks are required before movement can be measured."
+    },
+    "notMeasured": "not measured",
+    "absentDescription": "{label} was not measured this attempt. {explanation}",
+    "bandDescription": "{label}: {value}, {position} the {target}.",
+    "inside": "inside",
+    "outside": "outside"
   }
 }

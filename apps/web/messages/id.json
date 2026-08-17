@@ -123,5 +123,83 @@
     "guest": "Tamu",
     "profileSyncHint": "Sinkronisasi akun (opsional)",
     "profileAddName": "Tambahkan nama Anda"
+  },
+  "progressCharts": {
+    "trendEmpty": "Simpan satu sesi latihan untuk mulai melihat tren bukti.",
+    "trendLatest": "terbaru",
+    "trendFirstAttempt": "percobaan pertama",
+    "trendSeries": "Rangkaian lengkap: {series}.",
+    "trendSeriesItem": "percobaan {index}, {date}, {score}%",
+    "sparkLabel": "Cakupan eksplisit {criterion} sepanjang {count} percobaan: {values}.",
+    "sparkFlat": "tidak berubah sepanjang percobaan ini",
+    "sparkMoved": "{movement} poin sepanjang {count} percobaan"
+  },
+  "deliveryMetrics": {
+    "pace": {
+      "label": "Kecepatan bicara",
+      "unit": "kata/menit",
+      "target": "rentang latihan {from}–{to} kata/menit",
+      "measured": "{words} kata dikenali dalam {seconds} detik."
+    },
+    "fillers": {
+      "label": "Frekuensi kata pengisi",
+      "unit": "kejadian/menit",
+      "target": "maksimal {to} kejadian terdeteksi/menit",
+      "measured": "{count} kejadian kata pengisi ditemukan dalam transkrip."
+    },
+    "repeatedWords": {
+      "label": "Kata berulang berdekatan",
+      "unit": "kejadian/100 kata",
+      "target": "maksimal {to} pengulangan berdekatan/100 kata",
+      "measured": "{count} kemunculan kata berdekatan tambahan terdeteksi."
+    },
+    "pauseRatio": {
+      "label": "Rasio jeda",
+      "unit": "% dari sesi",
+      "target": "rentang latihan {from}–{to}%",
+      "measured": "{seconds} detik ditandai sebagai jeda.",
+      "absent": "Observasi jeda audio tidak tersedia."
+    },
+    "pitchVariation": {
+      "label": "Variasi nada",
+      "unit": "koefisien %",
+      "target": "rentang variasi {from}–{to}%",
+      "measured": "Dihitung sebagai simpangan baku dibagi rata-rata nada pada sampel bersuara.",
+      "absent": "Diperlukan setidaknya lima sampel nada bersuara."
+    },
+    "energyVariation": {
+      "label": "Variasi energi",
+      "unit": "koefisien %",
+      "target": "rentang variasi {from}–{to}%",
+      "measured": "Dihitung sebagai simpangan baku dibagi rata-rata energi RMS pada sampel tidak senyap.",
+      "absent": "Diperlukan setidaknya lima sampel energi tidak senyap."
+    },
+    "trackingCoverage": {
+      "label": "Cakupan pelacakan",
+      "unit": "% dari frame tersampel",
+      "target": "minimal {from}% dari frame tersampel",
+      "measured": "{tracked} dari {sampled} frame tersampel memuat landmark yang terbaca.",
+      "absent": "Tidak ada frame kamera yang tersampel."
+    },
+    "framingCoverage": {
+      "label": "Cakupan pembingkaian",
+      "unit": "% dari frame terlacak",
+      "target": "minimal {from}% dari frame terlacak",
+      "measured": "{framed} dari {tracked} frame terlacak memenuhi aturan pembingkaian mode ini.",
+      "absent": "Landmark yang terbaca diperlukan sebelum pembingkaian bisa diukur."
+    },
+    "movementActivity": {
+      "label": "Aktivitas gerak",
+      "unit": "% dari frame terlacak",
+      "targetPresentation": "rentang latihan presentasi {from}–{to}%",
+      "targetInterview": "rentang latihan wawancara {from}–{to}%",
+      "measured": "{active} frame terlacak melewati ambang gerak terkalibrasi.",
+      "absent": "Landmark yang terbaca diperlukan sebelum gerak bisa diukur."
+    },
+    "notMeasured": "tidak terukur",
+    "absentDescription": "{label} tidak terukur pada percobaan ini. {explanation}",
+    "bandDescription": "{label}: {value}, {position} {target}.",
+    "inside": "di dalam",
+    "outside": "di luar"
   }
 }

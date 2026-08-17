@@ -106,3 +106,36 @@ test('the Indonesian catalogue is actually Indonesian, not English copied across
     `${identical.length} of ${shared.length} entries are byte-identical across locales: ${identical.join(', ')}`,
   );
 });
+
+// The delivery panel resolves its copy with computed keys — t(`${key}.label`)
+// — so the source scan above cannot see them. A metric whose catalogue entry
+// was never written would render "deliveryMetrics.framingCoverage.label" onto
+// a chart, and no other test would notice. The ids are the contract, so they
+// are checked against the catalogue directly.
+test('every delivery metric has a complete catalogue entry in both locales', () => {
+  const source = readFileSync(join(WEB, 'lib/delivery-metrics.ts'), 'utf8');
+  const union = source.slice(
+    source.indexOf('export type DeliveryMetricId'),
+    source.indexOf(';', source.indexOf('export type DeliveryMetricId')),
+  );
+  const ids = [...union.matchAll(/'([a-z-]+)'/gu)].map((match) => match[1]);
+  assert.ok(ids.length >= 9, `expected the metric id union, found ${ids.length}`);
+
+  for (const locale of ['id', 'en']) {
+    const metrics = catalogue(locale).deliveryMetrics;
+    for (const id of ids) {
+      const key = id.replace(/-([a-z])/gu, (_, letter) => letter.toUpperCase());
+      const entry = metrics[key];
+      assert.ok(entry, `${locale}.json is missing deliveryMetrics.${key}`);
+      for (const field of ['label', 'unit', 'measured']) {
+        assert.ok(entry[field], `${locale}.json:deliveryMetrics.${key}.${field} is missing`);
+      }
+      // Every metric needs a target phrasing: either the plain one, or the
+      // mode-specific pair that movement-activity uses.
+      assert.ok(
+        entry.target || (entry.targetPresentation && entry.targetInterview),
+        `${locale}.json:deliveryMetrics.${key} has no target phrasing`,
+      );
+    }
+  }
+});
