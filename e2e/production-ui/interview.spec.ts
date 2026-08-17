@@ -41,8 +41,8 @@ async function chooseInterview(page: Page, expectedCriterionCount?: number) {
   await page.getByRole('radio', { name: /Interview Q&A/i }).check();
   await page.getByLabel('Project language').selectOption('en-US');
   await page.getByRole('button', { name: 'Start Kato interview' }).click();
-  await expect(page.getByRole('heading', { name: 'Kato asks' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Answer one rubric question at a time.' })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Kato bertanya' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Jawab satu pertanyaan rubrik dalam satu waktu.' })).toBeFocused();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
 }
 
@@ -143,7 +143,7 @@ test('Kato asks five fixed rubric questions and sends one answer-local final bat
     'The prototype keeps privacy explicit and does not require a saved camera replay.',
     'The measured outcome is whether the next answer makes the missing evidence explicit.',
   ];
-  const answerBox = page.getByLabel('Your answer');
+  const answerBox = page.getByLabel('Jawaban Anda');
   for (let index = 0; index < answers.length - 1; index += 1) {
     const activeCriterion = page.locator('.interview-progress li[aria-current="step"]');
     await expect(activeCriterion).toHaveCount(1);
@@ -152,7 +152,7 @@ test('Kato asks five fixed rubric questions and sends one answer-local final bat
       INTERVIEW_CRITERIA[index]!.name,
     );
     await answerBox.fill(answers[index]!);
-    await page.getByRole('button', { name: 'Save answer & next question' }).click();
+    await page.getByRole('button', { name: 'Simpan jawaban & pertanyaan berikutnya' }).click();
     const nextQuestion = page.locator('.kato-question-copy blockquote');
     await expect(nextQuestion).toContainText(INTERVIEW_CRITERIA[index + 1]!.name);
     await expect(nextQuestion).toHaveAccessibleName(
@@ -169,7 +169,7 @@ test('Kato asks five fixed rubric questions and sends one answer-local final bat
   );
   await expect(page.locator('.kato-question-copy blockquote')).toContainText(INTERVIEW_CRITERIA[4].name);
   await answerBox.fill(answers[4]);
-  await page.getByRole('button', { name: 'Submit interview for review' }).click();
+  await page.getByRole('button', { name: 'Kirim wawancara untuk ditinjau' }).click();
   // `expect(array)` does not retry, so asserting the recorded request straight
   // after the click was a race against the submit that had only just started —
   // it won on an idle machine and lost sixty tests into the suite. The review
@@ -341,10 +341,10 @@ test('a signed-in interview summary survives synced progress reload without dupl
   await expect(page.locator('.setup-project-summary strong')).toHaveText('Signed-in interview project');
   await page.getByRole('radio', { name: /Interview Q&A/i }).check();
   await page.getByRole('button', { name: 'Start Kato interview' }).click();
-  await page.getByLabel('Your answer').fill(
+  await page.getByLabel('Jawaban Anda').fill(
     'The measurable outcome is explicit rubric coverage, and the measurement is the saved criterion verdict.',
   );
-  await page.getByRole('button', { name: 'Submit interview for review' }).click();
+  await page.getByRole('button', { name: 'Kirim wawancara untuk ditinjau' }).click();
   await expect(page.getByRole('heading', { name: 'Your answer evidence, mapped across the whole rubric.' })).toBeVisible();
   await page.getByRole('button', { name: 'Save interview review' }).click();
 
@@ -496,8 +496,8 @@ test('one continuous interview capture stays paused for narration and resumes ac
 
   await chooseInterview(page, 5);
   const question = page.locator('.kato-question-copy blockquote');
-  const answerBox = page.getByLabel('Your answer');
-  const beginAnswer = page.getByRole('button', { name: 'Begin this answer' });
+  const answerBox = page.getByLabel('Jawaban Anda');
+  const beginAnswer = page.getByRole('button', { name: 'Mulai jawaban ini' });
   const captureStatus = page.locator('.studio-status');
   const replayStatus = page.locator('.recording-sync-status');
   const liveClock = page.locator('.studio-heading .studio-live');
@@ -528,10 +528,10 @@ test('one continuous interview capture stays paused for narration and resumes ac
   await expect(question).toBeVisible();
   await page.getByRole('checkbox', { name: /Live transcript English/i }).check();
   await page.getByRole('checkbox', { name: /Save replay camera \+ mic/i }).check();
-  await expect(page.getByRole('button', { name: 'Start continuous interview capture' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Mulai perekaman wawancara berkelanjutan' })).toBeEnabled();
 
   // Narration before Start never implies camera, microphone, dictation, or replay consent.
-  await page.getByRole('button', { name: 'Read question aloud' }).click();
+  await page.getByRole('button', { name: 'Bacakan pertanyaan' }).click();
   await expect(question).toBeVisible();
   await expect(page.locator('.studio-record')).toBeDisabled();
   expect(await page.evaluate(() => (window as Window & {
@@ -539,10 +539,10 @@ test('one continuous interview capture stays paused for narration and resumes ac
   }).__interviewUtterance)).toEqual({ lang: 'en-US', rate: 0.95, pitch: 1 });
   expect(await page.evaluate(() => (window as Window & { __interviewMediaRequests?: number }).__interviewMediaRequests)).toBe(0);
 
-  await page.getByRole('button', { name: 'Skip narration' }).click();
-  await expect(page.getByRole('button', { name: 'Start continuous interview capture' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Lewati narasi' }).click();
+  await expect(page.getByRole('button', { name: 'Mulai perekaman wawancara berkelanjutan' })).toBeEnabled();
 
-  await page.getByRole('button', { name: 'Start continuous interview capture' }).click();
+  await page.getByRole('button', { name: 'Mulai perekaman wawancara berkelanjutan' }).click();
   await expect(captureStatus).toContainText(/paused until the first answer begins/i);
   await expect(replayStatus).toContainText(/replay recording is active/i);
   await expect(beginAnswer).toBeEnabled();
@@ -565,7 +565,7 @@ test('one continuous interview capture stays paused for narration and resumes ac
   const firstAnswerClock = await clockSeconds();
   expect((await captureProbe()).recognitionStarts).toBe(1);
 
-  await page.getByRole('button', { name: 'Save answer & next question' }).click();
+  await page.getByRole('button', { name: 'Simpan jawaban & pertanyaan berikutnya' }).click();
   await expect(question).toContainText(INTERVIEW_CRITERIA[1].name);
   await expect(question).toBeFocused();
   await expect(captureStatus).toContainText(/paused; camera tracking and an optional replay continue/i);
@@ -581,8 +581,8 @@ test('one continuous interview capture stays paused for narration and resumes ac
     recognitionStops: 1,
   });
 
-  await page.getByRole('button', { name: 'Read question aloud' }).click();
-  await expect(page.getByRole('button', { name: 'Skip narration' })).toBeVisible();
+  await page.getByRole('button', { name: 'Bacakan pertanyaan' }).click();
+  await expect(page.getByRole('button', { name: 'Lewati narasi' })).toBeVisible();
   await expect(beginAnswer).toBeDisabled();
   await expect(answerBox).toBeDisabled();
   await page.waitForTimeout(1_100);
@@ -591,7 +591,7 @@ test('one continuous interview capture stays paused for narration and resumes ac
   expect(await captureProbe()).toEqual(betweenQuestionsProbe);
   await expect(replayStatus).toContainText(/replay recording is active/i);
 
-  await page.getByRole('button', { name: 'Skip narration' }).click();
+  await page.getByRole('button', { name: 'Lewati narasi' }).click();
   await expect(beginAnswer).toBeEnabled();
   await beginAnswer.click();
   await expect(captureStatus).toContainText(/Answer capture is active/i);
@@ -601,7 +601,7 @@ test('one continuous interview capture stays paused for narration and resumes ac
   expect(await clockSeconds()).toBeGreaterThanOrEqual(narrationClock);
   expect((await captureProbe()).recognitionStarts).toBe(2);
 
-  await page.getByRole('button', { name: 'Save answer & next question' }).click();
+  await page.getByRole('button', { name: 'Simpan jawaban & pertanyaan berikutnya' }).click();
   await expect(question).toContainText(INTERVIEW_CRITERIA[2].name);
   await expect(question).toBeFocused();
   expect(await captureProbe()).toEqual({
@@ -708,16 +708,16 @@ test('each interview answer is coached against its own criterion, and never agai
     'The prototype keeps privacy explicit and does not require a saved camera replay.',
     'The measured outcome is whether the next answer makes the missing evidence explicit.',
   ];
-  const answerBox = page.getByLabel('Your answer');
+  const answerBox = page.getByLabel('Jawaban Anda');
   for (let index = 0; index < answers.length - 1; index += 1) {
     await answerBox.fill(answers[index]!);
-    await page.getByRole('button', { name: 'Save answer & next question' }).click();
+    await page.getByRole('button', { name: 'Simpan jawaban & pertanyaan berikutnya' }).click();
     await expect(page.locator('.kato-question-copy blockquote')).toContainText(
       INTERVIEW_CRITERIA[index + 1]!.name,
     );
   }
   await answerBox.fill(answers[4]!);
-  await page.getByRole('button', { name: 'Submit interview for review' }).click();
+  await page.getByRole('button', { name: 'Kirim wawancara untuk ditinjau' }).click();
   await expect(page.getByRole('heading', { name: 'Your answer evidence, mapped across the whole rubric.' })).toBeVisible();
 
   // The trigger has to exist at all — this is the gate that used to hide it.
