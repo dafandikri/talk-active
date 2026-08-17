@@ -204,7 +204,12 @@ function observationFromVision(summary: VisionSessionSummary | null): VisionObse
     mode: 'presentation',
     sampledFrames: summary.measuredFrames,
     trackedFrames,
-    framedFrames: Math.round(summary.measuredFrames * summary.metrics.fullBodyVisiblePercent / 100),
+    // This read fullBodyVisiblePercent, which required both knees and both
+    // ankles to be tracked. A presenter standing behind a laptop — head to
+    // waist, the ordinary case — scored 0% framing coverage for being close
+    // enough to read. Framing now means in shot and not at the edge; whether
+    // the whole body was visible remains a separate observation.
+    framedFrames: Math.round(summary.measuredFrames * summary.metrics.framedPercent / 100),
     movementActiveFrames: Math.round(trackedFrames * summary.metrics.gestureActivePercent / 100),
   };
 }

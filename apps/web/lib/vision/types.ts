@@ -68,7 +68,10 @@ export interface InterviewVisionMetrics {
 
 export interface PresentationVisionMetrics {
   trackingCoveragePercent: number;
+  /** Whole body in shot. An observation, not the framing score. */
   fullBodyVisiblePercent: number;
+  /** In shot and not at the edge. Half body qualifies; feet are not required. */
+  framedPercent: number;
   handsVisiblePercent: number;
   gestureActivePercent: number;
   gestureBurstCount: number;

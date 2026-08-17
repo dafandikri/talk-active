@@ -185,8 +185,8 @@
       "label": "Framing coverage",
       "unit": "% of tracked frames",
       "target": "At least {from}% of tracked frames",
-      "measured": "{framed} of {tracked} tracked frames met the mode framing rule.",
-      "absent": "Usable landmarks are required before framing can be measured."
+      "measured": "{framed} of {tracked} tracked frames met the mode framing rule. The framing rule changed on 17 August 2026: half body now counts as framed, so visual scores from before then are not comparable.",
+      "absent": "Usable landmarks are required before framing can be measured. The framing rule changed on 17 August 2026: half body now counts as framed, so visual scores from before then are not comparable."
     },
     "movementActivity": {
       "label": "Movement activity",

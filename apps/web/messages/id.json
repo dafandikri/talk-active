@@ -185,8 +185,8 @@
       "label": "Cakupan pembingkaian",
       "unit": "% dari frame terlacak",
       "target": "minimal {from}% dari frame terlacak",
-      "measured": "{framed} dari {tracked} frame terlacak memenuhi aturan pembingkaian mode ini.",
-      "absent": "Landmark yang terbaca diperlukan sebelum pembingkaian bisa diukur."
+      "measured": "{framed} dari {tracked} frame terlacak memenuhi aturan pembingkaian mode ini. Aturan pembingkaian berubah pada 17 Agustus 2026: setengah badan kini dihitung terbingkai, jadi skor visual sebelum tanggal itu tidak sebanding.",
+      "absent": "Landmark yang terbaca diperlukan sebelum pembingkaian bisa diukur. Aturan pembingkaian berubah pada 17 Agustus 2026: setengah badan kini dihitung terbingkai, jadi skor visual sebelum tanggal itu tidak sebanding."
     },
     "movementActivity": {
       "label": "Aktivitas gerak",
