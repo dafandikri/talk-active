@@ -450,7 +450,10 @@
     "fixOneGap": "Fix one evidence gap",
     "addMissingClaim": "Add the missing claim without repeating the whole take.",
     "recordAddition": "Record an addition",
-    "boundary": "Boundary:"
+    "boundary": "Boundary:",
+    "attemptReplay": "Attempt replay",
+    "answerWindowsOnClock": "{count} use their answer windows on the interview clock; review the whole window because no word-level time is invented.",
+    "coarseTiming": "{count} could be placed on the clock from coarse dictation timing; use it to find the moment, not to sync a word."
   },
   "rubricEditor": {
     "title": "Modify rubric",

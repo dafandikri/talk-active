@@ -6,7 +6,6 @@ import { useEffect, useRef, useState } from 'react';
 
 import { MetricBand, ReadingComposition, useMetricLabel } from './delivery-charts';
 import type { MultimodalAttemptResult } from './multimodal-studio';
-import type { DeliveryMetricResult } from '@/lib/delivery-metrics';
 import { summarizeRehearsalReading } from '@/lib/rehearsal-reading';
 import {
   entriesBeyondLimit,
@@ -34,11 +33,6 @@ function formatTime(milliseconds: number): string {
   return `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
 }
 
-function metricIsException(metric: DeliveryMetricResult): boolean {
-  if (metric.observedValue === null) return true;
-  return metric.observedValue < metric.band.targetFrom || metric.observedValue > metric.band.targetTo;
-}
-
 /**
  * Delivery context rendered after the primary rubric evidence and judge question.
  *
@@ -60,7 +54,6 @@ export function MultimodalReview({
   const t = useTranslations('multimodalReview');
   const metricLabel = useMetricLabel();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const replayDetailsRef = useRef<HTMLDetailsElement>(null);
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -115,6 +108,9 @@ export function MultimodalReview({
   ];
   const rubricEntries = rubricTimeline ?? [];
   const coverage = summarizeRubricCoverage(rubricEntries);
+  const answerWindowCount = rubricEntries.filter(
+    (entry) => entry.evidence?.clockSource === 'answer-window',
+  ).length;
   const limitMs = targetDurationMs != null && targetDurationMs > 0 ? targetDurationMs : null;
   const cutPercent = limitMs !== null && limitMs < timelineDurationMs
     ? (limitMs / timelineDurationMs) * 100
@@ -123,22 +119,12 @@ export function MultimodalReview({
   const transcriptSegments = segmentTranscript(result.transcript, rubricEntries);
   const markedSegmentCount = transcriptSegments.filter((segment) => segment.labels.length > 0).length;
   const missingCriteria = rubricEntries.filter((entry) => entry.state === 'absent');
-  const allMetrics = [
-    ...result.metrics.vocal.metrics,
-    ...(result.metrics.visual?.metrics ?? []),
-  ];
-  // {t('outsideBand')} and "never measured" are different facts and were being
-  // counted as one. A reading nothing observed is not an exception to practise
-  // against; it is a hole in the evidence, and it belongs in its own sentence.
-  const measuredMetrics = allMetrics.filter((metric) => metric.observedValue !== null);
-  const outsideBandMetrics = measuredMetrics.filter(metricIsException);
-  const unmeasuredMetrics = allMetrics.filter((metric) => metric.observedValue === null);
 
   function playFrom(startMs: number) {
     const player = videoRef.current;
     if (!player || !recordingUrl) return;
-    if (replayDetailsRef.current) replayDetailsRef.current.open = true;
     player.currentTime = Math.max(0, startMs / 1_000 - 2);
+    player.scrollIntoView({ behavior: 'smooth', block: 'center' });
     void player.play().catch(() => undefined);
   }
 
@@ -233,7 +219,11 @@ export function MultimodalReview({
         </div>)}
         <p className="timeline-axis" aria-hidden="true"><span>0:00</span><span>{formatTime(timelineDurationMs / 2)}</span><span>{formatTime(timelineDurationMs)}</span></p>
       </div>
-      <p className="timeline-rubric-summary">{coverage.found + coverage.reused} of {coverage.total} criteria cite a span. {coverage.timed > 0 ? `${coverage.timed} could be placed on the clock from coarse dictation timing; use it to find the moment, not to sync a word.` : t('noClockPosition')}</p>
+      <p className="timeline-rubric-summary">{coverage.found + coverage.reused} of {coverage.total} criteria cite a span. {answerWindowCount > 0
+        ? t('answerWindowsOnClock', { count: answerWindowCount })
+        : coverage.timed > 0
+          ? t('coarseTiming', { count: coverage.timed })
+          : t('noClockPosition')}</p>
       {limitMs !== null && <p className="timeline-bell-note" role="note">
         {cutPercent === null
           ? <>This attempt finished {formatTime(limitMs - timelineDurationMs)} inside the {formatTime(limitMs)} limit.</>
@@ -244,28 +234,25 @@ export function MultimodalReview({
               : <>This attempt ran {formatTime(timelineDurationMs - limitMs)} over the limit.</>}
       </p>}
 
-      {/* Drawn, not tabulated. "178 words/min · band 105–165" made the reader
-          do the comparison; the dot's distance from the shaded band answers
-          "how far out, and which way" without arithmetic. Only the readings
-          that left their band are drawn here — the complete set stays one
-          disclosure below, so the summary is a summary. */}
-      <div className="review-exception-summary" aria-labelledby="exceptionTitle">
-        <div className="review-exception-head">
-          <span>{t('deliveryExceptions')}</span>
-          <h4 id="exceptionTitle">{outsideBandMetrics.length > 0
-            ? `${outsideBandMetrics.length} of ${measuredMetrics.length} measured readings left their practice band`
-            : measuredMetrics.length > 0
-              ? `All ${measuredMetrics.length} measured readings stayed inside their practice band`
-              : t('nothingMeasurable')}</h4>
-          <p>{t('shadedZone')}</p>
-          {unmeasuredMetrics.length > 0 && <p className="review-exception-unmeasured">
-            <strong>{t('notMeasured')}</strong> {unmeasuredMetrics.map((metric) => metricLabel(metric.id)).join(', ')}. These are excluded from every reading rather than scored as zero.
-          </p>}
+      {/* The replay follows the shared clock directly. A timestamp can now move
+          the recording into view without crossing duplicate delivery metrics. */}
+      <section className="review-replay-panel" aria-labelledby="replayTitle">
+        <div className="section-title-row">
+          <div><p className="overline">{t('attemptReplay')}</p><h4 id="replayTitle">{t('reviewMoment')}</h4></div>
+          <span className="review-replay-duration">{recordingUrl ? formatTime(result.recording?.durationMs ?? 0) : t('notRecorded')}</span>
         </div>
-        {outsideBandMetrics.length > 0 && <ul className="metric-band-list">
-          {outsideBandMetrics.map((metric) => <MetricBand metric={metric} key={metric.id} />)}
-        </ul>}
-      </div>
+        {recordingUrl
+          ? <>
+            <video ref={videoRef} className="recording-player" src={recordingUrl} controls playsInline preload="metadata" aria-label="Recorded attempt replay" />
+            <p className="recording-sync-status">Timeline controls start two seconds before an observation and bring this replay into view so you can judge its context yourself.</p>
+            <div className="recording-review-actions">
+              <a className="button button-secondary" href={recordingUrl} download={`talk-active-attempt.${result.recording?.mimeType.includes('mp4') ? 'mp4' : 'webm'}`}>Download this replay</a>
+              {savedAttemptId && <a className="text-button" href={`/attempts/${savedAttemptId}${projectId ? `?project=${encodeURIComponent(projectId)}` : ''}`}>Open saved review</a>}
+            </div>
+          </>
+          : <p className="performance-empty">No camera-and-microphone replay was kept. The rubric evidence and timestamped observations above remain usable.</p>}
+        {recordingStatus && <p className="recording-sync-status" role="status">{recordingStatus}</p>}
+      </section>
 
       <details className="review-disclosure review-timeline-disclosure">
         <summary><span>{t('readAsText')}</span><strong>{rubricEntries.length + replayEvents.length} items</strong></summary>
@@ -297,23 +284,6 @@ export function MultimodalReview({
         </div>
       </details>
     </section>
-
-    <details className="review-disclosure review-replay-disclosure" ref={replayDetailsRef}>
-      <summary><span><small>{t('replayOnDemand')}</small>{t('reviewMoment')}</span><strong>{recordingUrl ? formatTime(result.recording?.durationMs ?? 0) : t('notRecorded')}</strong></summary>
-      <div className="review-disclosure-body">
-        {recordingUrl
-          ? <>
-            <video ref={videoRef} className="recording-player" src={recordingUrl} controls playsInline preload="metadata" aria-label={t('recordedReplay')} />
-            <p className="recording-sync-status">{t('timelineControls')}</p>
-            <div className="recording-review-actions">
-              <a className="button button-secondary" href={recordingUrl} download={`talk-active-attempt.${result.recording?.mimeType.includes('mp4') ? 'mp4' : 'webm'}`}>{t('downloadReplay')}</a>
-              {savedAttemptId && <a className="text-button" href={`/attempts/${savedAttemptId}${projectId ? `?project=${encodeURIComponent(projectId)}` : ''}`}>{t('openSavedReview')}</a>}
-            </div>
-          </>
-          : <p className="performance-empty">{t('noReplayKept')}</p>}
-        {recordingStatus && <p className="recording-sync-status" role="status">{recordingStatus}</p>}
-      </div>
-    </details>
 
     <details className="review-disclosure review-full-reading">
       <summary><span><small>{t('deliveryDetails')}</small>{t('fullReadings')}</span><strong>{t('inspect')}</strong></summary>

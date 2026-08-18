@@ -53,7 +53,10 @@ import {
   rejudgeLocalEvidence,
 } from '@/lib/evidence-confirmations';
 import { uploadAttemptRecording } from '@/lib/rehearsal/recording-upload';
-import { buildRubricTimeline } from '@/lib/rehearsal/rubric-moments';
+import {
+  buildInterviewRubricTimeline,
+  buildRubricTimeline,
+} from '@/lib/rehearsal/rubric-moments';
 import { summarizeWordingCues } from '@/lib/rehearsal/wording-cues';
 import {
   MultimodalReview,
@@ -400,6 +403,19 @@ export function PracticeRoom({
   // moment the transcript is edited, so these offsets cannot drift.
   const rubricTimeline = useMemo(() => {
     if (!analysis || !multimodalResult) return undefined;
+    if (rehearsalFormat === 'interview') {
+      return buildInterviewRubricTimeline(
+        interviewTurns.map((turn) => ({
+          criterionId: turn.question.criterion.id,
+          label: turn.question.criterion.name,
+          answer: turn.answer,
+          citedSpan: turn.judgment.citedSpan,
+          answerStartMs: turn.answerStartMs,
+          answerEndMs: turn.answerEndMs,
+        })),
+        multimodalResult.transcript,
+      );
+    }
     return buildRubricTimeline(
       analysis.criteria.map((criterion) => ({
         id: criterion.id,
@@ -410,7 +426,7 @@ export function PracticeRoom({
       multimodalResult.transcript,
       multimodalResult.transcriptTimingPoints,
     );
-  }, [analysis, multimodalResult, reusedCitations]);
+  }, [analysis, interviewTurns, multimodalResult, rehearsalFormat, reusedCitations]);
   // Words that invite a follow-up, counted on this device from the student's
   // own transcript. No model is involved, so this cannot fail on stage.
   const wordingCues = useMemo(() => summarizeWordingCues(transcript), [transcript]);
@@ -1712,13 +1728,12 @@ export function PracticeRoom({
         </details>}
         <section className="surface evidence-section">
           <div className="section-title-row"><div><p className="overline">{t('rubricEvidenceMap')}</p><h2>{t('whatYourTranscriptActuallySupports')}</h2></div></div>
-          {/* The whole rubric on one line, before the detail.
-              With six criteria the list below runs several screens — the quote
-              is deliberately the largest text on the page, and that is not
-              negotiable — so "how am I doing overall" used to cost a scroll in
-              each direction. The map answers it in place, and each cell jumps
-              to its own criterion (Nielsen: user control, and recognition over
-              recall). Nothing here replaces the evidence; it indexes it. */}
+          {/* The whole rubric on one line, before the detail. With six criteria
+              the list below still runs several screens, so "how am I doing
+              overall" used to cost a scroll in each direction. The map answers
+              it in place, and each cell jumps to its own criterion (Nielsen:
+              user control, and recognition over recall). Nothing here replaces
+              the evidence; it indexes it. */}
           <ol className="evidence-map" aria-label={t('everyRubricCriterionAndWhether')}>
             {analysis.criteria.map((criterion) => {
               const reuse = reusedCitations.find((item) => item.criterionIds.includes(criterion.id));
@@ -1830,7 +1845,7 @@ export function PracticeRoom({
           recordingStatus={recordingStatus}
           savedAttemptId={remoteAttemptId}
           projectId={selectedProjectId}
-          rubricTimeline={rehearsalFormat === 'presentation' ? rubricTimeline : undefined}
+          rubricTimeline={rubricTimeline}
           targetDurationMs={rehearsalFormat === 'presentation' ? targetDurationMs : null}
           onRetakeCriterion={rehearsalFormat === 'presentation' ? beginCriterionRetake : undefined}
         />}

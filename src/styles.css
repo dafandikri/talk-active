@@ -761,7 +761,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .judge-preview blockquote {
   margin: var(--space-3) 0 var(--space-5);
   font-family: var(--font-voice);
-  font-size: var(--step-evidence);
+  font-size: var(--step-4);
   line-height: var(--leading-snug);
 }
 .judge-preview .button-primary { color: var(--brand-contrast); background: var(--brand); }
@@ -946,14 +946,14 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
 .evidence-item[data-evidence="found"] .evidence-state { color: var(--evidence-strong); }
 .evidence-item[data-evidence="reused"] .evidence-state { color: var(--text-primary); }
 
-/* The hero. Bigger than the page title, in the voice serif, because these are
-   the speaker's own words and not ours. */
+/* The cited words remain the card's focus without turning a long transcript
+   span into display copy. The voice serif still distinguishes who is speaking. */
 .evidence-quote {
   margin: var(--space-3) 0 var(--space-2);
   padding: 0;
   color: var(--text-primary);
   font-family: var(--font-voice);
-  font-size: var(--step-evidence);
+  font-size: var(--step-4);
   line-height: var(--leading-snug);
   text-wrap: pretty;
 }
@@ -1529,6 +1529,7 @@ input:focus, textarea:focus, select:focus { background: var(--surface); border-c
   #attemptTranscript { min-height: 280px; }
   .review-hero { grid-template-columns: 1fr; padding: var(--space-5); }
   .review-hero h2 { font-size: var(--step-4); }
+  .judge-preview blockquote, .evidence-quote { font-size: var(--step-3); }
   .coverage-gauge { width: 88px; height: 88px; }
   .evidence-section { padding: var(--space-5); }
   .evidence-section .section-title-row { display: block; }

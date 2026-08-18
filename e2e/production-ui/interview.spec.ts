@@ -560,7 +560,7 @@ test('one continuous interview capture stays paused for narration and resumes ac
   await beginAnswer.click();
   await expect(captureStatus).toContainText(/Perekaman jawaban aktif/i);
   await expect(answerBox).toBeEnabled();
-  await answerBox.fill('Students need urgent feedback while there is still time to revise.');
+  await answerBox.fill('Students need feedback; the urgency is that they must revise now.');
   await page.waitForTimeout(1_100);
   const firstAnswerClock = await clockSeconds();
   expect((await captureProbe()).recognitionStarts).toBe(1);
@@ -613,6 +613,40 @@ test('one continuous interview capture stays paused for narration and resumes ac
     recognitionStops: 2,
   });
   await expect(replayStatus).toContainText(/replay recording is active/i);
+
+  const remainingAnswers = [
+    'A generic competitor cannot keep every verdict traceable to the exact answer.',
+    'The prototype makes its privacy boundary explicit.',
+    'The outcome is a measurement of whether the next answer makes evidence explicit.',
+  ];
+  for (let index = 0; index < remainingAnswers.length; index += 1) {
+    await beginAnswer.click();
+    await expect(answerBox).toBeEnabled();
+    await answerBox.fill(remainingAnswers[index]!);
+    await page.waitForTimeout(100);
+    const submitLabel = index === remainingAnswers.length - 1
+      ? 'Kirim wawancara untuk ditinjau'
+      : 'Simpan jawaban & pertanyaan berikutnya';
+    await page.getByRole('button', { name: submitLabel }).click();
+    if (index < remainingAnswers.length - 1) {
+      await expect(question).toContainText(INTERVIEW_CRITERIA[index + 3]!.name);
+      await expect(question).toBeFocused();
+    }
+  }
+
+  await expect(page.getByRole('heading', { name: 'Bukti jawaban Anda, dipetakan ke seluruh rubrik.' })).toBeVisible();
+  const timeline = page.locator('.review-unified-timeline');
+  await expect(timeline.locator('.timeline-lane.is-rubric')).toHaveCount(INTERVIEW_CRITERIA.length);
+  await expect(timeline.locator('.timeline-mark.is-evidence')).toHaveCount(INTERVIEW_CRITERIA.length);
+  await expect(timeline.locator('.timeline-rubric-summary')).toContainText('5 of 5 criteria cite a span');
+  await expect(timeline.locator('.timeline-rubric-summary')).toContainText('5 memakai jendela jawabannya pada jam wawancara');
+  await expect(timeline.locator('.timeline-duration')).not.toContainText('limit');
+  for (const criterion of INTERVIEW_CRITERIA) {
+    await expect(timeline.locator('.timeline-lane-label', { hasText: criterion.name })).toHaveCount(1);
+  }
+  expect(await page.evaluate(() => (window as Window & {
+    __interviewRecorderStops?: number;
+  }).__interviewRecorderStops)).toBe(1);
   await expectNoHorizontalOverflow(page);
 });
 

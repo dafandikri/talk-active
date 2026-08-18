@@ -450,7 +450,10 @@
     "fixOneGap": "Perbaiki satu celah bukti",
     "addMissingClaim": "Tambahkan klaim yang kurang tanpa mengulang seluruh percobaan.",
     "recordAddition": "Rekam tambahan",
-    "boundary": "Batas:"
+    "boundary": "Batas:",
+    "attemptReplay": "Rekaman percobaan",
+    "answerWindowsOnClock": "{count} memakai jendela jawabannya pada jam wawancara; tinjau seluruh jendelanya karena waktu per kata tidak dikarang.",
+    "coarseTiming": "{count} dapat ditempatkan pada jam dari perkiraan waktu dikte; pakai untuk menemukan momennya, bukan untuk menyelaraskan kata."
   },
   "rubricEditor": {
     "title": "Ubah rubrik",

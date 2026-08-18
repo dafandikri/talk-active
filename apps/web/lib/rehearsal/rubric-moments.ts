@@ -38,6 +38,8 @@ export interface LocatedEvidence {
   /** Estimated speaking time, or null when the transcript was typed. */
   startMs: number | null;
   endMs: number | null;
+  /** How the displayed clock range was obtained. */
+  clockSource?: 'dictation-estimate' | 'answer-window';
 }
 
 export interface RubricTimelineEntry {
@@ -76,6 +78,64 @@ export function buildRubricTimeline(
         charEnd: range.end,
         startMs: timing?.startMs ?? null,
         endMs: timing?.endMs ?? null,
+        clockSource: timing ? 'dictation-estimate' : undefined,
+      },
+    };
+  });
+}
+
+export interface InterviewRubricTimelineTurn {
+  criterionId: string;
+  label: string;
+  answer: string;
+  citedSpan: string | null;
+  /** Real offsets into the one continuous interview capture. */
+  answerStartMs: number;
+  answerEndMs: number;
+}
+
+/**
+ * Places an answer-local interview verdict on the shared capture clock.
+ *
+ * The exact citation is still located only inside its paired answer. Its clock
+ * range is deliberately the complete answer window because the interview flow
+ * records turn boundaries, not word timestamps. That keeps Kato's question out
+ * of student evidence and avoids inventing a more precise time than we own.
+ */
+export function buildInterviewRubricTimeline(
+  turns: readonly InterviewRubricTimelineTurn[],
+  transcript: string,
+): RubricTimelineEntry[] {
+  let transcriptCursor = 0;
+
+  return turns.map((turn) => {
+    const answer = turn.answer.trim();
+    const answerStart = answer ? transcript.indexOf(answer, transcriptCursor) : -1;
+    if (answerStart >= 0) transcriptCursor = answerStart + answer.length;
+    const range = turn.citedSpan && answerStart >= 0
+      ? findGroundedRange(turn.citedSpan, answer)
+      : null;
+
+    if (!range) {
+      return {
+        criterionId: turn.criterionId,
+        label: turn.label,
+        state: 'absent' as const,
+        evidence: null,
+      };
+    }
+
+    return {
+      criterionId: turn.criterionId,
+      label: turn.label,
+      state: 'found' as const,
+      evidence: {
+        span: range.span,
+        charStart: answerStart + range.start,
+        charEnd: answerStart + range.end,
+        startMs: turn.answerStartMs,
+        endMs: turn.answerEndMs,
+        clockSource: 'answer-window' as const,
       },
     };
   });

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  buildInterviewRubricTimeline,
   buildRubricTimeline,
   entriesBeyondLimit,
   segmentTranscript,
@@ -59,6 +60,56 @@ test('R-1 dictation points put a citation on the clock', () => {
   );
   assert.ok(entry.evidence.startMs >= 12_000 && entry.evidence.startMs <= 40_000);
   assert.ok(entry.evidence.endMs >= entry.evidence.startMs);
+  assert.equal(entry.evidence.clockSource, 'dictation-estimate');
+});
+
+test('R-1 interview citations use their paired answer windows on the shared clock', () => {
+  const transcript = 'Students need urgent feedback.\n\nThe rubric enables a focused retry.';
+  const entries = buildInterviewRubricTimeline([
+    {
+      criterionId: 'problem',
+      label: 'Problem clarity',
+      answer: 'Students need urgent feedback.',
+      citedSpan: 'urgent feedback',
+      answerStartMs: 3_000,
+      answerEndMs: 14_000,
+    },
+    {
+      criterionId: 'solution',
+      label: 'Solution fit',
+      answer: 'The rubric enables a focused retry.',
+      citedSpan: 'rubric enables a focused retry',
+      answerStartMs: 22_000,
+      answerEndMs: 35_000,
+    },
+  ], transcript);
+
+  assert.deepEqual(entries.map((entry) => entry.state), ['found', 'found']);
+  assert.deepEqual(entries.map((entry) => [entry.evidence.startMs, entry.evidence.endMs]), [
+    [3_000, 14_000],
+    [22_000, 35_000],
+  ]);
+  assert.ok(entries.every((entry) => entry.evidence.clockSource === 'answer-window'));
+  for (const entry of entries) {
+    assert.equal(
+      transcript.slice(entry.evidence.charStart, entry.evidence.charEnd),
+      entry.evidence.span,
+    );
+  }
+});
+
+test('R-1 interview timeline keeps an unsupported criterion visible without inventing a time', () => {
+  const [entry] = buildInterviewRubricTimeline([{
+    criterionId: 'trust',
+    label: 'Feasibility and trust',
+    answer: 'We have a prototype.',
+    citedSpan: null,
+    answerStartMs: 4_000,
+    answerEndMs: 10_000,
+  }], 'We have a prototype.');
+
+  assert.equal(entry.state, 'absent');
+  assert.equal(entry.evidence, null);
 });
 
 test('R-2 segmenting reassembles the exact transcript', () => {

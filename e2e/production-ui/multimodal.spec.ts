@@ -88,6 +88,22 @@ async function openMultimodalAttempt(page: Page) {
   await expect(page.getByRole('heading', { name: 'Latih keseluruhan penampilan.' })).toBeVisible();
 }
 
+async function enterPracticeThroughClientNavigation(page: Page) {
+  await page.goto('/workspace');
+  const practiceLink = page.locator('.main-nav a[href^="/practice"]');
+  await expect(practiceLink).toHaveCount(1);
+  await practiceLink.click();
+  await expect(page).toHaveURL(/\/practice(?:\?|$)/u);
+  await expect(page.getByRole('heading', { name: 'Anda sedang bersiap untuk apa?' })).toBeVisible();
+}
+
+async function enableEveryCaptureChoice(page: Page) {
+  await page.getByRole('checkbox', { name: /Kamera landmark lokal/i }).check();
+  await page.getByRole('checkbox', { name: /Suara isyarat lokal/i }).check();
+  await page.getByRole('checkbox', { name: /Transkrip langsung/i }).check();
+  await page.getByRole('checkbox', { name: /Simpan rekaman kamera \+ mikrofon/i }).check();
+}
+
 async function expectNoHorizontalOverflow(page: Page) {
   const layout = await page.evaluate(() => {
     const viewportWidth = document.documentElement.clientWidth;
@@ -142,6 +158,35 @@ test.afterEach(async ({ page }) => {
   const observedPage = page as ObservedPage;
   expect(observedPage.consoleErrors ?? []).toEqual([]);
   expect(observedPage.externalRequests ?? []).toEqual([]);
+});
+
+test('presentation capture can request devices after client navigation without a refresh', async ({ page }) => {
+  await enterPracticeThroughClientNavigation(page);
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
+  await page.getByRole('button', { name: 'Rekam langsung' }).click();
+  await enableEveryCaptureChoice(page);
+  await page.getByRole('button', { name: 'Mulai latihan' }).click();
+
+  // Reaching calibration proves getUserMedia resolved. The pose model may
+  // still be loading, which is independent of the permission regression.
+  await expect(page.locator('.studio-status')).toContainText('Mengalibrasi selama 3 detik');
+  expect(await observedMediaRequests(page)).toEqual([{ audio: true, video: true }]);
+});
+
+test('interview capture can request devices after client navigation without a refresh', async ({ page }) => {
+  await enterPracticeThroughClientNavigation(page);
+  await page.getByRole('radio', { name: /Tanya jawab wawancara/i }).check();
+  await page.getByRole('button', { name: 'Mulai wawancara Kato' }).click();
+  await enableEveryCaptureChoice(page);
+  await page.getByRole('button', { name: 'Mulai perekaman wawancara berkelanjutan' }).click();
+
+  // This status is only set AFTER `await vision.start()` resolves, and that
+  // call loads the vision model. Playwright's default 5s expect budget is a
+  // race against a model load, which is why this failed about half the time.
+  // The assertion is unchanged; only the patience is.
+  await expect(page.locator('.studio-status'))
+    .toContainText('dijeda sampai jawaban pertama dimulai', { timeout: 20_000 });
+  expect(await observedMediaRequests(page)).toEqual([{ audio: true, video: true }]);
 });
 
 test('multimodal media stays off until Start and each consent is independent at 390px', async ({ page }) => {

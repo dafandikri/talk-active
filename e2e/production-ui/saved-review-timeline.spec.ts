@@ -176,14 +176,71 @@ test('raw events are disclosed on demand and remain the chart text equivalent', 
   await expect(page.locator('.saved-timeline-list li')).toHaveCount(4);
 });
 
-test('replay and delivery detail stay collapsed until requested', async ({ page }) => {
+test('a timestamp opens, seeks, and scrolls the replay while delivery detail stays collapsed', async ({ page }) => {
+  await page.addInitScript(() => {
+    type ReplayProbe = {
+      currentTime: number | null;
+      played: boolean;
+      scrollTarget: string | null;
+      behavior: ScrollBehavior | null;
+      block: ScrollLogicalPosition | null;
+    };
+    const observedWindow = window as Window & { __talkActiveReplayProbe?: ReplayProbe };
+    const probe: ReplayProbe = {
+      currentTime: null,
+      played: false,
+      scrollTarget: null,
+      behavior: null,
+      block: null,
+    };
+    observedWindow.__talkActiveReplayProbe = probe;
+    const currentTimes = new WeakMap<HTMLMediaElement, number>();
+    Object.defineProperty(HTMLMediaElement.prototype, 'currentTime', {
+      configurable: true,
+      get() { return currentTimes.get(this) ?? 0; },
+      set(value: number) {
+        currentTimes.set(this, value);
+        probe.currentTime = value;
+      },
+    });
+    Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+      configurable: true,
+      value() {
+        probe.played = true;
+        return Promise.resolve();
+      },
+    });
+    const nativeScrollIntoView = Element.prototype.scrollIntoView;
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value(options?: boolean | ScrollIntoViewOptions) {
+        if (this instanceof HTMLVideoElement && typeof options === 'object') {
+          probe.scrollTarget = this.className;
+          probe.behavior = options.behavior ?? null;
+          probe.block = options.block ?? null;
+        }
+        nativeScrollIntoView.call(this, options);
+      },
+    });
+  });
   await mockAttempt(page, { recordingStatus: 'ready' });
   await page.goto(`/attempts/${ATTEMPT_ID}`);
 
-  await expect(page.locator('.saved-replay-video')).not.toBeVisible();
+  const replay = page.locator('.saved-replay-video');
+  await expect(replay).not.toBeVisible();
   await expect(page.locator('.saved-delivery-metrics')).not.toBeVisible();
-  await page.locator('.saved-replay-card > summary').click();
-  await expect(page.locator('.saved-replay-video')).toBeVisible();
+  await page.locator('.saved-attempt-timeline .timeline-mark').first().click();
+  await expect(replay).toBeVisible();
+  await expect(replay).toBeInViewport();
+  expect(await page.evaluate(() => (
+    window as Window & { __talkActiveReplayProbe?: unknown }
+  ).__talkActiveReplayProbe)).toEqual({
+    currentTime: 6,
+    played: true,
+    scrollTarget: 'saved-replay-video',
+    behavior: 'smooth',
+    block: 'center',
+  });
   await page.locator('.saved-delivery-summary > summary').click();
   await expect(page.locator('.saved-delivery-metrics')).toBeVisible();
 });

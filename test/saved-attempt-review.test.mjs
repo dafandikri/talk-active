@@ -73,6 +73,7 @@ test('saved detail does not expose aggregate delivery scores after their compone
 
 test('delivery moments are semantic controls that seek with context', () => {
   assert.match(review, /video\.currentTime = Math\.max\(0, event\.startMs \/ 1_000 - 2\)/u);
+  assert.match(review, /video\.scrollIntoView\(\{ behavior: 'smooth', block: 'center' \}\)/u);
   assert.match(review, /<ul className="saved-timeline-list">/u);
   assert.match(review, /<li key=\{event\.id\}>\s*<button/u);
   assert.match(review, /<time dateTime=/u);
