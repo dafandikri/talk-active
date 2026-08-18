@@ -145,7 +145,7 @@ test('the workspace project choice carries its identity into practice and surviv
   await expect(switcher).toBeVisible();
   await switcher.locator('select').selectOption('p-thesis');
   await expect(page.locator('.project-kicker')).toContainText('Thesis defence · Semester 7');
-  await expect(page.getByRole('link', { name: 'Continue practising' }))
+  await expect(page.getByRole('link', { name: 'Lanjutkan latihan' }))
     .toHaveAttribute('href', '/practice?project=p-thesis');
   await expect(page).toHaveURL(/\/workspace\?project=p-thesis$/u);
 

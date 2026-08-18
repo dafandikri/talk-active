@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -73,18 +75,21 @@ function projectInitials(title: string): string {
   return letters || 'TA';
 }
 
+type Translate = (key: string) => string;
+
 function projectLanguageLabel(language: ProjectLanguage): string {
   return language === 'id-ID' ? 'Bahasa Indonesia' : 'English';
 }
 
-const mismatchedProjectMessage = 'The server returned a different project. Nothing from it was shown.';
-
-function projectLoadErrorMessage(caught: unknown): string {
+function projectLoadErrorMessage(caught: unknown, t: Translate): string {
   const message = caught instanceof Error ? caught.message.trim() : '';
-  if (message === mismatchedProjectMessage || /not found|took too long/iu.test(message)) {
+  // Resolved here rather than at module scope: a constant evaluated at import
+  // is fixed to whichever locale happened to load first, which is how a
+  // translated string quietly stops following the reader.
+  if (message === t('wrongProject') || /not found|took too long/iu.test(message)) {
     return message;
   }
-  return 'The saved project could not be verified. Check your connection and try again.';
+  return t('verifyFailed');
 }
 
 const TRAJECTORY_LIMIT = 6;
@@ -115,6 +120,7 @@ function coverageTrajectory(sessions: readonly SavedSession[]) {
 }
 
 export default function WorkspaceHomePage() {
+  const t = useTranslations('workspace');
   const [dashboard, setDashboard] = useState<DashboardState>(initialDashboard);
   const [chosenProjectId, setChosenProjectId] = useState<string | null>(null);
   const [selectionHydrated, setSelectionHydrated] = useState(false);
@@ -165,7 +171,7 @@ export default function WorkspaceHomePage() {
     if (!selectionHydrated || projectsLoading) return;
     if (projects.length === 0) {
       if (chosenProjectId) {
-        setSelectionNotice('That synced project is not available in this session. Your local workspace is shown instead.');
+        setSelectionNotice(t('projectUnavailable'));
         setChosenProjectId(null);
         writeProjectToUrl(null, 'replace');
       }
@@ -201,7 +207,7 @@ export default function WorkspaceHomePage() {
         );
         if (abort.signal.aborted) return;
         if (response.workspace.project.id !== activeProjectId) {
-          throw new Error(mismatchedProjectMessage);
+          throw new Error(t('wrongProject'));
         }
         setSelectedProject({
           status: 'ready',
@@ -215,7 +221,7 @@ export default function WorkspaceHomePage() {
           status: 'error',
           projectId: activeProjectId,
           workspace: null,
-          error: projectLoadErrorMessage(caught),
+          error: projectLoadErrorMessage(caught, t),
         });
       }
     })();
@@ -232,7 +238,7 @@ export default function WorkspaceHomePage() {
   const activeProjectTitle = selectedWorkspace?.project.title
     ?? activeProject?.project.title
     ?? dashboard.sessions.find((session) => session.projectId === null)?.projectTitle
-    ?? 'Local workspace';
+    ?? t('localWorkspace');
   const activeProjectLanguage = selectedWorkspace?.project.language
     ?? activeProject?.project.language
     ?? 'id-ID';
@@ -261,16 +267,16 @@ export default function WorkspaceHomePage() {
   const focusTitle = !latestSession
     ? savedSessionCount > 0
       ? `Continue this project with ${savedSessionCount} saved ${savedSessionCount === 1 ? 'attempt' : 'attempts'}.`
-      : 'Start with one complete attempt against your active rubric.'
+      : t('startWithAttempt')
     : latestIsComplete
-      ? 'Your latest saved attempt recorded complete rubric evidence coverage.'
+      ? t('completeCoverage')
       : `Pick up from your latest saved focus: ${latestSession.weakest}.`;
   const focusDescription = !latestSession
     ? savedSessionCount > 0
-      ? 'Open Progress for the synced evidence history, or rehearse again against this project’s rubric and language.'
-      : 'Save one reviewed attempt to make this dashboard follow your real rubric evidence.'
+      ? t('openProgressHint')
+      : t('saveOneAttempt')
     : latestIsComplete
-      ? 'That result describes one saved transcript, not confidence or speaking ability. Rehearse again to see whether the evidence holds.'
+      ? t('oneTranscriptBoundary')
       : `The latest saved transcript recorded ${coverageLabel(latestSession.evidenceScore)} explicit rubric coverage. Open Progress to inspect its retained quote or missing cues before rehearsing again.`;
 
   // Both come from attempts already saved in this browser. Neither invents a
@@ -286,9 +292,9 @@ export default function WorkspaceHomePage() {
   // pose is a different drawing with its own dimensions; carrying them through
   // keeps the swap from shifting the layout.
   const coach = !latestSession
-    ? { art: katoQuestioning, state: 'waiting', bubble: 'Ready for the hard question?' }
+    ? { art: katoQuestioning, state: 'waiting', bubble: t('readyForHard') }
     : latestIsComplete
-      ? { art: katoReading, state: 'supported', bubble: 'Every criterion is supported. Raise the bar?' }
+      ? { art: katoReading, state: 'supported', bubble: t('everySupported') }
       : { art: katoAlert, state: 'gap', bubble: `One gap is still open: ${latestSession.weakest}.` };
   const selectionResolving = activeProject === null
     && (chosenProjectId !== null || projects.length > 0);
@@ -297,10 +303,10 @@ export default function WorkspaceHomePage() {
     return (
       <section className="view is-visible" aria-labelledby="homeTitle">
         <header className="page-header">
-          <div><p className="overline">Your workspace</p><h1 id="homeTitle">Make your next answer harder to challenge.</h1></div>
+          <div><p className="overline">{t('yourWorkspace')}</p><h1 id="homeTitle">{t('makeHarder')}</h1></div>
         </header>
         <section className="surface" role="status" aria-live="polite" aria-busy="true">
-          <p className="empty-list">Checking which project belongs here…</p>
+          <p className="empty-list">{t('checkingProject')}</p>
         </section>
       </section>
     );
@@ -315,15 +321,15 @@ export default function WorkspaceHomePage() {
   return (
     <section className="view is-visible" aria-labelledby="homeTitle">
       <header className="page-header">
-        <div><p className="overline">Your workspace</p><h1 id="homeTitle">Make your next answer harder to challenge.</h1></div>
+        <div><p className="overline">{t('yourWorkspace')}</p><h1 id="homeTitle">{t('makeHarder')}</h1></div>
       </header>
 
       {projects.length > 1 && <div className="project-switcher">
-        <label htmlFor="workspaceProject">Project</label>
+        <label htmlFor="workspaceProject">{t('project')}</label>
         <select id="workspaceProject" value={activeProjectId ?? ''} onChange={(event) => chooseProject(event.target.value)}>
           {projects.map((summary) => <option key={summary.project.id} value={summary.project.id}>{summary.project.title}</option>)}
         </select>
-        <span className="project-switcher-meta">The project, rubric, language, practice, and saved progress stay together.</span>
+        <span className="project-switcher-meta">{t('staysTogether')}</span>
       </div>}
 
       {selectionNotice && <p className="empty-list" role="status">{selectionNotice}</p>}
@@ -334,42 +340,42 @@ export default function WorkspaceHomePage() {
           <h2 id="focusTitle">{focusTitle}</h2>
           <p>{focusDescription}</p>
           <div className="focus-actions">
-            <Link className="button button-light" href={practiceHref}>Continue practising</Link>
-            <Link className="button button-ghost-light" href={rubricHref}>Review rubric</Link>
+            <Link className="button button-light" href={practiceHref}>{t('continuePractising')}</Link>
+            <Link className="button button-ghost-light" href={rubricHref}>{t('reviewRubric')}</Link>
           </div>
         </div>
-        <aside className="focus-coach" aria-label="Talk-Active rehearsal guide">
+        <aside className="focus-coach" aria-label={t('guide')}>
           <img className="focus-mascot" data-coach={coach.state} src={coach.art.src} alt="" width={coach.art.width} height={coach.art.height} />
           <p className="coach-bubble">{coach.bubble}</p>
         </aside>
         <div className="focus-stats">
-          <div className="focus-stat"><span>Last evidence coverage</span><strong>{latestCoverage === null ? '—' : coverageLabel(latestCoverage)}</strong><small>{latestSession ? `Saved ${sessionDate(latestSession.createdAt).label}` : 'No reviewed attempt saved yet'}</small></div>
-          <div className="focus-stat"><span>Latest focus</span><strong className="stat-word">{latestSession ? latestIsComplete ? 'No saved gap' : latestSession.weakest : '—'}</strong><small>{latestSession ? 'Recorded in the latest saved attempt' : 'Appears after the first review'}</small></div>
-          <div className="focus-stat"><span>Saved sessions</span><strong>{savedSessionCount}</strong><small>{activeProject ? 'Synced attempts plus unmatched browser-only summaries' : 'Valid attempts retained in this browser'}</small></div>
+          <div className="focus-stat"><span>{t('lastCoverage')}</span><strong>{latestCoverage === null ? '—' : coverageLabel(latestCoverage)}</strong><small>{latestSession ? `Saved ${sessionDate(latestSession.createdAt).label}` : t('noReviewedAttempt')}</small></div>
+          <div className="focus-stat"><span>{t('latestFocus')}</span><strong className="stat-word">{latestSession ? latestIsComplete ? t('noSavedGap') : latestSession.weakest : '—'}</strong><small>{latestSession ? t('recordedInLatest') : t('appearsAfterReview')}</small></div>
+          <div className="focus-stat"><span>{t('savedSessions')}</span><strong>{savedSessionCount}</strong><small>{activeProject ? t('syncedPlusBrowser') : t('validRetained')}</small></div>
         </div>
       </section>
 
       {(recurringGap || trajectory) && <section className="insight-band" aria-labelledby="insightTitle">
         <div className="section-title-row">
-          <div><p className="overline">Read from your saved attempts</p><h2 id="insightTitle">What to rehearse next</h2></div>
-          <Link className="text-button" href={progressHref}>Open Progress</Link>
+          <div><p className="overline">{t('readFromSaved')}</p><h2 id="insightTitle">{t('whatNext')}</h2></div>
+          <Link className="text-button" href={progressHref}>{t('openProgress')}</Link>
         </div>
         <div className="insight-grid">
           {recurringGap && <article className="insight-card is-gap">
-            <p className="overline">The gap that keeps returning</p>
+            <p className="overline">{t('recurringGap')}</p>
             <strong className="insight-headline">{recurringGap.criterionName}</strong>
             <p className="insight-detail">
               Unsupported in {recurringGap.gapCount} of {recurringGap.attemptCount} saved {recurringGap.attemptCount === 1 ? 'attempt' : 'attempts'}.
             </p>
             {recurringGap.latestMissingEvidence.length > 0 && <p className="insight-cues">
-              <span>Still missing</span>
+              <span>{t('stillMissing')}</span>
               {recurringGap.latestMissingEvidence.slice(0, 3).map((cue) => <span className="signal-chip" key={cue}>{cue}</span>)}
             </p>}
-            <Link className="button button-secondary" href={practiceHref}>Rehearse this criterion</Link>
+            <Link className="button button-secondary" href={practiceHref}>{t('rehearseCriterion')}</Link>
           </article>}
 
           {trajectory && <article className="insight-card">
-            <p className="overline">Coverage across attempts</p>
+            <p className="overline">{t('coverageAcross')}</p>
             <strong className="insight-headline">
               {coverageLabel(trajectory.first)} <span aria-hidden="true">→</span> {coverageLabel(trajectory.last)}
             </strong>
@@ -396,20 +402,20 @@ export default function WorkspaceHomePage() {
             <p className="insight-detail">
               {trajectory.describable
                 ? `${trajectory.delta === 0 ? 'Level' : trajectory.delta > 0 ? `Up ${trajectory.delta} points` : `Down ${Math.abs(trajectory.delta)} points`} across the last ${trajectory.points.length} saved attempts.`
-                : 'Two saved attempts is a pair, not yet a trend. Save one more to see a direction.'}
+                : t('pairNotTrend')}
             </p>
-            <p className="insight-boundary">Coverage counts explicit rubric evidence in a transcript. It is not a score for you.</p>
+            <p className="insight-boundary">{t('coverageBoundary')}</p>
           </article>}
         </div>
       </section>}
 
       <div className="dashboard-grid">
         <section className="surface next-session" aria-labelledby="nextSessionTitle">
-          <div className="section-title-row"><div><p className="overline">Recommended session</p><h2 id="nextSessionTitle">Your next grounded drill</h2></div><span className="time-pill">3 steps</span></div>
+          <div className="section-title-row"><div><p className="overline">{t('recommended')}</p><h2 id="nextSessionTitle">{t('nextDrill')}</h2></div><span className="time-pill">3 steps</span></div>
           <ol className="session-plan">
-            <li><span>1</span><div><strong>Deliver your current pitch</strong><small>Paste one complete attempt.</small></div></li>
-            <li><span>2</span><div><strong>Inspect one unsupported claim</strong><small>Trace it to the active rubric.</small></div></li>
-            <li><span>3</span><div><strong>Defend it under pressure</strong><small>Answer one grounded follow-up.</small></div></li>
+            <li><span>1</span><div><strong>{t('deliverPitch')}</strong><small>{t('pasteAttempt')}</small></div></li>
+            <li><span>2</span><div><strong>{t('inspectClaim')}</strong><small>{t('traceToRubric')}</small></div></li>
+            <li><span>3</span><div><strong>{t('defendPressure')}</strong><small>{t('answerFollowUp')}</small></div></li>
           </ol>
         </section>
         <section
@@ -418,8 +424,8 @@ export default function WorkspaceHomePage() {
           aria-busy={activeProjectId ? projectDetailStatus === 'loading' : false}
         >
           <div className="section-title-row">
-            <div><p className="overline">Preparation</p><h2 id="rubricHealthTitle">Active rubric</h2></div>
-            <span className="health-ring" aria-label={projectDetailStatus === 'loading' ? 'Loading active criteria' : `${rubricCount} active criteria`}>
+            <div><p className="overline">{t('preparation')}</p><h2 id="rubricHealthTitle">{t('activeRubric')}</h2></div>
+            <span className="health-ring" aria-label={projectDetailStatus === 'loading' ? t('loadingCriteria') : `${rubricCount} active criteria`}>
               {projectDetailStatus === 'loading' ? '…' : rubricCount}
             </span>
           </div>
@@ -429,7 +435,7 @@ export default function WorkspaceHomePage() {
           {activeProjectId && projectDetailStatus === 'error' && selectedProject.status === 'error' && (
             <div role="alert">
               <p>{activeProjectTitle}&rsquo;s rubric could not be loaded. {selectedProject.error}</p>
-              <button className="button button-secondary" type="button" onClick={() => setProjectRequestVersion((version) => version + 1)}>Try again</button>
+              <button className="button button-secondary" type="button" onClick={() => setProjectRequestVersion((version) => version + 1)}>{t('tryAgain')}</button>
             </div>
           )}
           {activeProjectId && projectDetailStatus === 'ready' && syncedRubricConfirmed && (
@@ -444,13 +450,13 @@ export default function WorkspaceHomePage() {
               : `${dashboard.criteria.length} starter criteria are active until you save your evaluator rubric.`}</p>
           )}
           {rubricCount > 0 && <div className="mini-criteria">{activeCriteria.map((criterion) => <div className="mini-criterion" key={criterion.id}><i /><span>{criterion.name}</span></div>)}</div>}
-          <Link className="text-button" href={rubricHref}>{syncedRubricConfirmed || !activeProjectId ? 'Edit evaluation criteria' : 'Set up evaluation criteria'} <span aria-hidden="true">→</span></Link>
+          <Link className="text-button" href={rubricHref}>{syncedRubricConfirmed || !activeProjectId ? t('editCriteria') : t('setupCriteria')} <span aria-hidden="true">→</span></Link>
         </section>
       </div>
       <section className="surface recent-section" aria-labelledby="recentTitle">
-        <div className="section-title-row"><div><p className="overline">Practice log</p><h2 id="recentTitle">Recent sessions</h2></div><Link className="text-button" href={progressHref}>View all</Link></div>
+        <div className="section-title-row"><div><p className="overline">{t('practiceLog')}</p><h2 id="recentTitle">{t('recentSessions')}</h2></div><Link className="text-button" href={progressHref}>{t('viewAll')}</Link></div>
         {projectSessions.length === 0
-          ? <p className="empty-list">No rehearsals saved yet. Complete one practice attempt and its traceable evidence will appear here.</p>
+          ? <p className="empty-list">{t('noRehearsals')}</p>
           : <div className="session-list">{projectSessions.slice(0, 3).map((session) => {
             const date = sessionDate(session.createdAt);
             return <article className="session-row" key={session.id}>

@@ -58,11 +58,11 @@ test('dashboard hydrates saved rubric and session progress without placeholder m
   await expect(page.getByRole('heading', {
     name: 'Pick up from your latest saved focus: Execution proof.',
   })).toBeVisible();
-  await expect(page.locator('.focus-stat').filter({ hasText: 'Last evidence coverage' })).toContainText('75%');
-  await expect(page.locator('.focus-stat').filter({ hasText: 'Latest focus' })).toContainText('Execution proof');
-  await expect(page.locator('.focus-stat').filter({ hasText: 'Saved sessions' })).toContainText('2');
+  await expect(page.locator('.focus-stat').filter({ hasText: 'Cakupan bukti terakhir' })).toContainText('75%');
+  await expect(page.locator('.focus-stat').filter({ hasText: 'Fokus terbaru' })).toContainText('Execution proof');
+  await expect(page.locator('.focus-stat').filter({ hasText: 'Sesi tersimpan' })).toContainText('2');
 
-  await expect(page.getByRole('heading', { name: 'Active rubric' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Rubrik aktif' })).toBeVisible();
   await expect(page.locator('.health-ring')).toHaveText('3');
   await expect(page.locator('.mini-criterion')).toHaveText([
     'Problem framing',

@@ -44,11 +44,11 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   await expect(page).toHaveURL(/\/enter$/u);
   await page.getByRole('button', { name: 'Lanjut tanpa nama' }).click();
   await expect(page).toHaveURL(/\/workspace$/u);
-  await expect(page.getByRole('heading', { name: 'Make your next answer harder to challenge.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Buat jawaban berikutnya lebih sulit dibantah.' })).toBeVisible();
   await expect(page.locator('.focus-mascot')).toHaveJSProperty('complete', true);
   await expectVisibleControlsHitTest(page);
 
-  await page.getByRole('link', { name: /Continue practising/i }).click();
+  await page.getByRole('link', { name: /Lanjutkan latihan/i }).click();
   await expect(page).toHaveURL(/\/practice$/u);
   await expect(page.getByRole('link', { name: 'Exit session' })).toHaveCount(0);
   await page.getByRole('button', { name: /Begin this attempt/i }).click();
@@ -129,7 +129,7 @@ test('workspace keeps one practice action above the fold at 720p', async ({ page
   await page.goto('/workspace');
   const practiceActions = page.locator('.view a[href="/practice"]');
   await expect(practiceActions).toHaveCount(1);
-  await expect(practiceActions).toHaveAccessibleName('Continue practising');
+  await expect(practiceActions).toHaveAccessibleName('Lanjutkan latihan');
   const actionBounds = await practiceActions.boundingBox();
   expect(actionBounds, 'the dominant practice action must have rendered bounds').not.toBeNull();
   expect((actionBounds?.y ?? 720) + (actionBounds?.height ?? 0)).toBeLessThanOrEqual(720);
