@@ -343,10 +343,23 @@ function elideSpan(span: string): string {
   return `${(lastBreak > 0 ? cut.slice(0, lastBreak) : cut).trimEnd()}…`;
 }
 
+/**
+ * Each criterion used to pick its best sentence with no knowledge of what the
+ * others had taken, so a sentence scoring well on several criteria won all of
+ * them and the evidence map showed one quote two or three times (#38).
+ *
+ * The swap is deliberately narrow: an already-taken best is exchanged only for
+ * an unused sentence supporting this criterion EQUALLY WELL. Reaching for a
+ * weaker sentence so the quotes look distinct would be choosing the
+ * better-looking answer over the true one, which is the exact failure INV-3
+ * exists to prevent — and reuse stays allowed, and stays disclosed, when
+ * nothing else supports the criterion at all.
+ */
 function evidenceForCriterion(
   criterion: RubricCriterion,
   transcriptTokens: string[],
   sentences: string[],
+  takenSentences: ReadonlySet<string> = new Set(),
 ): EvidenceCriterion {
   const tokenSet = new Set(transcriptTokens);
   const matchedSignals = criterion.signals.filter((signal) => signalIsPresent(signal, tokenSet));
@@ -361,7 +374,13 @@ function evidenceForCriterion(
   }).sort((left, right) => right.hits - left.hits);
 
   const best = rankedSentences[0];
-  const excerpt = best && best.hits > 0 ? best.sentence : '';
+  // Ties keep transcript order, because Array.prototype.sort is stable, so
+  // "the first equally good unused sentence" is a deterministic choice.
+  const unusedEquivalent = best && best.hits > 0
+    ? rankedSentences.find((entry) => entry.hits === best.hits && !takenSentences.has(entry.sentence))
+    : undefined;
+  const chosen = unusedEquivalent ?? best;
+  const excerpt = chosen && chosen.hits > 0 ? chosen.sentence : '';
   const status: CriterionStatus = coverage >= 0.6
     ? 'covered'
     : coverage >= 0.25 ? 'partial' : 'missing';
@@ -451,9 +470,14 @@ export function analyzeSpeech({
   const rubric = parseRubric(rubricText);
   const transcriptTokens = tokenize(normalizedTranscript);
   const sentences = splitSentences(normalizedTranscript);
-  const criteria = rubric.map((criterion) => (
-    evidenceForCriterion(criterion, transcriptTokens, sentences)
-  ));
+  // Allocated in rubric order rather than mapped independently, so a later
+  // criterion can see which spans are already spoken for.
+  const takenSentences = new Set<string>();
+  const criteria = rubric.map((criterion) => {
+    const evidence = evidenceForCriterion(criterion, transcriptTokens, sentences, takenSentences);
+    if (evidence.excerpt) takenSentences.add(evidence.excerpt);
+    return evidence;
+  });
   // Equal coverage does not mean equally useful to coach. When two criteria are
   // just as weak, the one naming a cue the student can actually add is the one
   // worth the next question; rubric order is an arbitrary way to settle that.

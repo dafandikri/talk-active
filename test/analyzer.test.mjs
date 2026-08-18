@@ -305,3 +305,59 @@ test('an unset language falls back to the project contract default of Indonesian
   });
   assert.match(result.judgeQuestion, /Bukti/u);
 });
+
+// #38. Each criterion picked its best sentence independently, so a sentence
+// that scores well on several criteria won all of them and the evidence map
+// showed the same quote two or three times. The product's whole claim is
+// "every competitor gives a score, we give the quote"; the same quote twice
+// reads as the mapping being shallow.
+//
+// The rule is deliberately narrow: swap only between EQUALLY supported
+// sentences. Downgrading a criterion to weaker evidence so the quotes look
+// distinct would be inventing a better-looking answer, which INV-3 forbids —
+// and reuse stays allowed and disclosed when nothing else supports the
+// criterion at all.
+const SHARED_BEST = [
+  'Kami menguji prototipe bersama mahasiswa Fasilkom.',
+  'Kami menguji prototipe bersama mahasiswa Fasilkom lagi pada minggu kedua.',
+  'Rubrik penilai menjadi dasar setiap latihan.',
+].join(' ');
+
+test('two criteria with an equally good alternative do not share one quote', () => {
+  const result = analyzeSpeech({
+    transcript: SHARED_BEST,
+    rubricText: 'Validasi | menguji, prototipe\nPengujian | menguji, prototipe',
+    durationSeconds: 60,
+  });
+  const [first, second] = result.criteria;
+  assert.ok(first?.excerpt && second?.excerpt, 'both criteria should cite a span');
+  assert.notEqual(first.excerpt, second.excerpt);
+});
+
+test('a criterion keeps a reused quote when nothing else supports it', () => {
+  // One sentence, two criteria that both need it. Forcing distinct quotes here
+  // would mean citing a sentence that does not support the criterion.
+  const result = analyzeSpeech({
+    transcript: 'Kami menguji prototipe bersama mahasiswa. Cuaca hari itu cerah sekali.',
+    rubricText: 'Validasi | menguji, prototipe\nPengujian | menguji, prototipe',
+    durationSeconds: 60,
+  });
+  const [first, second] = result.criteria;
+  assert.equal(first.excerpt, second.excerpt, 'reuse is correct when it is the only support');
+  assert.ok(first.excerpt.includes('menguji'));
+});
+
+test('a criterion is never downgraded to weaker evidence to avoid a repeat', () => {
+  // The second sentence matches one cue; the first matches two. Taking the
+  // weaker sentence purely to look distinct would misreport the evidence.
+  const result = analyzeSpeech({
+    transcript: 'Kami menguji prototipe bersama mahasiswa. Kami menguji lagi kemudian.',
+    rubricText: 'Validasi | menguji, prototipe\nUlangan | menguji, prototipe',
+    durationSeconds: 60,
+  });
+  const strongest = 'Kami menguji prototipe bersama mahasiswa.';
+  assert.ok(
+    result.criteria.some((criterion) => criterion.excerpt === strongest),
+    'the strongest supporting sentence must still be cited by someone',
+  );
+});
