@@ -194,8 +194,22 @@ test('H-4 consistency is enforced by the design system, not by memory', () => {
 test('H-4 an action keeps its name through the flow', () => {
   // "Save rubric" must not produce "Rubric updated". The vocabulary of an
   // interface is its signposting.
-  assert.match(RUBRIC, /Save rubric/u);
-  assert.match(RUBRIC, /title: 'Rubric saved'/u, 'the confirmation must echo the verb on the button');
+  // The vocabulary claim survives translation: the confirmation must echo the
+  // verb on the button, in whatever language both are written in. Checked as a
+  // relationship between two catalogue entries rather than as English text.
+  assert.match(RUBRIC, /t\('saveRubric'\)/u);
+  assert.match(RUBRIC, /title: t\('saved'\)/u, 'the confirmation must echo the verb on the button');
+  for (const locale of ['id', 'en']) {
+    const entries = JSON.parse(read(`apps/web/messages/${locale}.json`)).rubricEditor;
+    const verb = entries.saveRubric.split(/\s+/u)[0].toLocaleLowerCase(locale);
+    assert.ok(
+      entries.saved.toLocaleLowerCase(locale).includes(verb)
+        || entries.saveRubric.toLocaleLowerCase(locale).includes(
+          entries.saved.split(/\s+/u)[0].toLocaleLowerCase(locale),
+        ),
+      `${locale}: "${entries.saved}" must echo the action "${entries.saveRubric}"`,
+    );
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -280,11 +294,8 @@ test('H-8 a control with one option is not shown at all', () => {
 //  9. Help users recognise, diagnose, and recover from errors
 // ---------------------------------------------------------------------------
 test('H-9 an error says what happened and what to do next', () => {
-  assert.match(
-    RUBRIC,
-    /Keep at least one named criterion\. Add a description or evidence cues/u,
-    'a rejected save must name the fix, not just the failure',
-  );
+  assert.match(RUBRIC, /t\('keepOne'\)/u, 'a rejected save must name the fix, not just the failure');
+  everyLocaleTranslates('rubricEditor', 'keepOne', 'the fix for a rejected save must exist in every locale');
   assert.match(
     PRACTICE,
     /Your saved project could not be restored just now/u,

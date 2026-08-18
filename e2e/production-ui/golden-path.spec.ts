@@ -510,16 +510,16 @@ test('rubric import stays traceable and requires human confirmation', async ({ p
   await page.goto('/rubric');
   await expectVisibleControlsHitTest(page);
 
-  await page.getByText('Import from a scoring matrix').click();
-  await page.getByLabel('Paste the scoring matrix').fill(
+  await page.getByText('Impor dari matriks penilaian').click();
+  await page.getByLabel('Tempel matriks penilaian').fill(
     'Problem evidence | affected students, frequency, source\nFeasibility | architecture, cost, timeline',
   );
-  await page.getByRole('button', { name: 'Structure these criteria' }).click();
+  await page.getByRole('button', { name: 'Strukturkan kriteria ini' }).click();
 
   // Structured, and explicitly not saved yet.
   await expect(page.locator('[data-toast-variant="warning"]'))
     .toContainText('2 criteria structured in deterministic mode');
-  await expect(page.getByRole('button', { name: 'Save rubric' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Simpan rubrik' })).toBeVisible();
 
   // Each imported row still says which sentence it came from. Without this the
   // criteria are unattributable and the import stops being auditable.
@@ -535,7 +535,7 @@ test('rubric editor caps the criteria list and keeps Save at the end', async ({ 
   await addCriterion.click();
   await expect(page.locator('.rubric-row')).toHaveCount(5);
   await expect(addCriterion).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Save rubric' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Simpan rubrik' })).toBeVisible();
   await expect(page.locator('.rubric-status')).toHaveCount(0);
   await expectVisibleControlsHitTest(page);
 });
@@ -543,19 +543,19 @@ test('rubric editor caps the criteria list and keeps Save at the end', async ({ 
 test('rubric library remains editable, explicitly saved, and source-labelled', async ({ page }) => {
   await page.goto('/rubric');
   await page.getByRole('button', { name: /Skripsi defense/i }).click();
-  await expect(page.locator('[data-toast-variant="warning"]')).toContainText(/starter loaded but not saved/iu);
+  await expect(page.locator('[data-toast-variant="warning"]')).toContainText(/Rubrik awal dimuat tetapi belum tersimpan/iu);
   await expect(page.locator('.rubric-row')).toHaveCount(5);
 
-  const firstCriterion = page.getByLabel('Criterion').first();
+  const firstCriterion = page.getByLabel('Kriteria').first();
   await firstCriterion.fill('Research gap and urgency');
-  await page.getByRole('button', { name: 'Save rubric' }).click();
+  await page.getByRole('button', { name: 'Simpan rubrik' }).click();
   await expect(page.locator('[data-toast-variant="positive"]')).toContainText('5 confirmed criteria saved');
   await expect.poll(() => page.evaluate(() => localStorage.getItem(
     'talkactive.production.rubric-source.v1',
   ))).toBe('library');
 
   await page.reload();
-  await expect(page.getByLabel('Criterion').first()).toHaveValue('Research gap and urgency');
+  await expect(page.getByLabel('Kriteria').first()).toHaveValue('Research gap and urgency');
   await expect(page.locator('.rubric-row')).toHaveCount(5);
   await expectVisibleControlsHitTest(page);
 });
@@ -569,7 +569,7 @@ test('mobile workspace exposes the complete frozen navigation', async ({ page })
   await expectVisibleControlsHitTest(page);
   await nav.getByRole('link', { name: /Rubrik/i }).click();
   await expect(page).toHaveURL(/\/rubric$/u);
-  await expect(page.getByRole('heading', { name: 'Modify rubric' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ubah rubrik' })).toBeVisible();
 });
 
 test('account sync is optional and fails closed when secrets are absent', async ({ page, request }) => {
