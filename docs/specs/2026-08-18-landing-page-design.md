@@ -4,9 +4,22 @@ The public landing page at `/` is the first thing an Indonesian university stude
 sees, and it currently reads as plainer than the product deserves. This redesigns it
 without touching the workspace.
 
-**Scope:** `apps/web/components/production-shell.tsx`, `src/landing.css`, the `landing`
-message namespace, and one new artwork asset. Nothing in the practice, review, or
-progress screens changes.
+**Scope:** `apps/web/components/production-shell.tsx`, `apps/web/app/shell.css`, the
+`landing` message namespace, and one new artwork asset. Nothing in the practice,
+review, or progress screens changes.
+
+**Corrected 18 August, while planning.** Two factual errors in the first draft:
+
+- The landing styles live in `apps/web/app/shell.css`, not `src/landing.css`.
+  `src/landing.css` contains no `.production-shell` rules at all.
+- **The loop's CSS was never removed.** `.production-shell__loop` survives in
+  `shell.css` with its grid, its card borders, and an `--evidence-wash` treatment for
+  the evidence step. Only the markup went. That strengthens the D8 argument: the
+  section was not designed away, it was dropped and its styling left behind.
+- The hero already sets `--step-6` over `--step-1`, so the scale jump this spec
+  describes largely exists. What Editorial actually changes is the copy — shorter,
+  harder, two lines — plus weight and tracking. Said plainly so nobody implements a
+  ratio that is already there and reports it as the redesign.
 
 ---
 
