@@ -26,3 +26,4 @@ test-results/
 # `!.env.example`.
 .env*
 !.env.example
+.superpowers/
