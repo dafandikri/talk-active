@@ -18,7 +18,9 @@ export function ProductionShell({ project }: Readonly<{ project: Project }>) {
 
       <section className="production-shell__hero" aria-labelledby="production-title">
         <div className="production-shell__hero-copy">
-          <h1 className="production-shell__title" id="production-title">{t('title')}</h1>
+          <h1 className="production-shell__title" id="production-title">
+            {t('titleLine1')}<br /><span className="production-shell__title-accent">{t('titleLine2')}</span>
+          </h1>
           {/* "rubric-grounded" twice in one sentence, and the second half only
               restated the first. One naming of Kato, one claim, no repetition.
               The emphasis on Kato is carried as rich text rather than by
