@@ -123,12 +123,12 @@ test('selected project owns the rubric, language, direct studio, and browser his
   // in it starts off. The project language decides the dictation language.
   await page.getByRole('button', { name: 'Record live' }).click();
   await expect(page.getByRole('heading', { name: 'Rehearse the whole performance.' })).toBeVisible();
-  await expect(page.getByRole('group', { name: /Choose what this rehearsal may observe/i })).toBeVisible();
+  await expect(page.getByRole('group', { name: /Pilih apa yang boleh diamati latihan ini/i })).toBeVisible();
   await expect(page.getByText('Project language: Bahasa Indonesia', { exact: true })).toBeVisible();
-  await expect(page.getByRole('checkbox', { name: /Camera local landmarks/i })).not.toBeChecked();
-  await expect(page.getByRole('checkbox', { name: /Voice local cues/i })).not.toBeChecked();
-  await expect(page.getByRole('checkbox', { name: /Live transcript Indonesian/i })).not.toBeChecked();
-  await expect(page.getByRole('checkbox', { name: /Save replay camera \+ mic/i })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /Kamera landmark lokal/i })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /Suara isyarat lokal/i })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /Transkrip langsung Bahasa Indonesia/i })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /Simpan rekaman kamera \+ mikrofon/i })).not.toBeChecked();
   await page.getByRole('button', { name: 'Write or paste' }).click();
 
   const preservedDraft = 'This draft must survive browser Back and Forward inside Practice.';

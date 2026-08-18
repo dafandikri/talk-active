@@ -107,7 +107,8 @@ test('H-3 every stage of the practice flow has a marked exit', () => {
   }
   assert.match(PRACTICE, /Revise transcript/u, 'review must be able to return to the attempt');
   assert.match(PRACTICE, /Back to attempt review/u, 'the Q&A drill must be able to go back');
-  assert.match(STUDIO, /Finish &amp; assemble review/u, 'a running capture must be stoppable by the user');
+  assert.match(STUDIO, /t\('finishAssemble'\)/u, 'a running capture must be stoppable by the user');
+  everyLocaleTranslates('studio', 'finishAssemble', 'the stop control must be labelled in every locale');
   // The link itself is still asserted in the component; only its words moved.
   assert.match(ENTRY, /className="entry-back" href="\/"/u, 'the entry decision must link back to the landing page');
   everyLocaleTranslates('entryGate', 'back', 'the entry decision must offer a visible return to the landing page');
@@ -143,9 +144,13 @@ test('H-3 the attempt step opens on writing, and capture is a choice the user ma
   // states that in the words the user reads, before anything is requested.
   assert.match(
     STUDIO,
-    /Choose what this rehearsal may observe/u,
+    /t\('chooseObserve'\)/u,
     'live capture must present its observation checklist before Start',
   );
+  // Consent copy is the one thing that must never be readable in only one
+  // language: a checklist a user cannot read is not informed consent.
+  everyLocaleTranslates('studio', 'chooseObserve', 'the consent checklist must be readable in every locale');
+  everyLocaleTranslates('studio', 'consentBoundary', 'what each signal does must be stated in every locale');
   assert.match(
     STUDIO,
     /every signal starts off/u,

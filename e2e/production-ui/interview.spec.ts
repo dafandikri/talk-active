@@ -526,8 +526,8 @@ test('one continuous interview capture stays paused for narration and resumes ac
   };
 
   await expect(question).toBeVisible();
-  await page.getByRole('checkbox', { name: /Live transcript English/i }).check();
-  await page.getByRole('checkbox', { name: /Save replay camera \+ mic/i }).check();
+  await page.getByRole('checkbox', { name: /Transkrip langsung Inggris/i }).check();
+  await page.getByRole('checkbox', { name: /Simpan rekaman kamera \+ mikrofon/i }).check();
   await expect(page.getByRole('button', { name: 'Mulai perekaman wawancara berkelanjutan' })).toBeEnabled();
 
   // Narration before Start never implies camera, microphone, dictation, or replay consent.
@@ -543,7 +543,7 @@ test('one continuous interview capture stays paused for narration and resumes ac
   await expect(page.getByRole('button', { name: 'Mulai perekaman wawancara berkelanjutan' })).toBeEnabled();
 
   await page.getByRole('button', { name: 'Mulai perekaman wawancara berkelanjutan' }).click();
-  await expect(captureStatus).toContainText(/paused until the first answer begins/i);
+  await expect(captureStatus).toContainText(/dijeda sampai jawaban pertama dimulai/i);
   await expect(replayStatus).toContainText(/replay recording is active/i);
   await expect(beginAnswer).toBeEnabled();
   await expect(answerBox).toBeDisabled();
@@ -558,7 +558,7 @@ test('one continuous interview capture stays paused for narration and resumes ac
   expect(initialProbe.mediaStreamId).not.toBe('');
 
   await beginAnswer.click();
-  await expect(captureStatus).toContainText(/Answer capture is active/i);
+  await expect(captureStatus).toContainText(/Perekaman jawaban aktif/i);
   await expect(answerBox).toBeEnabled();
   await answerBox.fill('Students need urgent feedback while there is still time to revise.');
   await page.waitForTimeout(1_100);
@@ -568,7 +568,7 @@ test('one continuous interview capture stays paused for narration and resumes ac
   await page.getByRole('button', { name: 'Simpan jawaban & pertanyaan berikutnya' }).click();
   await expect(question).toContainText(INTERVIEW_CRITERIA[1].name);
   await expect(question).toBeFocused();
-  await expect(captureStatus).toContainText(/paused; camera tracking and an optional replay continue/i);
+  await expect(captureStatus).toContainText(/dijeda; pelacakan kamera dan rekaman opsional berlanjut/i);
   await expect(replayStatus).toContainText(/replay recording is active/i);
   await expect(answerBox).toBeDisabled();
   const betweenQuestionsProbe = await captureProbe();
@@ -594,7 +594,7 @@ test('one continuous interview capture stays paused for narration and resumes ac
   await page.getByRole('button', { name: 'Lewati narasi' }).click();
   await expect(beginAnswer).toBeEnabled();
   await beginAnswer.click();
-  await expect(captureStatus).toContainText(/Answer capture is active/i);
+  await expect(captureStatus).toContainText(/Perekaman jawaban aktif/i);
   await expect(answerBox).toBeEnabled();
   await answerBox.fill('The rubric isolates one weak claim and guides a focused retry.');
   await page.waitForTimeout(1_100);

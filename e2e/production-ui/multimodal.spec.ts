@@ -148,11 +148,11 @@ test('multimodal media stays off until Start and each consent is independent at 
   await page.setViewportSize({ width: 390, height: 844 });
   await openMultimodalAttempt(page);
 
-  const cameraConsent = page.getByRole('checkbox', { name: /Camera local landmarks/i });
-  const acousticConsent = page.getByRole('checkbox', { name: /Voice local cues/i });
-  const dictationConsent = page.getByRole('checkbox', { name: /Live transcript Indonesian/i });
-  const replayConsent = page.getByRole('checkbox', { name: /Save replay camera \+ mic/i });
-  const start = page.getByRole('button', { name: 'Start rehearsal' });
+  const cameraConsent = page.getByRole('checkbox', { name: /Kamera landmark lokal/i });
+  const acousticConsent = page.getByRole('checkbox', { name: /Suara isyarat lokal/i });
+  const dictationConsent = page.getByRole('checkbox', { name: /Transkrip langsung Bahasa Indonesia/i });
+  const replayConsent = page.getByRole('checkbox', { name: /Simpan rekaman kamera \+ mikrofon/i });
+  const start = page.getByRole('button', { name: 'Mulai latihan' });
 
   await expect(cameraConsent).not.toBeChecked();
   await expect(acousticConsent).not.toBeChecked();
@@ -160,7 +160,7 @@ test('multimodal media stays off until Start and each consent is independent at 
   await expect(replayConsent).not.toBeChecked();
   await expect(dictationConsent).toBeEnabled();
   await expect(start).toBeDisabled();
-  await expect(page.getByText('No media access before Start', { exact: true })).toBeVisible();
+  await expect(page.getByText('Tidak ada akses media sebelum Mulai', { exact: true })).toBeVisible();
   expect(await observedMediaRequests(page)).toEqual([]);
 
   await cameraConsent.check();
@@ -196,17 +196,17 @@ test('Mansiz presentation auto-stops once at the configured bell and carries the
     + 'The prototype is feasible because its privacy boundary is explicit.',
   );
   await page.getByLabel('Time limit').fill('1');
-  await page.getByRole('checkbox', { name: /Voice local cues/i }).check();
+  await page.getByRole('checkbox', { name: /Suara isyarat lokal/i }).check();
 
   // Install after hydration but before capture so the session origin and bell
   // share one monotonic clock without delaying the production page boot.
   const captureOrigin = new Date('2026-08-13T12:00:00.000Z');
   await page.clock.install({ time: captureOrigin });
   await page.clock.pauseAt(captureOrigin);
-  await page.getByRole('button', { name: 'Start rehearsal' }).click();
+  await page.getByRole('button', { name: 'Mulai latihan' }).click();
 
   const finishCapture = page.getByRole('button', {
-    name: 'Finish & assemble review',
+    name: 'Selesai & rakit tinjauan',
     exact: true,
   });
   await expect(finishCapture).toBeVisible();
@@ -218,9 +218,9 @@ test('Mansiz presentation auto-stops once at the configured bell and carries the
 
   await page.clock.fastForward('01:00');
   await expect(finishCapture).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Start rehearsal' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Mulai latihan' })).toBeVisible();
   await expect(page.locator('.studio-status')).toContainText(
-    'Time ran out and capture stopped itself, exactly as an evaluator would.',
+    'Waktu habis dan perekaman berhenti sendiri, persis seperti yang dilakukan penilai.',
   );
   await expect(page.getByLabel('Spoken length')).toHaveValue('60');
   await expect.poll(() => observedMediaTrackStops(page)).toBe(1);
@@ -229,7 +229,7 @@ test('Mansiz presentation auto-stops once at the configured bell and carries the
   await page.clock.fastForward(1_000);
   expect(await observedMediaTrackStops(page)).toBe(1);
   await expect(page.locator('.studio-status')).toContainText(
-    'Time ran out and capture stopped itself, exactly as an evaluator would.',
+    'Waktu habis dan perekaman berhenti sendiri, persis seperti yang dilakukan penilai.',
   );
 
   await page.getByRole('button', { name: /Review this attempt/i }).click();
@@ -255,9 +255,9 @@ test('camera-only capture renders concise observations with fully disclosed deta
     + 'We built a feasible prototype architecture with explicit privacy limitations.',
   );
 
-  await page.getByRole('checkbox', { name: /Camera local landmarks/i }).check();
-  await page.getByRole('button', { name: 'Start rehearsal' }).click();
-  const finishCapture = page.getByRole('button', { name: 'Finish & assemble review', exact: true });
+  await page.getByRole('checkbox', { name: /Kamera landmark lokal/i }).check();
+  await page.getByRole('button', { name: 'Mulai latihan' }).click();
+  const finishCapture = page.getByRole('button', { name: 'Selesai & rakit tinjauan', exact: true });
   await expect(finishCapture).toBeVisible({ timeout: 20_000 });
   await page.waitForTimeout(1_200);
 
@@ -265,7 +265,7 @@ test('camera-only capture renders concise observations with fully disclosed deta
   await expect(landmarkCanvas).toBeVisible();
 
   await finishCapture.click();
-  await expect(page.locator('.studio-status')).toContainText('Rehearsal captured');
+  await expect(page.locator('.studio-status')).toContainText('Latihan terekam');
   await expect(page.locator('.studio-hud')).toContainText(/find the camera frame/i);
 
   // Canvas pixels are deliberately not asserted here. drawOverlay clears the
