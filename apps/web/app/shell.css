@@ -14,7 +14,8 @@
 .production-shell__hero-copy { min-width: 0; }
 .production-shell__eyebrow { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); color: var(--brand); font-size: var(--step-0); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
 .production-shell__eyebrow > span { width: var(--space-2); height: var(--space-2); display: inline-block; background: var(--accent-sun); border-radius: var(--radius-full); }
-.production-shell__title { max-width: 13ch; margin-bottom: var(--space-5); font-size: var(--step-6); line-height: var(--leading-tight); }
+.production-shell__title { max-width: 11ch; margin-bottom: var(--space-5); font-size: var(--step-6); font-weight: var(--weight-heavy); line-height: .96; letter-spacing: -0.04em; }
+.production-shell__title-accent { color: var(--accent-sun); }
 .production-shell__lede { max-width: 58ch; margin-bottom: 0; color: var(--text-secondary); font-size: var(--step-1); line-height: var(--leading-normal); }
 .production-shell__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-block: var(--space-6) var(--space-4); }
 .production-shell__action, .production-shell__secondary-action { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); padding: var(--space-3) var(--space-5); border-radius: var(--radius-full); font-weight: var(--weight-heavy); text-decoration: none; }
@@ -34,7 +35,24 @@
 .production-shell__question { display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); align-items: start; margin-top: var(--space-4); padding: var(--space-4); color: var(--text-on-inverse); background: var(--surface-inverse); border-radius: var(--radius-md); }
 .production-shell__question span { width: var(--space-6); height: var(--space-6); display: grid; place-items: center; color: var(--surface-inverse); background: var(--inverse-accent); border-radius: var(--radius-full); }
 .production-shell__question p { margin: 0; }
-.production-shell__demo > img { position: absolute; right: calc(-1 * var(--space-6)); bottom: calc(-1 * var(--space-7)); width: 7rem; height: auto; transform: rotate(4deg); }
+/* Depth without a 3D runtime: the CSP forbids external hosts and a booth runs
+   on hotel Wi-Fi, so a drop-shadow and a small lift do the work a WebGL scene
+   would have cost 150 KB to do. Sized explicitly so a real render can replace
+   the file later without moving anything.
+
+   The shadow is a HARD offset in a solid token, not a soft blur. That is this
+   system's shadow language everywhere else — the demo card beside it casts
+   `var(--space-3) var(--space-3) 0 var(--accent-sky)` — and a blurred alpha
+   shadow would have been off-system even before design-system.test.mjs
+   rejected it for carrying a raw colour. */
+.production-shell__kato { position: absolute; right: calc(-1 * var(--space-6)); bottom: calc(-1 * var(--space-7)); width: 11rem; aspect-ratio: 1 / 1.18; }
+.production-shell__kato img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(var(--space-2) var(--space-2) 0 var(--text-primary)); transform: translateY(0) rotate(-3deg); transition: transform 420ms ease; }
+.production-shell__demo:hover .production-shell__kato img { transform: translateY(-0.35rem) rotate(-3deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .production-shell__kato img { transition: none; }
+  .production-shell__demo:hover .production-shell__kato img { transform: rotate(-3deg); }
+}
 .production-shell__loop, .production-shell__use-cases { padding-block: var(--space-9); }
 .production-shell__section-intro { max-width: 46rem; margin-bottom: var(--space-7); }
 .production-shell__section-intro h2 { max-width: 24ch; font-size: var(--step-4); }

@@ -56,7 +56,9 @@ export function ProductionShell({ project }: Readonly<{ project: Project }>) {
             <span aria-hidden="true">Q</span>
             <p>{t('demoQuestion')}</p>
           </div>
-          <img src={mascot.src} alt="" />
+          <div className="production-shell__kato">
+            <img src={mascot.src} alt="" width={176} height={208} />
+          </div>
         </div>
       </section>
 

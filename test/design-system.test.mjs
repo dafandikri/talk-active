@@ -652,3 +652,17 @@ test('reduced motion stops the movement and keeps the meaning', () => {
   // The pose itself is chosen in the component, so it survives this media query
   // by construction. That is the point: motion is decoration, pose is content.
 });
+
+// The landing's depth is CSS, not a 3D runtime — the CSP forbids external hosts
+// and a booth runs on hotel Wi-Fi. This pins that decision so nobody reaches for
+// a WebGL dependency later without changing the spec first.
+test('the landing mascot gets its depth from CSS and reduces for motion sensitivity', () => {
+  assert.match(NEXT_SHELL_STYLES, /\.production-shell__kato\b/u, 'the mascot needs a sized wrapper');
+  assert.match(NEXT_SHELL_STYLES, /\.production-shell__kato[^}]*filter:\s*drop-shadow/u,
+    'depth must come from a shadow, not a 3D runtime');
+  assert.match(
+    NEXT_SHELL_STYLES,
+    /@media \(prefers-reduced-motion: reduce\)[^}]*\{[\s\S]*?\.production-shell__kato/u,
+    'the mascot must hold still when motion is reduced',
+  );
+});
