@@ -8,7 +8,9 @@
     "build": "next build --turbopack",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "db:generate": "drizzle-kit generate --config drizzle.config.ts"
+    "db:generate": "drizzle-kit generate --config drizzle.config.ts",
+    "db:migrate": "drizzle-kit migrate --config drizzle.config.ts",
+    "db:status": "drizzle-kit check --config drizzle.config.ts"
   },
   "dependencies": {
     "@ai-sdk/gateway": "4.0.49",
