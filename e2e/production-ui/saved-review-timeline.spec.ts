@@ -166,7 +166,7 @@ test('raw events are disclosed on demand and remain the chart text equivalent', 
   await mockAttempt(page, { recordingStatus: 'ready' });
   await page.goto(`/attempts/${ATTEMPT_ID}`);
 
-  const disclosure = page.getByText('Read every timeline observation', { exact: true });
+  const disclosure = page.getByText('Baca setiap observasi pada lini masa', { exact: true });
   await expect(page.locator('.saved-timeline-list')).not.toBeVisible();
   await disclosure.click();
   await expect(page.locator('.saved-timeline-list')).toBeVisible();

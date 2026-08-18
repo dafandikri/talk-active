@@ -261,7 +261,12 @@
     "steadyCoverage": "Explicit coverage held steady on every criterion between these two attempts.",
     "historicalOnly": "Historical summary only. That session did not retain the original criterion quote or missing-cue list.",
     "localBoundary": "Local recurring gaps and comparisons use only criterion evidence retained in this browser. Older summaries stay labelled when their original quote or missing-cue list was never retained.",
-    "syncedBoundary": "Recurring gaps and exact attempt comparisons use synced verdict rows only, with zero model calls. Project-scoped browser summaries appear only in the session count, coverage trend, and archive; separate interview answers remain page-local."
+    "syncedBoundary": "Recurring gaps and exact attempt comparisons use synced verdict rows only, with zero model calls. Project-scoped browser summaries appear only in the session count, coverage trend, and archive; separate interview answers remain page-local.",
+    "criterionAbsent": "This criterion was not present in this rubric.",
+    "changedLastTwo": "What changed between the last two reviewed attempts",
+    "trackExplicit": "Track explicit evidence and recurring weak claims without inventing a universal speaking score.",
+    "changedBetween": "What changed between attempts",
+    "criteriaReturning": "The criteria that keep returning"
   },
   "savedReview": {
     "backToProgress": "Back to progress",
@@ -326,7 +331,10 @@
     "usableTracking": "Usable tracking",
     "notMeasured": "Not measured",
     "notSaved": "Not saved",
-    "unavailable": "Unavailable"
+    "unavailable": "Unavailable",
+    "readFullTranscript": "Read the full transcript",
+    "readEveryObservation": "Read every timeline observation",
+    "loadingSavedAttempt": "Loading saved attempt…"
   },
   "interviewSession": {
     "heading": "Answer one rubric question at a time.",
@@ -786,5 +794,9 @@
     "yourSavedProjectCouldNot": "Your saved project could not be restored just now, so this attempt uses the rubric stored in this browser. Nothing saved on the server has been changed.",
     "questioning": "Questioning ",
     "competitionEvaluator": "Competition evaluator"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "back": "Return to Talk-Active"
   }
 }

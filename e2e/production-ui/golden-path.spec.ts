@@ -111,7 +111,7 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   await expect(page.locator('.coverage-trend-dot')).toHaveCount(1);
   await expect(page.locator('.coverage-trend-latest')).toBeVisible();
   await expect(page.locator('.full-session-list .session-status').getByText('defensible', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'The criteria that keep returning' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Kriteria yang terus muncul kembali' })).toBeVisible();
   await expect(page.getByText(/sebelum Talk-Active menyebut sebuah celah berulang/i)).toBeVisible();
   await expectVisibleControlsHitTest(page);
 
@@ -483,7 +483,7 @@ test('progress names a weakness only after it recurs and retains its evidence', 
     },
   ])));
   await page.goto('/progress');
-  await expect(page.getByRole('heading', { name: 'What changed between the last two reviewed attempts' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Apa yang berubah antara dua percobaan tertinjau terakhir' })).toBeVisible();
   const feasibilityDiff = page.locator('.attempt-diff-item').filter({ hasText: 'Feasibility' });
   await expect(feasibilityDiff).toContainText('explicit coverage improved · +50 points');
   await expect(feasibilityDiff.getByText('Tidak ada kutipan bukti dari transkrip.')).toBeVisible();

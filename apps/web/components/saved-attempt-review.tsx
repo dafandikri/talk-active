@@ -231,7 +231,7 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
           </>}
 
         <details className="saved-disclosure saved-transcript-disclosure">
-          <summary><span>Read the full transcript</span><strong>{review.attempt.transcriptSource}</strong></summary>
+          <summary><span>{t('readFullTranscript')}</span><strong>{review.attempt.transcriptSource}</strong></summary>
           <blockquote>{review.attempt.transcript}</blockquote>
         </details>
       </section>
@@ -291,7 +291,7 @@ export function SavedAttemptReview({ attemptId }: Readonly<{ attemptId: string }
         </div>
         {!recordingReady && events.length > 0 && <p className="saved-timeline-boundary">{t('observationsWithoutReplay')}</p>}
         <details className="saved-disclosure saved-timeline-disclosure">
-          <summary><span>Read every timeline observation</span><strong>{events.length} {events.length === 1 ? 'item' : 'items'}</strong></summary>
+          <summary><span>{t('readEveryObservation')}</span><strong>{events.length} {events.length === 1 ? 'item' : 'items'}</strong></summary>
           {events.length === 0
             ? <p className="empty-list">{t('noTimestampedRetained')}</p>
             : <ul className="saved-timeline-list">{events.map((event) => <li key={event.id}>

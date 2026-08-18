@@ -97,7 +97,7 @@ function ComparisonEvidence({
   return <section className="attempt-diff-side">
     <p className="overline">{label}</p>
     {!criterion
-      ? <p className="attempt-diff-absent">This criterion was not present in this rubric.</p>
+      ? <p className="attempt-diff-absent">{t('criterionAbsent')}</p>
       : <>
         <strong>{Math.round(criterion.coverage * 100)}% explicit coverage</strong>
         {criterion.citedSpan
@@ -119,7 +119,7 @@ function AttemptDiff({ comparison }: Readonly<{ comparison: AttemptComparison }>
   const held = comparison.criteria.filter((criterion) => criterion.direction === 'unchanged');
 
   return <section className="surface attempt-diff-card" aria-labelledby="attemptDiffTitle">
-    <div className="section-title-row"><div><p className="overline">{t('latestEvidenceChange')}</p><h2 id="attemptDiffTitle">What changed between the last two reviewed attempts</h2></div><span className="session-status">{attemptDate(comparison.previousCreatedAt)} → {attemptDate(comparison.currentCreatedAt)}</span></div>
+    <div className="section-title-row"><div><p className="overline">{t('latestEvidenceChange')}</p><h2 id="attemptDiffTitle">{t('changedLastTwo')}</h2></div><span className="session-status">{attemptDate(comparison.previousCreatedAt)} → {attemptDate(comparison.currentCreatedAt)}</span></div>
     <p className="attempt-diff-intro">{t('movementBoundary')}</p>
     {moved.length === 0
       ? <p className="empty-list">{t('steadyCoverage')}</p>
@@ -270,7 +270,7 @@ export function ProgressView() {
     [comparisons],
   );
   return <section className="view is-visible" aria-labelledby="progressTitle">
-    <header className="page-header compact-header"><div className="workflow-heading"><img className="workflow-mark" src={logo.src} alt="" /><div><p className="overline">{t('title')}</p><h1 id="progressTitle">{t('seeWhatChanged')}</h1><p className="page-lede">Track explicit evidence and recurring weak claims without inventing a universal speaking score.</p></div></div></header>
+    <header className="page-header compact-header"><div className="workflow-heading"><img className="workflow-mark" src={logo.src} alt="" /><div><p className="overline">{t('title')}</p><h1 id="progressTitle">{t('seeWhatChanged')}</h1><p className="page-lede">{t('trackExplicit')}</p></div></div></header>
 
     {/* The workspace has always held more than one project; the interface only
         ever admitted to one. This switcher appears once there is a second
@@ -301,10 +301,10 @@ export function ProgressView() {
 
     {latestComparison
       ? <AttemptDiff comparison={latestComparison} />
-      : <section className="surface attempt-diff-card"><div className="section-title-row"><div><p className="overline">{t('latestEvidenceChange')}</p><h2>What changed between attempts</h2></div></div><p className="empty-list">{t('needTwoAttempts')}</p></section>}
+      : <section className="surface attempt-diff-card"><div className="section-title-row"><div><p className="overline">{t('latestEvidenceChange')}</p><h2>{t('changedBetween')}</h2></div></div><p className="empty-list">{t('needTwoAttempts')}</p></section>}
 
     <section className="surface recurring-card" aria-labelledby="recurringTitle">
-      <div className="section-title-row"><div><p className="overline">{t('patternAcross')}</p><h2 id="recurringTitle">The criteria that keep returning</h2></div><span className="session-status">{historyLabel(syncState, t)}</span></div>
+      <div className="section-title-row"><div><p className="overline">{t('patternAcross')}</p><h2 id="recurringTitle">{t('criteriaReturning')}</h2></div><span className="session-status">{historyLabel(syncState, t)}</span></div>
       <p className="recurring-intro">{t('recurringBoundary')}</p>
       {recurringWeaknesses.length === 0
         ? <p className="empty-list">{t('needAnotherAttempt')}</p>

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { useTranslations } from 'next-intl';
 
 import { SavedAttemptReview } from '@/components/saved-attempt-review';
 import { WorkspaceFrame } from '@/components/workspace-frame';
@@ -14,6 +15,7 @@ async function SavedAttemptContent({
 }: Readonly<{
   params: Promise<{ id: string }>;
 }>) {
+  const t = useTranslations('savedReview');
   const { id } = await params;
 
   return (
@@ -28,8 +30,9 @@ export default function SavedAttemptPage({
 }: Readonly<{
   params: Promise<{ id: string }>;
 }>) {
+  const t = useTranslations('savedReview');
   return (
-    <Suspense fallback={<main className="view is-visible saved-review-state"><p>Loading saved attempt…</p></main>}>
+    <Suspense fallback={<main className="view is-visible saved-review-state"><p>{t('loadingSavedAttempt')}</p></main>}>
       <SavedAttemptContent params={params} />
     </Suspense>
   );
