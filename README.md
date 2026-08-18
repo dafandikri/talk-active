@@ -8,6 +8,10 @@ page or scripted product demo. A user keeps separate projects, maintains the rea
 evaluator rubric, practices an attempt, answers one grounded judge question, saves the
 session, and tracks which claims remain weak across attempts.
 
+Deployed at **<https://talk-active-id.vercel.app>**. Semantic analysis runs through the AI
+Gateway and degrades visibly to deterministic cue matching when the gateway is unavailable, so
+the product keeps working and says which engine produced each verdict.
+
 ## Run the product
 
 Requirements: Node.js 20 or newer and pnpm.

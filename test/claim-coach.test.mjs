@@ -5,8 +5,10 @@ import {
   ClaimCoachUnavailableError,
   coachCriteria,
   coachCriterion,
+  buildClaimCoachPrompt,
   fabricatedNumbers,
 } from '../apps/web/lib/ai/claim-coach.ts';
+import { ClaimCoachRequestSchema } from '../apps/web/lib/contracts.ts';
 
 const TRANSCRIPT = 'Kami sudah menguji Talk-Active ke 40 mahasiswa Fasilkom. '
   + 'Hampir semua terbantu karena rubrik menjadi latihan yang bisa dijalankan. '
@@ -176,4 +178,39 @@ test('C-8 fabricatedNumbers ignores grouping separators and finds only new digit
   const transcript = 'Kami melatih 1.200 sesi dengan 40 mahasiswa.';
   assert.deepEqual(fabricatedNumbers('Total 1200 sesi untuk 40 orang.', transcript), []);
   assert.deepEqual(fabricatedNumbers('Retensi kami 85 persen.', transcript), ['85']);
+});
+
+// The stronger form is a script the student reads back out loud. An Indonesian
+// speaker handed an English one cannot use it, which makes the language a
+// correctness property of this unit rather than a presentation detail.
+test('the coach is told which language to draft the stronger form in', () => {
+  const indonesian = buildClaimCoachPrompt(TRANSCRIPT, CRITERION, null, 'id-ID');
+  const english = buildClaimCoachPrompt(TRANSCRIPT, CRITERION, null, 'en-US');
+  assert.match(indonesian, /Write strongerForm and every blanks entry in Indonesian/u);
+  assert.match(english, /Write strongerForm and every blanks entry in English/u);
+  // Quoted spans are exempt on both branches: translating one would break the
+  // exact-span check that findGroundedSpan enforces afterwards.
+  for (const prompt of [indonesian, english]) {
+    assert.match(prompt, /citedSpan and supportSpan are copied from the transcript and are never translated/u);
+  }
+});
+
+test('an unset coach language defaults to Indonesian, like the project contract', () => {
+  assert.match(
+    buildClaimCoachPrompt(TRANSCRIPT, CRITERION, null),
+    /Write strongerForm and every blanks entry in Indonesian/u,
+  );
+  assert.equal(
+    ClaimCoachRequestSchema.parse({
+      transcript: TRANSCRIPT,
+      criteria: [{
+        id: CRITERION.id,
+        name: CRITERION.name,
+        description: CRITERION.description,
+        requiredEvidence: CRITERION.requiredEvidence,
+        displayOrder: 0,
+      }],
+    }).language,
+    'id-ID',
+  );
 });

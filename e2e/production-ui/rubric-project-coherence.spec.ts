@@ -228,28 +228,28 @@ test('deep link, project switch, browser Back, and Save keep one owner-scoped ru
   releaseThesis();
 
   await expect(page.getByRole('heading', { name: 'Sidang skripsi Indonesia', exact: true })).toBeVisible();
-  await expect(page.getByLabel('Criterion').first()).toHaveValue('Research method fit');
-  await expect(page.getByLabel('Criterion').nth(1)).toHaveValue('Defensible findings');
-  await expect(page.getByLabel('Observable evidence cues').first())
+  await expect(page.getByLabel('Kriteria').first()).toHaveValue('Research method fit');
+  await expect(page.getByLabel('Kriteria').nth(1)).toHaveValue('Defensible findings');
+  await expect(page.getByLabel('Isyarat bukti yang teramati').first())
     .toHaveValue('research question, sampling rationale');
-  await expect(page.getByLabel('Observable evidence cues').nth(1))
+  await expect(page.getByLabel('Isyarat bukti yang teramati').nth(1))
     .toHaveValue('named finding, study limitation');
   await expect(page.getByText('Browser-global trap')).toHaveCount(0);
 
-  await page.getByLabel('Project').selectOption(PITCH_PROJECT_ID);
+  await page.getByLabel('Proyek').selectOption(PITCH_PROJECT_ID);
   await expect(page).toHaveURL(`/rubric?project=${PITCH_PROJECT_ID}`);
   await expect(page.getByRole('heading', { name: 'English product pitch', exact: true })).toBeVisible();
-  await expect(page.getByLabel('Criterion').first()).toHaveValue('Verified customer impact');
-  await expect(page.getByLabel('Criterion').nth(1)).toHaveValue('Working demo path');
+  await expect(page.getByLabel('Kriteria').first()).toHaveValue('Verified customer impact');
+  await expect(page.getByLabel('Kriteria').nth(1)).toHaveValue('Working demo path');
 
   await page.goBack();
   await expect(page).toHaveURL(`/rubric?project=${THESIS_PROJECT_ID}`);
   await expect(page.getByRole('heading', { name: 'Sidang skripsi Indonesia', exact: true })).toBeVisible();
-  await expect(page.getByLabel('Criterion').first()).toHaveValue('Research method fit');
-  await expect(page.getByLabel('Criterion').nth(1)).toHaveValue('Defensible findings');
+  await expect(page.getByLabel('Kriteria').first()).toHaveValue('Research method fit');
+  await expect(page.getByLabel('Kriteria').nth(1)).toHaveValue('Defensible findings');
 
-  await page.getByLabel('Criterion').first().fill('Research method fit and trade-offs');
-  await page.getByRole('button', { name: 'Save rubric' }).click();
+  await page.getByLabel('Kriteria').first().fill('Research method fit and trade-offs');
+  await page.getByRole('button', { name: 'Simpan rubrik' }).click();
   await expect(page.locator('[data-toast-variant="positive"]')).toContainText(
     '2 confirmed criteria saved to Sidang skripsi Indonesia',
   );
@@ -307,9 +307,9 @@ test('a project-load error is visible and retry never exposes the browser-global
   const alert = page.locator('section.surface[role="alert"]');
   await expect(alert).toContainText(/Invalid input|could not be loaded/iu);
   await expect(page.getByText('Browser-global trap')).toHaveCount(0);
-  await alert.getByRole('button', { name: 'Try again' }).click();
+  await alert.getByRole('button', { name: 'Coba lagi' }).click();
   await expect(page.getByRole('heading', { name: 'Sidang skripsi Indonesia', exact: true })).toBeVisible();
-  await expect(page.getByLabel('Criterion').first()).toHaveValue('Research method fit');
+  await expect(page.getByLabel('Kriteria').first()).toHaveValue('Research method fit');
   expect(thesisRequests).toBe(2);
   expect(consoleMessages).not.toContainEqual(expect.stringMatching(/Failed to load resource/iu));
 });
@@ -320,10 +320,10 @@ test('a project with saved practice explains the lock and exposes no editable sa
   await mockAccount(page, { projects: [lockedPitch, thesisProject] });
 
   await page.goto(`/rubric?project=${PITCH_PROJECT_ID}`);
-  await expect(page.getByText('Rubric locked after saved practice.')).toBeVisible();
+  await expect(page.getByText('Rubrik terkunci setelah latihan tersimpan.')).toBeVisible();
   await expect(page.getByText(/keep earlier evidence traceable/iu)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Save rubric' })).toBeDisabled();
-  await expect(page.getByLabel('Criterion').first()).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Simpan rubrik' })).toBeDisabled();
+  await expect(page.getByLabel('Kriteria').first()).toBeDisabled();
   await expect(page.getByRole('button', { name: /Hackathon pitch/i })).toBeDisabled();
   await expect(page.getByText('Browser-global trap')).toHaveCount(0);
 });
@@ -363,20 +363,20 @@ test('browser Back during an in-flight save cannot disable or overwrite the rest
   });
 
   await page.goto(`/rubric?project=${THESIS_PROJECT_ID}`);
-  await expect(page.getByLabel('Criterion').first()).toHaveValue('Research method fit');
-  await page.getByLabel('Project').selectOption(PITCH_PROJECT_ID);
-  await expect(page.getByLabel('Criterion').first()).toHaveValue('Verified customer impact');
-  await page.getByLabel('Criterion').first().fill('Edited pitch impact');
-  await page.getByRole('button', { name: 'Save rubric' }).click();
-  await expect(page.getByRole('button', { name: 'Saving rubric…' })).toBeDisabled();
+  await expect(page.getByLabel('Kriteria').first()).toHaveValue('Research method fit');
+  await page.getByLabel('Proyek').selectOption(PITCH_PROJECT_ID);
+  await expect(page.getByLabel('Kriteria').first()).toHaveValue('Verified customer impact');
+  await page.getByLabel('Kriteria').first().fill('Edited pitch impact');
+  await page.getByRole('button', { name: 'Simpan rubrik' }).click();
+  await expect(page.getByRole('button', { name: 'Menyimpan rubrik…' })).toBeDisabled();
 
   await page.goBack();
   await expect(page).toHaveURL(`/rubric?project=${THESIS_PROJECT_ID}`);
-  await expect(page.getByLabel('Criterion').first()).toHaveValue('Research method fit');
+  await expect(page.getByLabel('Kriteria').first()).toHaveValue('Research method fit');
 
   releaseSave();
-  await expect(page.getByRole('button', { name: 'Save rubric' })).toBeEnabled();
-  await expect(page.getByLabel('Criterion').first()).toHaveValue('Research method fit');
+  await expect(page.getByRole('button', { name: 'Simpan rubrik' })).toBeEnabled();
+  await expect(page.getByLabel('Kriteria').first()).toHaveValue('Research method fit');
   await expect(page.locator('[data-toast-variant="positive"]')).toHaveCount(0);
 });
 
@@ -403,19 +403,19 @@ test('switching projects aborts an in-flight rubric parse before it can populate
   });
 
   await page.goto(`/rubric?project=${THESIS_PROJECT_ID}`);
-  await expect(page.getByLabel('Criterion').first()).toHaveValue('Research method fit');
-  await page.getByText('Import from a scoring matrix').click();
-  await page.getByLabel('Paste the scoring matrix').fill('Late criteria from the thesis project');
-  await page.getByRole('button', { name: 'Structure these criteria' }).click();
-  await expect(page.getByRole('button', { name: 'Structuring…' })).toBeDisabled();
+  await expect(page.getByLabel('Kriteria').first()).toHaveValue('Research method fit');
+  await page.getByText('Impor dari matriks penilaian').click();
+  await page.getByLabel('Tempel matriks penilaian').fill('Late criteria from the thesis project');
+  await page.getByRole('button', { name: 'Strukturkan kriteria ini' }).click();
+  await expect(page.getByRole('button', { name: 'Menstrukturkan…' })).toBeDisabled();
 
   page.once('dialog', (dialog) => void dialog.accept());
-  await page.getByLabel('Project').selectOption(PITCH_PROJECT_ID);
+  await page.getByLabel('Proyek').selectOption(PITCH_PROJECT_ID);
   await expect(page).toHaveURL(`/rubric?project=${PITCH_PROJECT_ID}`);
-  await expect(page.getByLabel('Criterion').first()).toHaveValue('Verified customer impact');
+  await expect(page.getByLabel('Kriteria').first()).toHaveValue('Verified customer impact');
 
   releaseParse();
-  await expect(page.getByLabel('Criterion').first()).toHaveValue('Verified customer impact');
+  await expect(page.getByLabel('Kriteria').first()).toHaveValue('Verified customer impact');
   await expect(page.getByText('Late criteria from the thesis project')).toHaveCount(0);
   await expect(page.locator('[data-toast-variant="warning"]')).toHaveCount(0);
 });

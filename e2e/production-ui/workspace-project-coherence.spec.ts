@@ -173,14 +173,14 @@ test('deep-linking and switching keep project title, language, practice URL, and
   await expect(rubric).toContainText('No confirmed rubric belongs to Sidang skripsi Indonesia yet.');
   await expect(rubric.locator('.health-ring')).toHaveText('0');
   await expect(rubric).not.toContainText('Draft research method');
-  await expect(page.getByRole('link', { name: 'Continue practising' }))
+  await expect(page.getByRole('link', { name: 'Lanjutkan latihan' }))
     .toHaveAttribute('href', `/practice?project=${THESIS_PROJECT_ID}`);
-  await expect(page.getByRole('link', { name: 'Review rubric' }))
+  await expect(page.getByRole('link', { name: 'Tinjau rubrik' }))
     .toHaveAttribute('href', `/rubric?project=${THESIS_PROJECT_ID}`);
-  await expect(page.getByRole('link', { name: 'View all' }))
+  await expect(page.getByRole('link', { name: 'Lihat semua' }))
     .toHaveAttribute('href', `/progress?project=${THESIS_PROJECT_ID}`);
 
-  await page.getByLabel('Project').selectOption(PITCH_PROJECT_ID);
+  await page.getByLabel('Proyek').selectOption(PITCH_PROJECT_ID);
   await expect(page).toHaveURL(`/workspace?project=${PITCH_PROJECT_ID}`);
   await expect(page.locator('.project-kicker')).toContainText('English product pitch');
   await expect(page.locator('.project-kicker')).toContainText('English');
@@ -190,9 +190,9 @@ test('deep-linking and switching keep project title, language, practice URL, and
     'Working demo path',
   ]);
   await expect(rubric).not.toContainText('Browser-global trap');
-  await expect(page.getByRole('link', { name: 'Continue practising' }))
+  await expect(page.getByRole('link', { name: 'Lanjutkan latihan' }))
     .toHaveAttribute('href', `/practice?project=${PITCH_PROJECT_ID}`);
-  await expect(page.getByRole('link', { name: 'View all' }))
+  await expect(page.getByRole('link', { name: 'Lihat semua' }))
     .toHaveAttribute('href', `/progress?project=${PITCH_PROJECT_ID}`);
 
   await page.goBack();
@@ -216,11 +216,11 @@ test('a mismatched project response is rejected visibly and retry recovers witho
 
   await page.goto(`/workspace?project=${PITCH_PROJECT_ID}`);
   const rubric = page.locator('.rubric-health');
-  await expect(rubric.getByRole('alert')).toContainText('The server returned a different project. Nothing from it was shown.');
+  await expect(rubric.getByRole('alert')).toContainText('Server mengembalikan proyek yang berbeda. Tidak ada isinya yang ditampilkan.');
   await expect(rubric).not.toContainText('Draft research method');
   await expect(rubric).not.toContainText('Browser-global trap');
 
-  await rubric.getByRole('button', { name: 'Try again' }).click();
+  await rubric.getByRole('button', { name: 'Coba lagi' }).click();
   await expect(rubric.locator('.mini-criterion')).toHaveText([
     'Verified customer impact',
     'Working demo path',

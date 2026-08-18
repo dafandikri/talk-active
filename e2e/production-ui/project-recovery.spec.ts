@@ -78,8 +78,8 @@ test('signed-in remount restores the owned project, rubric, and source list with
 
   await page.goto('/practice');
   await expect(page.getByText('Recovered impact', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
-  await expect(page.getByText(/already has a confirmed rubric/u)).toBeVisible();
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
+  await expect(page.getByText(/sudah punya rubrik terkonfirmasi/u)).toBeVisible();
   await expect(page.getByText('recovered-proposal.md', { exact: true })).toBeVisible();
   expect(currentCalls).toBe(1);
   expect(createCalls).toBe(0);
@@ -118,12 +118,12 @@ test('a failed project recovery keeps the capabilities the server confirmed', as
   });
 
   await page.goto('/practice');
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
 
   // The capability survives the failed recovery.
-  await expect(page.getByText('Ground the judge question in your material')).toBeVisible();
+  await expect(page.getByText('Dasarkan pertanyaan juri pada materi Anda')).toBeVisible();
   // And the failure is stated rather than absorbed (INV-4).
-  await expect(page.getByText(/saved project could not be restored/iu)).toBeVisible();
+  await expect(page.getByText(/proyek tersimpan Anda belum bisa dipulihkan/iu)).toBeVisible();
 });
 
 test('guest capability never probes SQL project recovery', async ({ page }) => {
@@ -149,7 +149,7 @@ test('guest capability never probes SQL project recovery', async ({ page }) => {
   });
 
   await page.goto('/practice');
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
-  await expect(page.getByText('Session history stays in this browser')).toBeVisible();
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
+  await expect(page.getByText('Riwayat sesi tetap di browser ini')).toBeVisible();
   expect(currentCalls).toBe(0);
 });

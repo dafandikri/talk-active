@@ -78,14 +78,14 @@ async function observedMediaTrackStops(page: Page) {
 
 async function openMultimodalAttempt(page: Page) {
   await page.goto('/practice');
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
   await expect(page.locator('.capture-header h2')).toBeFocused();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   // The attempt opens on writing, so the capture panel is not merely idle —
   // it is not on the page at all until the user asks for it.
-  await expect(page.getByRole('heading', { name: 'Rehearse the whole performance.' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Record live' }).click();
-  await expect(page.getByRole('heading', { name: 'Rehearse the whole performance.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Latih keseluruhan penampilan.' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Rekam langsung' }).click();
+  await expect(page.getByRole('heading', { name: 'Latih keseluruhan penampilan.' })).toBeVisible();
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
@@ -148,11 +148,11 @@ test('multimodal media stays off until Start and each consent is independent at 
   await page.setViewportSize({ width: 390, height: 844 });
   await openMultimodalAttempt(page);
 
-  const cameraConsent = page.getByRole('checkbox', { name: /Camera local landmarks/i });
-  const acousticConsent = page.getByRole('checkbox', { name: /Voice local cues/i });
-  const dictationConsent = page.getByRole('checkbox', { name: /Live transcript Indonesian/i });
-  const replayConsent = page.getByRole('checkbox', { name: /Save replay camera \+ mic/i });
-  const start = page.getByRole('button', { name: 'Start rehearsal' });
+  const cameraConsent = page.getByRole('checkbox', { name: /Kamera landmark lokal/i });
+  const acousticConsent = page.getByRole('checkbox', { name: /Suara isyarat lokal/i });
+  const dictationConsent = page.getByRole('checkbox', { name: /Transkrip langsung Bahasa Indonesia/i });
+  const replayConsent = page.getByRole('checkbox', { name: /Simpan rekaman kamera \+ mikrofon/i });
+  const start = page.getByRole('button', { name: 'Mulai latihan' });
 
   await expect(cameraConsent).not.toBeChecked();
   await expect(acousticConsent).not.toBeChecked();
@@ -160,7 +160,7 @@ test('multimodal media stays off until Start and each consent is independent at 
   await expect(replayConsent).not.toBeChecked();
   await expect(dictationConsent).toBeEnabled();
   await expect(start).toBeDisabled();
-  await expect(page.getByText('No media access before Start', { exact: true })).toBeVisible();
+  await expect(page.getByText('Tidak ada akses media sebelum Mulai', { exact: true })).toBeVisible();
   expect(await observedMediaRequests(page)).toEqual([]);
 
   await cameraConsent.check();
@@ -190,23 +190,23 @@ test('multimodal media stays off until Start and each consent is independent at 
 
 test('Mansiz presentation auto-stops once at the configured bell and carries the limit into review', async ({ page }) => {
   await openMultimodalAttempt(page);
-  await page.getByLabel('Practice transcript').fill(
+  await page.getByLabel('Transkrip latihan').fill(
     'Our problem affects students, and our evidence shows urgency. '
     + 'Rubric feedback makes every claim traceable and gives the presenter a focused retry. '
     + 'The prototype is feasible because its privacy boundary is explicit.',
   );
-  await page.getByLabel('Time limit').fill('1');
-  await page.getByRole('checkbox', { name: /Voice local cues/i }).check();
+  await page.getByLabel('Batas waktu').fill('1');
+  await page.getByRole('checkbox', { name: /Suara isyarat lokal/i }).check();
 
   // Install after hydration but before capture so the session origin and bell
   // share one monotonic clock without delaying the production page boot.
   const captureOrigin = new Date('2026-08-13T12:00:00.000Z');
   await page.clock.install({ time: captureOrigin });
   await page.clock.pauseAt(captureOrigin);
-  await page.getByRole('button', { name: 'Start rehearsal' }).click();
+  await page.getByRole('button', { name: 'Mulai latihan' }).click();
 
   const finishCapture = page.getByRole('button', {
-    name: 'Finish & assemble review',
+    name: 'Selesai & rakit tinjauan',
     exact: true,
   });
   await expect(finishCapture).toBeVisible();
@@ -218,21 +218,21 @@ test('Mansiz presentation auto-stops once at the configured bell and carries the
 
   await page.clock.fastForward('01:00');
   await expect(finishCapture).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Start rehearsal' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Mulai latihan' })).toBeVisible();
   await expect(page.locator('.studio-status')).toContainText(
-    'Time ran out and capture stopped itself, exactly as an evaluator would.',
+    'Waktu habis dan perekaman berhenti sendiri, persis seperti yang dilakukan penilai.',
   );
-  await expect(page.getByLabel('Spoken length')).toHaveValue('60');
+  await expect(page.getByLabel('Panjang bicara')).toHaveValue('60');
   await expect.poll(() => observedMediaTrackStops(page)).toBe(1);
 
   // A later timer turn must not complete or release the same capture again.
   await page.clock.fastForward(1_000);
   expect(await observedMediaTrackStops(page)).toBe(1);
   await expect(page.locator('.studio-status')).toContainText(
-    'Time ran out and capture stopped itself, exactly as an evaluator would.',
+    'Waktu habis dan perekaman berhenti sendiri, persis seperti yang dilakukan penilai.',
   );
 
-  await page.getByRole('button', { name: /Review this attempt/i }).click();
+  await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
   const review = page.locator('.multimodal-review');
   await expect(review).toBeVisible();
   await expect(review.locator('.timeline-duration')).toContainText('01:00 total · 01:00 limit');
@@ -249,15 +249,15 @@ test('camera-only capture renders concise observations with fully disclosed deta
   test.slow();
   await page.setViewportSize({ width: 390, height: 844 });
   await openMultimodalAttempt(page);
-  await page.getByLabel('Practice transcript').fill(
+  await page.getByLabel('Transkrip latihan').fill(
     'Um, our problem affects students and our evidence shows urgency. '
     + 'Our rubric feedback keeps every claim traceable. '
     + 'We built a feasible prototype architecture with explicit privacy limitations.',
   );
 
-  await page.getByRole('checkbox', { name: /Camera local landmarks/i }).check();
-  await page.getByRole('button', { name: 'Start rehearsal' }).click();
-  const finishCapture = page.getByRole('button', { name: 'Finish & assemble review', exact: true });
+  await page.getByRole('checkbox', { name: /Kamera landmark lokal/i }).check();
+  await page.getByRole('button', { name: 'Mulai latihan' }).click();
+  const finishCapture = page.getByRole('button', { name: 'Selesai & rakit tinjauan', exact: true });
   await expect(finishCapture).toBeVisible({ timeout: 20_000 });
   await page.waitForTimeout(1_200);
 
@@ -265,7 +265,7 @@ test('camera-only capture renders concise observations with fully disclosed deta
   await expect(landmarkCanvas).toBeVisible();
 
   await finishCapture.click();
-  await expect(page.locator('.studio-status')).toContainText('Rehearsal captured');
+  await expect(page.locator('.studio-status')).toContainText('Latihan terekam');
   await expect(page.locator('.studio-hud')).toContainText(/find the camera frame/i);
 
   // Canvas pixels are deliberately not asserted here. drawOverlay clears the
@@ -280,13 +280,13 @@ test('camera-only capture renders concise observations with fully disclosed deta
     '/mediapipe/models/pose_landmarker_lite.task',
   );
 
-  await page.getByRole('button', { name: /Review this attempt/i }).click();
+  await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
   await expect(page.locator('.review-hero h2')).toBeFocused();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   const review = page.locator('.multimodal-review');
   await expect(review).toBeVisible();
-  await expect(review.getByRole('heading', { name: 'Inspect the moments that may need another look.' })).toBeVisible();
-  await expect(review.getByRole('heading', { name: 'Rubric, voice, and camera on one clock' })).toBeVisible();
+  await expect(review.getByRole('heading', { name: 'Periksa momen-momen yang mungkin perlu dilihat lagi.' })).toBeVisible();
+  await expect(review.getByRole('heading', { name: 'Rubrik, suara, dan kamera dalam satu jam yang sama' })).toBeVisible();
   await expect(review.getByText(/do not measure confidence.*health.*hiring suitability/i)).toBeVisible();
 
   // Dense readings are still present, but no longer compete with rubric proof
@@ -294,14 +294,14 @@ test('camera-only capture renders concise observations with fully disclosed deta
   const fullReading = review.locator('.review-full-reading');
   await expect(fullReading.locator('.reading-total')).not.toBeVisible();
   await fullReading.locator('summary').click();
-  await expect(review.getByRole('heading', { name: 'Voice readings' })).toBeVisible();
-  await expect(review.getByRole('heading', { name: 'Camera readings' })).toBeVisible();
+  await expect(review.getByRole('heading', { name: 'Pembacaan suara' })).toBeVisible();
+  await expect(review.getByRole('heading', { name: 'Pembacaan kamera' })).toBeVisible();
   // A summary figure is allowed, but only while a judge can take it apart. Each
   // clause below is one of the conditions AD-9 puts on showing the number at all.
   const summary = review.locator('.reading-total');
   await expect(summary).toHaveCount(1);
   await expect(summary.getByText('this attempt', { exact: true })).toBeVisible();
-  await expect(review.getByText(/describes one rehearsal attempt, not your ability/i)).toBeVisible();
+  await expect(review.getByText(/menggambarkan satu percobaan latihan, bukan kemampuan Anda/i)).toBeVisible();
   await expect(review.getByText(/excluded from the mean rather than counted as zero/i)).toBeVisible();
 
   // This assertion used to pin the literal sentence

@@ -169,6 +169,13 @@ test('penalties and integrity boundaries remain explicit', () => {
   }
 });
 
+// The event is over. AGENTS.md was in this list because it was the live sprint
+// plan; it is now the contributor contract, and a passed deadline sitting in
+// the contract is exactly the kind of stale instruction that made INV-8 point
+// at a script nobody could run. The deadline is a historical fact, so the
+// archive that owns historical facts is where it is now checked. The
+// no-stale-23.55 assertion still covers AGENTS.md, because a wrong date is
+// worth catching wherever it appears.
 test('active project surfaces use the 18.00 deadline and contain no stale 23.55 claim', () => {
   const synchronizedFiles = [
     'AGENTS.md',
@@ -183,7 +190,7 @@ test('active project surfaces use the 18.00 deadline and contain no stale 23.55 
     assert.doesNotMatch(source, /23[.:]55/u, `${relative} still contains the superseded 23.55 deadline`);
   }
 
-  assertContains(read('AGENTS.md'), /official submission deadline is 13 August at 18\.00 WIB/iu, 'AGENTS.md deadline drifted');
+  assertContains(read('docs/TECHNICAL-MEETING-2026.md'), /18\.00 WIB/iu, 'the archived submission deadline drifted');
   assertContains(read('docs/specs/2026-08-10-innovation-week.md'), /13 Aug 18\.00 WIB/iu, 'active sprint deadline drifted');
   assertContains(read('docs/specs/2026-08-10-innovation-week.md'), /06\.30[–-]07\.30.*Participant arrival/iu, 'active sprint lost Day 5 arrival');
   assertContains(read('docs/specs/2026-08-10-innovation-week.md'), /At least 3 of 5 members.*forum.*remaining 2.*booth/iu, 'active sprint lost simultaneous staffing requirement');

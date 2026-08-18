@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import { useEffect, useRef, useState } from 'react';
 
 import { useToast } from '@/components/toast';
@@ -72,8 +74,10 @@ function editableCriteria(criteria: ProjectWorkspace['criteria']): EditableCrite
     }));
 }
 
-function projectTitle(project: ProjectSummary | null): string {
-  return project?.project.title ?? 'Local workspace';
+type Translate = (key: string) => string;
+
+function projectTitle(project: ProjectSummary | null, t: Translate): string {
+  return project?.project.title ?? t('localWorkspace');
 }
 
 const idleProject: ProjectLoadState = {
@@ -84,6 +88,7 @@ const idleProject: ProjectLoadState = {
 };
 
 export function RubricEditor() {
+  const t = useTranslations('rubricEditor');
   const { projects, loading: projectsLoading } = useOwnedProjects();
   const [criteria, setCriteria] = useState<EditableCriterion[]>(defaultCriteria);
   const [sourceType, setSourceType] = useState<RubricSource>('manual');
@@ -126,8 +131,8 @@ export function RubricEditor() {
     } catch {
       showToast({
         variant: 'warning',
-        title: 'Starter rubric restored',
-        message: 'The saved local rubric was invalid, so the finals starter rubric was restored.',
+        title: t('starterRestored'),
+        message: t('invalidRestored'),
       });
     }
   }, [showToast]);
@@ -149,7 +154,7 @@ export function RubricEditor() {
     if (!selectionHydrated || projectsLoading) return;
     if (projects.length === 0) {
       if (chosenProjectId) {
-        setSelectionNotice('That synced project is not available in this session. Your local rubric is shown instead.');
+        setSelectionNotice(t('projectUnavailable'));
         setChosenProjectId(null);
         writeProjectToUrl(null, 'replace');
       }
@@ -200,7 +205,7 @@ export function RubricEditor() {
         );
         if (abort.signal.aborted) return;
         if (response.workspace.project.id !== activeProjectId) {
-          throw new Error('The server returned a different project. Nothing from it was shown.');
+          throw new Error(t('wrongProject'));
         }
         setProjectState({
           status: 'ready',
@@ -218,7 +223,7 @@ export function RubricEditor() {
           status: 'error',
           projectId: activeProjectId,
           workspace: null,
-          error: caught instanceof Error ? caught.message : 'The selected project could not be loaded.',
+          error: caught instanceof Error ? caught.message : t('projectLoadFailed'),
         });
       }
     })();
@@ -243,7 +248,7 @@ export function RubricEditor() {
 
   function chooseProject(projectId: string): void {
     if (projectId === chosenProjectId || saving) return;
-    if (dirty && !window.confirm('Discard the unsaved rubric changes and switch projects?')) return;
+    if (dirty && !window.confirm(t('discardChanges'))) return;
     setSelectionNotice(null);
     setChosenProjectId(projectId);
     writeProjectToUrl(projectId, 'push');
@@ -278,14 +283,14 @@ export function RubricEditor() {
       showToast({
         variant: 'warning',
         title: `${parsed.criteria.length} criteria structured in ${parsed.mode} mode`,
-        message: 'Nothing is saved yet. Confirm the wording of every row, then save.',
+        message: t('nothingSavedYet'),
       });
     } catch (caught) {
       if (abort.signal.aborted || activeProjectIdRef.current !== structuringProjectId) return;
       showToast({
         variant: 'negative',
-        title: 'Rubric source could not be structured',
-        message: caught instanceof Error ? caught.message : 'The rubric source could not be structured.',
+        title: t('structureFailed'),
+        message: caught instanceof Error ? caught.message : t('structureFailedBody'),
       });
     } finally {
       if (structureRequestRef.current === abort) {
@@ -309,8 +314,8 @@ export function RubricEditor() {
     setSaveError(null);
     showToast({
       variant: 'warning',
-      title: 'Starter loaded but not saved',
-      message: `${template.name} starter loaded. Replace any cue that does not match your evaluator, then confirm with Save rubric.`,
+      title: t('starterLoaded'),
+      message: t('starterLoadedToast', { name: template.name }),
     });
   }
 
@@ -335,8 +340,8 @@ export function RubricEditor() {
     if (cleaned.length === 0) {
       showToast({
         variant: 'negative',
-        title: 'Rubric not saved',
-        message: 'Keep at least one named criterion. Add a description or evidence cues whenever the source provides them.',
+        title: t('notSaved'),
+        message: t('keepOne'),
       });
       return;
     }
@@ -356,21 +361,21 @@ export function RubricEditor() {
         setDirty(false);
         showToast({
           variant: 'positive',
-          title: 'Rubric saved',
+          title: t('saved'),
           message: `${saved.length} confirmed criteria saved in this browser.`,
         });
       } catch {
         showToast({
           variant: 'negative',
-          title: 'Rubric not saved',
-          message: 'Each criterion needs a unique row and no more than 40 concise evidence phrases.',
+          title: t('notSaved'),
+          message: t('uniqueRows'),
         });
       }
       return;
     }
 
     const savingProjectId = activeProjectId;
-    const savingProjectTitle = projectTitle(activeProject);
+    const savingProjectTitle = projectTitle(activeProject, t);
     setSaving(true);
     try {
       const response = await requestContract(
@@ -388,7 +393,7 @@ export function RubricEditor() {
       );
       if (response.rubric.projectId !== savingProjectId
         || response.criteria.some((criterion) => criterion.rubricId !== response.rubric.id)) {
-        throw new Error('The server saved a different project rubric. Nothing from it was shown.');
+        throw new Error(t('wrongProjectSaved'));
       }
       if (activeProjectIdRef.current !== savingProjectId) return;
 
@@ -421,17 +426,17 @@ export function RubricEditor() {
       setDirty(false);
       showToast({
         variant: 'positive',
-        title: 'Rubric saved',
+        title: t('saved'),
         message: `${savedCriteria.length} confirmed criteria saved to ${savingProjectTitle}.`,
       });
     } catch (caught) {
       if (activeProjectIdRef.current !== savingProjectId) return;
-      const message = caught instanceof Error ? caught.message : 'The selected project rubric could not be saved.';
+      const message = caught instanceof Error ? caught.message : t('projectSaveFailed');
       setSaveError(message);
       if (/cannot be replaced after practice attempts/iu.test(message)) {
         setServerLockedProjectId(savingProjectId);
       }
-      showToast({ variant: 'negative', title: 'Rubric not saved', message });
+      showToast({ variant: 'negative', title: t('notSaved'), message });
     } finally {
       // Clearing this flag is safe for either outcome: if the user stayed on
       // this project the request is finished; if history changed projects the
@@ -442,11 +447,11 @@ export function RubricEditor() {
 
   return <section className="view is-visible" aria-labelledby="rubricTitle">
     <header className="page-header compact-header">
-      <div><p className="overline">Evaluation criteria</p><h1 id="rubricTitle">Modify rubric</h1></div>
+      <div><p className="overline">{t('criteria')}</p><h1 id="rubricTitle">{t('title')}</h1></div>
     </header>
 
     {!selectionResolving && projects.length > 1 && <div className="project-switcher">
-      <label htmlFor="rubricProject">Project</label>
+      <label htmlFor="rubricProject">{t('project')}</label>
       <select
         id="rubricProject"
         value={activeProjectId ?? ''}
@@ -455,7 +460,7 @@ export function RubricEditor() {
       >
         {projects.map((summary) => <option key={summary.project.id} value={summary.project.id}>{summary.project.title}</option>)}
       </select>
-      <span className="project-switcher-meta">The URL, rubric, practice, and saved evidence stay with this project.</span>
+      <span className="project-switcher-meta">{t('staysWithProject')}</span>
     </div>}
 
     {selectionNotice && <p className="empty-list" role="status">{selectionNotice}</p>}
@@ -463,39 +468,39 @@ export function RubricEditor() {
     {(selectionResolving || (activeProjectId && projectDetailStatus === 'loading')) && (
       <section className="surface" role="status" aria-live="polite" aria-busy="true">
         <p className="empty-list">{selectionResolving
-          ? 'Checking which project owns this rubric…'
-          : `Loading ${projectTitle(activeProject)}’s saved rubric…`}</p>
+          ? t('checkingOwner')
+          : `Loading ${projectTitle(activeProject, t)}’s saved rubric…`}</p>
       </section>
     )}
 
     {!selectionResolving && activeProjectId && projectDetailStatus === 'error' && projectState.status === 'error' && (
       <section className="surface" role="alert">
-        <h2>{projectTitle(activeProject)} could not be loaded</h2>
+        <h2>{projectTitle(activeProject, t)} could not be loaded</h2>
         <p>{projectState.error}</p>
-        <button className="button button-secondary" type="button" onClick={() => setProjectRequestVersion((version) => version + 1)}>Try again</button>
+        <button className="button button-secondary" type="button" onClick={() => setProjectRequestVersion((version) => version + 1)}>{t('tryAgain')}</button>
       </section>
     )}
 
     {!selectionResolving && (!activeProjectId || selectedWorkspace) && <div className="rubric-layout">
       <section className="surface rubric-editor-card" aria-busy={saving}>
-        <h2>{projectTitle(activeProject)}</h2>
+        <h2>{projectTitle(activeProject, t)}</h2>
         {activeProjectId && locked && <div className="empty-list" id="rubricLockedNotice" role="status">
-          <strong>Rubric locked after saved practice.</strong> To keep earlier evidence traceable, this project&rsquo;s rubric cannot be replaced after an attempt is saved.
+          <strong>{t('locked')}</strong> To keep earlier evidence traceable, this project&rsquo;s rubric cannot be replaced after an attempt is saved.
         </div>}
         {activeProjectId && !locked && selectedWorkspace?.rubric?.confirmedAt && (
           <p className="rubric-library-lede">{selectedWorkspace.criteria.length} confirmed {selectedWorkspace.criteria.length === 1 ? 'criterion is' : 'criteria are'} loaded from this project.</p>
         )}
         {activeProjectId && !locked && selectedWorkspace?.rubric && !selectedWorkspace.rubric.confirmedAt && (
-          <p className="rubric-library-lede">This project rubric has not been confirmed yet. Review every row before saving it.</p>
+          <p className="rubric-library-lede">{t('notConfirmed')}</p>
         )}
         {activeProjectId && !locked && !selectedWorkspace?.rubric && (
-          <p className="rubric-library-lede">No rubric is saved to this project yet. The starter rows below remain unsaved until you confirm them.</p>
+          <p className="rubric-library-lede">{t('noRubricSaved')}</p>
         )}
         <section className="rubric-library" aria-labelledby="rubricLibraryTitle">
-          <h3 id="rubricLibraryTitle">Begin from a familiar evaluation context</h3>
+          <h3 id="rubricLibraryTitle">{t('beginFamiliar')}</h3>
           {/* A starter is not the evaluator's rubric, and a student who mistakes
               one for the other rehearses against the wrong thing. */}
-          <p className="rubric-library-lede">These are editable starting points, not official scoring rubrics. Use the evaluator&rsquo;s published matrix whenever one exists.</p>
+          <p className="rubric-library-lede">{t('startingPoints')}</p>
           <div className="rubric-template-list">{RUBRIC_TEMPLATES.map((template) => <button
             aria-pressed={selectedTemplate === template.id}
             className={selectedTemplate === template.id ? 'is-selected' : ''}
@@ -506,18 +511,18 @@ export function RubricEditor() {
           ><strong>{template.name}</strong><span>{template.context}</span></button>)}</div>
         </section>
         <details className="rubric-import">
-          <summary>Import from a scoring matrix</summary>
-          <p className="rubric-import-lede">Paste published evaluator criteria. Talk-Active structures the source, but you confirm every row before it is saved.</p>
-          <textarea rows={6} maxLength={8_000} disabled={editorDisabled} aria-label="Paste the scoring matrix" value={source} onChange={(event) => {
+          <summary>{t('importTitle')}</summary>
+          <p className="rubric-import-lede">{t('pasteHint')}</p>
+          <textarea rows={6} maxLength={8_000} disabled={editorDisabled} aria-label={t('pasteMatrix')} value={source} onChange={(event) => {
             setSource(event.target.value);
             setDirty(true);
           }} />
-          <button type="button" disabled={editorDisabled || structuring || !source.trim()} onClick={() => void structureSource()}>{structuring ? 'Structuring…' : 'Structure these criteria'}</button>
+          <button type="button" disabled={editorDisabled || structuring || !source.trim()} onClick={() => void structureSource()}>{structuring ? t('structuring') : t('structure')}</button>
         </details>
         <p className="rubric-list-lede">Add up to {MAX_CRITERIA_ROWS} criteria, each with observable evidence cues.</p>
         <div className="rubric-list">{criteria.map((criterion) => <div className="rubric-row" key={criterion.id}>
-          <div className="rubric-field"><label htmlFor={`criterion-${criterion.id}`}>Criterion</label><input id={`criterion-${criterion.id}`} disabled={editorDisabled} placeholder="e.g. Achievement evidence" value={criterion.name} onChange={(event) => updateCriterion(criterion.id, { name: event.target.value })} /></div>
-          <div className="rubric-field"><label htmlFor={`evidence-${criterion.id}`}>Observable evidence cues</label><input id={`evidence-${criterion.id}`} disabled={editorDisabled} placeholder="e.g. metrics, dates, named source" value={criterion.evidence} onChange={(event) => updateCriterion(criterion.id, { evidence: event.target.value })} /></div>
+          <div className="rubric-field"><label htmlFor={`criterion-${criterion.id}`}>{t('criterion')}</label><input id={`criterion-${criterion.id}`} disabled={editorDisabled} placeholder="e.g. Achievement evidence" value={criterion.name} onChange={(event) => updateCriterion(criterion.id, { name: event.target.value })} /></div>
+          <div className="rubric-field"><label htmlFor={`evidence-${criterion.id}`}>{t('evidenceCues')}</label><input id={`evidence-${criterion.id}`} disabled={editorDisabled} placeholder="e.g. metrics, dates, named source" value={criterion.evidence} onChange={(event) => updateCriterion(criterion.id, { evidence: event.target.value })} /></div>
           {criterion.sourceExcerpt && <p className="production-source-quote">Source: “{criterion.sourceExcerpt}”</p>}
           <button className="remove-criterion" type="button" disabled={editorDisabled} aria-label={`Remove ${criterion.name || 'empty criterion'}`} onClick={() => {
             setDirty(true);
@@ -538,7 +543,7 @@ export function RubricEditor() {
           aria-busy={saving}
           aria-describedby={locked ? 'rubricLockedNotice' : undefined}
           onClick={() => void save()}
-        >{saving ? 'Saving rubric…' : 'Save rubric'}</button></div>
+        >{saving ? t('saving') : t('saveRubric')}</button></div>
       </section>
     </div>}
   </section>;

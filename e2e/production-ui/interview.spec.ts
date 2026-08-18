@@ -38,11 +38,11 @@ async function chooseInterview(page: Page, expectedCriterionCount?: number) {
   if (expectedCriterionCount !== undefined) {
     await expect(page.locator('.setup-rubric h3')).toHaveText(`${expectedCriterionCount} criteria`);
   }
-  await page.getByRole('radio', { name: /Interview Q&A/i }).check();
-  await page.getByLabel('Project language').selectOption('en-US');
-  await page.getByRole('button', { name: 'Start Kato interview' }).click();
-  await expect(page.getByRole('heading', { name: 'Kato asks' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Answer one rubric question at a time.' })).toBeFocused();
+  await page.getByRole('radio', { name: /Tanya jawab wawancara/i }).check();
+  await page.getByLabel('Bahasa proyek').selectOption('en-US');
+  await page.getByRole('button', { name: 'Mulai wawancara Kato' }).click();
+  await expect(page.getByRole('heading', { name: 'Kato bertanya' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Jawab satu pertanyaan rubrik dalam satu waktu.' })).toBeFocused();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
 }
 
@@ -143,7 +143,7 @@ test('Kato asks five fixed rubric questions and sends one answer-local final bat
     'The prototype keeps privacy explicit and does not require a saved camera replay.',
     'The measured outcome is whether the next answer makes the missing evidence explicit.',
   ];
-  const answerBox = page.getByLabel('Your answer');
+  const answerBox = page.getByLabel('Jawaban Anda');
   for (let index = 0; index < answers.length - 1; index += 1) {
     const activeCriterion = page.locator('.interview-progress li[aria-current="step"]');
     await expect(activeCriterion).toHaveCount(1);
@@ -152,7 +152,7 @@ test('Kato asks five fixed rubric questions and sends one answer-local final bat
       INTERVIEW_CRITERIA[index]!.name,
     );
     await answerBox.fill(answers[index]!);
-    await page.getByRole('button', { name: 'Save answer & next question' }).click();
+    await page.getByRole('button', { name: 'Simpan jawaban & pertanyaan berikutnya' }).click();
     const nextQuestion = page.locator('.kato-question-copy blockquote');
     await expect(nextQuestion).toContainText(INTERVIEW_CRITERIA[index + 1]!.name);
     await expect(nextQuestion).toHaveAccessibleName(
@@ -161,7 +161,7 @@ test('Kato asks five fixed rubric questions and sends one answer-local final bat
     await expect(nextQuestion).toBeFocused();
     expect(requests, `question ${index + 1} must not trigger final analysis`).toHaveLength(0);
     expect(legacyAnalyzeRequests).toBe(0);
-    await expect(page.getByRole('heading', { name: 'Your answer evidence, mapped across the whole rubric.' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Bukti jawaban Anda, dipetakan ke seluruh rubrik.' })).toHaveCount(0);
   }
 
   await expect(page.locator('.interview-progress li[aria-current="step"]')).toContainText(
@@ -169,14 +169,14 @@ test('Kato asks five fixed rubric questions and sends one answer-local final bat
   );
   await expect(page.locator('.kato-question-copy blockquote')).toContainText(INTERVIEW_CRITERIA[4].name);
   await answerBox.fill(answers[4]);
-  await page.getByRole('button', { name: 'Submit interview for review' }).click();
+  await page.getByRole('button', { name: 'Kirim wawancara untuk ditinjau' }).click();
   // `expect(array)` does not retry, so asserting the recorded request straight
   // after the click was a race against the submit that had only just started —
   // it won on an idle machine and lost sixty tests into the suite. The review
   // heading renders only once the batch response has been applied, so waiting
   // for it makes the count deterministic without weakening what it asserts:
   // exactly one request, never one per question.
-  await expect(page.getByRole('heading', { name: 'Your answer evidence, mapped across the whole rubric.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bukti jawaban Anda, dipetakan ke seluruh rubrik.' })).toBeVisible();
 
   expect(requests).toHaveLength(1);
   expect(legacyAnalyzeRequests).toBe(0);
@@ -194,11 +194,11 @@ test('Kato asks five fixed rubric questions and sends one answer-local final bat
     expect(turn.durationSeconds).toBe(45);
   }
 
-  await expect(page.getByRole('heading', { name: 'Your answer evidence, mapped across the whole rubric.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bukti jawaban Anda, dipetakan ke seluruh rubrik.' })).toBeVisible();
   const turnDisclosure = page.locator('.interview-turn-summary');
   await expect(turnDisclosure.locator('summary')).toContainText('5 answers');
   await turnDisclosure.locator('summary').click();
-  const reviewedTurns = turnDisclosure.locator('ol[aria-label="Interview answers"] > li');
+  const reviewedTurns = turnDisclosure.locator('ol[aria-label="Jawaban wawancara"] > li');
   await expect(reviewedTurns).toHaveCount(5);
   for (let index = 0; index < answers.length; index += 1) {
     const reviewedTurn = reviewedTurns.nth(index);
@@ -339,14 +339,14 @@ test('a signed-in interview summary survives synced progress reload without dupl
 
   await page.goto(`/practice?project=${projectId}`);
   await expect(page.locator('.setup-project-summary strong')).toHaveText('Signed-in interview project');
-  await page.getByRole('radio', { name: /Interview Q&A/i }).check();
-  await page.getByRole('button', { name: 'Start Kato interview' }).click();
-  await page.getByLabel('Your answer').fill(
+  await page.getByRole('radio', { name: /Tanya jawab wawancara/i }).check();
+  await page.getByRole('button', { name: 'Mulai wawancara Kato' }).click();
+  await page.getByLabel('Jawaban Anda').fill(
     'The measurable outcome is explicit rubric coverage, and the measurement is the saved criterion verdict.',
   );
-  await page.getByRole('button', { name: 'Submit interview for review' }).click();
-  await expect(page.getByRole('heading', { name: 'Your answer evidence, mapped across the whole rubric.' })).toBeVisible();
-  await page.getByRole('button', { name: 'Save interview review' }).click();
+  await page.getByRole('button', { name: 'Kirim wawancara untuk ditinjau' }).click();
+  await expect(page.getByRole('heading', { name: 'Bukti jawaban Anda, dipetakan ke seluruh rubrik.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Simpan tinjauan wawancara' }).click();
 
   await expect(page).toHaveURL(`/progress?project=${projectId}`);
   // An interview aggregate averages five answer-local verdicts; a presentation
@@ -354,16 +354,16 @@ test('a signed-in interview summary survives synced progress reload without dupl
   // a delta between two different measurements, so the trend keeps the latest
   // format only and labels itself. Both attempts still appear in the archive.
   await expect(page.locator('.coverage-trend-dot')).toHaveCount(1);
-  await expect(page.locator('.progress-chart-card .session-status')).toHaveText('Interview answer aggregates only');
+  await expect(page.locator('.progress-chart-card .session-status')).toHaveText('Hanya gabungan jawaban wawancara');
   await expect(page.locator('.full-session-list .session-row')).toHaveCount(2);
   await expect(page.locator('.browser-only-session')).toHaveCount(1);
-  await expect(page.locator('.browser-only-session')).toContainText('Interview answer aggregate');
+  await expect(page.locator('.browser-only-session')).toContainText('Gabungan jawaban wawancara');
   await expect(page.locator('.browser-only-session .session-status')).toHaveText('browser only');
-  await expect(page.locator('.progress-stats article').filter({ hasText: 'Sessions' }).locator('strong')).toHaveText('2');
-  await expect(page.locator('.attempt-diff-card')).toContainText('Save two reviewed attempts');
-  await expect(page.locator('.recurring-card .session-status')).toHaveText('Synced SQL history');
+  await expect(page.locator('.progress-stats article').filter({ hasText: 'Sesi' }).locator('strong')).toHaveText('2');
+  await expect(page.locator('.attempt-diff-card')).toContainText('Simpan dua percobaan yang sudah ditinjau');
+  await expect(page.locator('.recurring-card .session-status')).toHaveText('Riwayat SQL tersinkron');
   await expect(page.locator('.production-boundary-note')).toContainText(
-    'Recurring gaps and exact attempt comparisons use synced verdict rows only',
+    'Celah berulang dan perbandingan percobaan yang persis hanya memakai baris putusan tersinkron',
   );
 
   // The saved interview aggregate and the dedupe identity both live in browser
@@ -375,7 +375,7 @@ test('a signed-in interview summary survives synced progress reload without dupl
   // a delta between two different measurements, so the trend keeps the latest
   // format only and labels itself. Both attempts still appear in the archive.
   await expect(page.locator('.coverage-trend-dot')).toHaveCount(1);
-  await expect(page.locator('.progress-chart-card .session-status')).toHaveText('Interview answer aggregates only');
+  await expect(page.locator('.progress-chart-card .session-status')).toHaveText('Hanya gabungan jawaban wawancara');
   await expect(page.locator('.full-session-list .session-row')).toHaveCount(2);
   await expect(page.locator('.browser-only-session')).toHaveCount(1);
 });
@@ -496,8 +496,8 @@ test('one continuous interview capture stays paused for narration and resumes ac
 
   await chooseInterview(page, 5);
   const question = page.locator('.kato-question-copy blockquote');
-  const answerBox = page.getByLabel('Your answer');
-  const beginAnswer = page.getByRole('button', { name: 'Begin this answer' });
+  const answerBox = page.getByLabel('Jawaban Anda');
+  const beginAnswer = page.getByRole('button', { name: 'Mulai jawaban ini' });
   const captureStatus = page.locator('.studio-status');
   const replayStatus = page.locator('.recording-sync-status');
   const liveClock = page.locator('.studio-heading .studio-live');
@@ -526,12 +526,12 @@ test('one continuous interview capture stays paused for narration and resumes ac
   };
 
   await expect(question).toBeVisible();
-  await page.getByRole('checkbox', { name: /Live transcript English/i }).check();
-  await page.getByRole('checkbox', { name: /Save replay camera \+ mic/i }).check();
-  await expect(page.getByRole('button', { name: 'Start continuous interview capture' })).toBeEnabled();
+  await page.getByRole('checkbox', { name: /Transkrip langsung Inggris/i }).check();
+  await page.getByRole('checkbox', { name: /Simpan rekaman kamera \+ mikrofon/i }).check();
+  await expect(page.getByRole('button', { name: 'Mulai perekaman wawancara berkelanjutan' })).toBeEnabled();
 
   // Narration before Start never implies camera, microphone, dictation, or replay consent.
-  await page.getByRole('button', { name: 'Read question aloud' }).click();
+  await page.getByRole('button', { name: 'Bacakan pertanyaan' }).click();
   await expect(question).toBeVisible();
   await expect(page.locator('.studio-record')).toBeDisabled();
   expect(await page.evaluate(() => (window as Window & {
@@ -539,11 +539,11 @@ test('one continuous interview capture stays paused for narration and resumes ac
   }).__interviewUtterance)).toEqual({ lang: 'en-US', rate: 0.95, pitch: 1 });
   expect(await page.evaluate(() => (window as Window & { __interviewMediaRequests?: number }).__interviewMediaRequests)).toBe(0);
 
-  await page.getByRole('button', { name: 'Skip narration' }).click();
-  await expect(page.getByRole('button', { name: 'Start continuous interview capture' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Lewati narasi' }).click();
+  await expect(page.getByRole('button', { name: 'Mulai perekaman wawancara berkelanjutan' })).toBeEnabled();
 
-  await page.getByRole('button', { name: 'Start continuous interview capture' }).click();
-  await expect(captureStatus).toContainText(/paused until the first answer begins/i);
+  await page.getByRole('button', { name: 'Mulai perekaman wawancara berkelanjutan' }).click();
+  await expect(captureStatus).toContainText(/dijeda sampai jawaban pertama dimulai/i);
   await expect(replayStatus).toContainText(/replay recording is active/i);
   await expect(beginAnswer).toBeEnabled();
   await expect(answerBox).toBeDisabled();
@@ -558,17 +558,17 @@ test('one continuous interview capture stays paused for narration and resumes ac
   expect(initialProbe.mediaStreamId).not.toBe('');
 
   await beginAnswer.click();
-  await expect(captureStatus).toContainText(/Answer capture is active/i);
+  await expect(captureStatus).toContainText(/Perekaman jawaban aktif/i);
   await expect(answerBox).toBeEnabled();
   await answerBox.fill('Students need urgent feedback while there is still time to revise.');
   await page.waitForTimeout(1_100);
   const firstAnswerClock = await clockSeconds();
   expect((await captureProbe()).recognitionStarts).toBe(1);
 
-  await page.getByRole('button', { name: 'Save answer & next question' }).click();
+  await page.getByRole('button', { name: 'Simpan jawaban & pertanyaan berikutnya' }).click();
   await expect(question).toContainText(INTERVIEW_CRITERIA[1].name);
   await expect(question).toBeFocused();
-  await expect(captureStatus).toContainText(/paused; camera tracking and an optional replay continue/i);
+  await expect(captureStatus).toContainText(/dijeda; pelacakan kamera dan rekaman opsional berlanjut/i);
   await expect(replayStatus).toContainText(/replay recording is active/i);
   await expect(answerBox).toBeDisabled();
   const betweenQuestionsProbe = await captureProbe();
@@ -581,8 +581,8 @@ test('one continuous interview capture stays paused for narration and resumes ac
     recognitionStops: 1,
   });
 
-  await page.getByRole('button', { name: 'Read question aloud' }).click();
-  await expect(page.getByRole('button', { name: 'Skip narration' })).toBeVisible();
+  await page.getByRole('button', { name: 'Bacakan pertanyaan' }).click();
+  await expect(page.getByRole('button', { name: 'Lewati narasi' })).toBeVisible();
   await expect(beginAnswer).toBeDisabled();
   await expect(answerBox).toBeDisabled();
   await page.waitForTimeout(1_100);
@@ -591,17 +591,17 @@ test('one continuous interview capture stays paused for narration and resumes ac
   expect(await captureProbe()).toEqual(betweenQuestionsProbe);
   await expect(replayStatus).toContainText(/replay recording is active/i);
 
-  await page.getByRole('button', { name: 'Skip narration' }).click();
+  await page.getByRole('button', { name: 'Lewati narasi' }).click();
   await expect(beginAnswer).toBeEnabled();
   await beginAnswer.click();
-  await expect(captureStatus).toContainText(/Answer capture is active/i);
+  await expect(captureStatus).toContainText(/Perekaman jawaban aktif/i);
   await expect(answerBox).toBeEnabled();
   await answerBox.fill('The rubric isolates one weak claim and guides a focused retry.');
   await page.waitForTimeout(1_100);
   expect(await clockSeconds()).toBeGreaterThanOrEqual(narrationClock);
   expect((await captureProbe()).recognitionStarts).toBe(2);
 
-  await page.getByRole('button', { name: 'Save answer & next question' }).click();
+  await page.getByRole('button', { name: 'Simpan jawaban & pertanyaan berikutnya' }).click();
   await expect(question).toContainText(INTERVIEW_CRITERIA[2].name);
   await expect(question).toBeFocused();
   expect(await captureProbe()).toEqual({
@@ -614,4 +614,133 @@ test('one continuous interview capture stays paused for narration and resumes ac
   });
   await expect(replayStatus).toContainText(/replay recording is active/i);
   await expectNoHorizontalOverflow(page);
+});
+
+// Interview mode had the whole coaching engine available and one condition on
+// rehearsalFormat kept it switched off, so a student who rehearsed by
+// answering questions got verdicts and no help writing a better answer.
+//
+// The valuable part of this test is not that the cards appear. It is that each
+// request carries exactly one answer and exactly one criterion. Kato's question
+// text names rubric cues, and interview-session.ts warns that those cues must
+// never be credited to the student. Coaching answer-locally is what makes that
+// structural instead of a rule a prompt has to keep remembering.
+test('each interview answer is coached against its own criterion, and never against another', async ({ page }) => {
+  const coachRequests: Array<{
+    transcript: string;
+    language: string;
+    criteria: Array<{ id: string; name: string }>;
+  }> = [];
+
+  await seedFiveCriterionRubric(page);
+  await page.route('**/api/capabilities', async (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      contractVersion: 2,
+      persistence: 'local',
+      accounts: false,
+      sourceDocuments: false,
+      recordings: false,
+      semantic: { rubric: false, evidence: true, question: true, defense: false, coach: true },
+    }),
+  }));
+
+  await page.route('**/api/interview/analyze', async (route) => {
+    // The turn ids are generated in the browser and the review is joined back
+    // by them, so the mock has to answer the ids it was actually sent.
+    const posted = route.request().postDataJSON() as {
+      turns: Array<{ turnId: string; criterion: { id: string; requiredEvidence: string[] } }>;
+    };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        contractVersion: 2,
+        turns: posted.turns.map((turn) => ({
+          turnId: turn.turnId,
+          criterionId: turn.criterion.id,
+          judgment: {
+            verdict: 'unsupported',
+            coverageScore: 0,
+            citedSpan: null,
+            missingEvidence: [...turn.criterion.requiredEvidence],
+            engine: 'semantic',
+            degradedReason: null,
+          },
+        })),
+        hardestQuestion: {
+          criterionId: posted.turns[0]!.criterion.id,
+          questionText: 'What explicit evidence can you add for “students”?',
+          engine: 'semantic',
+        },
+        mode: 'semantic',
+      }),
+    });
+  });
+
+  await page.route('**/api/coach', async (route) => {
+    const body = route.request().postDataJSON() as typeof coachRequests[number];
+    coachRequests.push(body);
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        contractVersion: 2,
+        coachings: body.criteria.map((criterion) => ({
+          criterionId: criterion.id,
+          claims: [],
+          discardedClaims: 0,
+          strongerForm: `Stronger form for ${criterion.name}, built from ${body.transcript.slice(0, 20)}`,
+          blanks: [],
+          degradedReason: null,
+          model: 'test/coach-model',
+        })),
+      }),
+    });
+  });
+
+  await chooseInterview(page, 5);
+  const answers = [
+    'Students receive feedback too late, so the urgency is losing the chance to revise.',
+    'The rubric isolates one weak claim and gives the student one focused retry.',
+    'Unlike a generic competitor, every verdict remains traceable to an exact answer span.',
+    'The prototype keeps privacy explicit and does not require a saved camera replay.',
+    'The measured outcome is whether the next answer makes the missing evidence explicit.',
+  ];
+  const answerBox = page.getByLabel('Jawaban Anda');
+  for (let index = 0; index < answers.length - 1; index += 1) {
+    await answerBox.fill(answers[index]!);
+    await page.getByRole('button', { name: 'Simpan jawaban & pertanyaan berikutnya' }).click();
+    await expect(page.locator('.kato-question-copy blockquote')).toContainText(
+      INTERVIEW_CRITERIA[index + 1]!.name,
+    );
+  }
+  await answerBox.fill(answers[4]!);
+  await page.getByRole('button', { name: 'Kirim wawancara untuk ditinjau' }).click();
+  await expect(page.getByRole('heading', { name: 'Bukti jawaban Anda, dipetakan ke seluruh rubrik.' })).toBeVisible();
+
+  // The trigger has to exist at all — this is the gate that used to hide it.
+  const trigger = page.getByRole('button', { name: 'Uraikan setiap jawaban' });
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+  await expect(page.getByText(/All 5 answers were coached/)).toBeVisible();
+
+  expect(coachRequests).toHaveLength(5);
+  for (const [index, request] of coachRequests.entries()) {
+    expect(request.criteria, 'one answer is coached against one criterion').toHaveLength(1);
+    expect(request.transcript).toBe(answers[index]);
+    expect(request.language).toBe('en-US');
+    // Nothing from another turn, and nothing Kato said, may reach this call.
+    for (const [otherIndex, other] of answers.entries()) {
+      if (otherIndex !== index) expect(request.transcript).not.toContain(other);
+    }
+    expect(request.transcript).not.toContain('How does your project meet');
+  }
+  expect(coachRequests.map((request) => request.criteria[0]!.id))
+    .toEqual(INTERVIEW_CRITERIA.map(({ id }) => id));
+
+  const strongerForms = page.locator('.stronger-form blockquote');
+  await expect(strongerForms).toHaveCount(5);
+  await expect(strongerForms.first()).toContainText('Stronger form for Problem clarity');
 });

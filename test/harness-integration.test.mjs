@@ -85,5 +85,29 @@ test('the pull request contract protects the gate from papering over failures', 
   const template = read('.github/pull_request_template.md');
   assert.match(template, /pnpm check.*green/iu);
   assert.match(template, /No test was weakened or skipped/iu);
-  assert.match(template, /pnpm demo.*green/iu);
+  assert.match(template, /pnpm test:production:browser.*green/iu);
+});
+
+// The line above used to require `pnpm demo`, which stopped being a script on
+// 12 August 2026. A test asserting a template asserts a string, and a string
+// stays green long after the thing it names is gone — so every command the
+// contributor contract names is now checked against package.json itself.
+// This is the check that would have caught the original rot on the day it
+// happened, rather than a reader noticing months later.
+test('every pnpm command the contributor contract names actually exists', () => {
+  const { scripts } = JSON.parse(read('package.json'));
+  const sources = ['.github/pull_request_template.md', 'AGENTS.md', 'README.md'];
+  for (const source of sources) {
+    const named = new Set(
+      [...read(source).matchAll(/`pnpm ([a-z][a-z0-9:-]*)/gu)].map((match) => match[1]),
+    );
+    for (const command of named) {
+      // `pnpm install`, `pnpm dlx` and similar are pnpm's own, not ours.
+      if (['install', 'dlx', 'add', 'exec', 'run', 'why'].includes(command)) continue;
+      assert.ok(
+        Object.hasOwn(scripts, command),
+        `${source} names \`pnpm ${command}\`, which is not a script in package.json`,
+      );
+    }
+  }
 });

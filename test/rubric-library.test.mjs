@@ -114,8 +114,21 @@ test('F-9 records only a known rubric source and defaults invalid storage safely
 // sentence and this assertion with it. The sentence is what stops a starter
 // being mistaken for the evaluator's own matrix, which is the whole reason a
 // student would rehearse against the wrong criteria.
-test('F-9 tells users templates are unofficial and never auto-saved', () => {
-  assert.match(editorSource, /not official scoring rubrics/iu);
-  assert.match(editorSource, /starter loaded but not saved/iu);
-  assert.match(editorSource, /confirm with Save rubric/iu);
+test('F-9 tells users templates are unofficial and never auto-saved', async () => {
+  // The words moved to the catalogues (#36); the guarantee did not. A starter
+  // being mistaken for the evaluator's own matrix is the failure this prevents,
+  // and it prevents it only in a language the reader reads — so all of them.
+  assert.match(editorSource, /t\('startingPoints'\)/u);
+  assert.match(editorSource, /t\('starterLoaded'\)/u);
+  assert.match(editorSource, /t\('starterLoadedToast'/u);
+  for (const locale of ['id', 'en']) {
+    const entries = JSON.parse(
+      await readFile(new URL(`../apps/web/messages/${locale}.json`, import.meta.url), 'utf8'),
+    ).rubricEditor;
+    assert.match(entries.startingPoints, /bukan rubrik penilaian resmi|not official scoring rubrics/iu,
+      `${locale}: a starter must be named as unofficial`);
+    assert.match(entries.starterLoaded, /\S/u, `${locale}: an unsaved starter must say so`);
+    assert.match(entries.starterLoadedToast, /Simpan rubrik|Save rubric/u,
+      `${locale}: the starter toast must name the confirm action`);
+  }
 });

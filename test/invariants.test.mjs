@@ -175,8 +175,23 @@ test('INV-2 the guest entry never collects credentials and routes sync to real a
     'authentication calls belong to the real account surface');
   assert.match(gate, /href=["']\/account["']/u,
     'the optional sync path must route to the Better Auth-backed account surface');
-  assert.match(gate, /stay in this browser/iu,
-    'the guest path must state its local-storage boundary');
+
+  // The boundary disclosure moved into the message catalogues with the rest of
+  // this screen's copy (issue #36). It is checked in EVERY locale rather than
+  // in the component, which is stricter than before and is the point: under
+  // INV-4 a boundary stated only in English is not stated to the audience this
+  // product is for. The English wording is pinned so the sentence cannot be
+  // softened into a claim about privacy it does not make.
+  const boundaries = {
+    id: /tersimpan di browser ini/iu,
+    en: /stay in this browser/iu,
+  };
+  for (const [locale, pattern] of Object.entries(boundaries)) {
+    const catalogue = read(`apps/web/messages/${locale}.json`);
+    assert.ok(catalogue, `the ${locale} catalogue must exist`);
+    assert.match(JSON.parse(catalogue).entryGate?.intro ?? '', pattern,
+      `the guest path must state its local-storage boundary in ${locale}`);
+  }
 });
 
 const AUTHENTICATION_CLAIMS = [
@@ -209,6 +224,46 @@ test('INV-2 account language stays on the screens that own it', () => {
           `${relative}:${number + 1} implies authentication (${pattern}); `
           + 'the deployed vanilla display name is a local label, not an account.',
         );
+      }
+    }
+  }
+
+  // Scanning components alone stopped being sufficient once copy moved into
+  // the message catalogues (issue #36): the words a screen shows are no longer
+  // in the file that renders it. The namespace is what identifies the screen
+  // now, so the same rule is applied namespace by namespace. Without this, an
+  // extraction silently carries account language onto a screen that has no
+  // business implying an account exists — the exact thing this test is for.
+  const NAMESPACE_OWNERS = new Set(['entryGate', 'account']);
+  // These mirror AUTHENTICATION_CLAIMS phrase for phrase. An earlier version
+  // matched a bare /\bakun\b/, which is broader than the English rule and
+  // failed the workspace profile chip for saying "Buka opsi akun" — a string
+  // whose English original, "Open account options", the English patterns
+  // deliberately allow. Offering a route to the account screen is not claiming
+  // the user has an account; the rule is about the latter.
+  const INDONESIAN_AUTHENTICATION_CLAIMS = [
+    /\bakun anda\b/iu,
+    /\bbuat akun\b/iu,
+    /\bdaftar akun\b/iu,
+    /\bmasuk ke akun\b/iu,
+    /\bkata sandi\b/iu,
+  ];
+  for (const [locale, patterns] of [
+    ['id', INDONESIAN_AUTHENTICATION_CLAIMS],
+    ['en', AUTHENTICATION_CLAIMS],
+  ]) {
+    const catalogue = read(`apps/web/messages/${locale}.json`);
+    assert.ok(catalogue, `the ${locale} catalogue must exist`);
+    for (const [namespace, entries] of Object.entries(JSON.parse(catalogue))) {
+      if (NAMESPACE_OWNERS.has(namespace)) continue;
+      for (const [key, value] of Object.entries(entries)) {
+        for (const pattern of patterns) {
+          assert.ok(
+            !pattern.test(String(value)),
+            `${locale}.json:${namespace}.${key} implies authentication (${pattern}); `
+            + 'only the entry and account screens may.',
+          );
+        }
       }
     }
   }
@@ -385,19 +440,31 @@ test('INV-4 delivery coaching names its own limit and stays subordinate to evide
 
   assertContains(
     room,
-    /not a measure of speaking ability/u,
+    /t\('wordPatternCountsFromThis'\)/u,
     'the delivery panel must state that it does not measure speaking ability',
   );
-  assertContains(
-    room,
-    /does not change the rubric evidence/u,
-    'the delivery panel must state that it does not affect the rubric verdicts',
-  );
+  // INV-4: the limit is only disclosed if it is disclosed in the locale read.
+  for (const locale of ['id', 'en']) {
+    const entries = JSON.parse(read(`apps/web/messages/${locale}.json`)).practice;
+    assert.match(entries.wordPatternCountsFromThis,
+      /bukan ukuran kemampuan berbicara|not a measure of speaking ability/u,
+      `${locale}: the delivery panel must disclaim speaking ability`);
+  }
+  // Same sentence, same key: delivery is supporting context and never moves a
+  // criterion verdict. Checked in every locale for the same reason as above.
+  for (const locale of ['id', 'en']) {
+    const entries = JSON.parse(read(`apps/web/messages/${locale}.json`)).practice;
+    assert.match(entries.wordPatternCountsFromThis,
+      /tidak mengubah bukti rubrik|does not change the rubric evidence/u,
+      `${locale}: the delivery panel must state it cannot change a verdict`);
+  }
 
   // Position encodes priority. If delivery ever moves above the evidence map,
   // the screen starts arguing that HOW you spoke matters more than WHETHER you
   // supported the criterion, which inverts the entire product thesis.
-  const evidenceAt = room.indexOf('Rubric evidence map');
+  // Anchored on the message key: the ordering claim is about where the markup
+  // sits, which translation does not move.
+  const evidenceAt = room.indexOf("t('rubricEvidenceMap')");
   const deliveryAt = room.indexOf('delivery-section');
   assert.ok(evidenceAt !== -1 && deliveryAt !== -1, 'both the evidence map and the delivery panel must exist');
   assert.ok(

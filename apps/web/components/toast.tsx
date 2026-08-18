@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 
 export const TOAST_VARIANTS = ['positive', 'negative', 'warning', 'info'] as const;
@@ -39,6 +40,7 @@ function createToastId() {
 }
 
 function ToastItem({ toast, dismissToast }: Readonly<{ toast: ToastRecord; dismissToast: (id: number) => void }>) {
+  const t = useTranslations('toast');
   useEffect(() => {
     if (toast.duration === null) return;
     const timeout = window.setTimeout(
@@ -60,7 +62,7 @@ function ToastItem({ toast, dismissToast }: Readonly<{ toast: ToastRecord; dismi
       <p className="toast__message">{toast.message}</p>
     </div>
     <button
-      aria-label="Dismiss notification"
+      aria-label={t('dismiss')}
       className="toast__close"
       type="button"
       onClick={() => dismissToast(toast.id)}
@@ -71,6 +73,7 @@ function ToastItem({ toast, dismissToast }: Readonly<{ toast: ToastRecord; dismi
 }
 
 export function ToastProvider({ children }: Readonly<{ children: ReactNode }>) {
+  const t = useTranslations('toast');
   const [toasts, setToasts] = useState<ToastRecord[]>([]);
 
   const dismissToast = useCallback((id: number) => {
@@ -85,7 +88,7 @@ export function ToastProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   return <ToastContext.Provider value={{ dismissToast, showToast }}>
     {children}
-    <div className="toast-viewport" aria-label="Notifications">
+    <div className="toast-viewport" aria-label={t('region')}>
       {toasts.map((toast) => <ToastItem dismissToast={dismissToast} key={toast.id} toast={toast} />)}
     </div>
   </ToastContext.Provider>;

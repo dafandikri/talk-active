@@ -16,6 +16,7 @@ import {
   type InterviewAnalysisRequest,
   type InterviewAnalysisResponse,
   type InterviewAnalysisTurn,
+  type ProjectLanguage,
 } from '../contracts.ts';
 import { findGroundedSpan, normaliseForGrounding } from '../grounding.ts';
 import { selectWeakestCriterion } from '../weakest-criterion.ts';
@@ -76,12 +77,13 @@ function groundedJudgment(
 async function judgeWithFallback(
   turn: InterviewAnalysisTurn,
   options: InterviewAnalysisOptions,
+  language: ProjectLanguage,
 ): Promise<EvidenceJudgment> {
   try {
     const judgment = await (options.judge ?? judgeCriterion)(
       turn.answer,
       turn.criterion,
-      options.evidenceOptions,
+      { ...options.evidenceOptions, language },
     );
     const grounded = groundedJudgment(turn, judgment);
     if (grounded) return grounded;
@@ -92,6 +94,7 @@ async function judgeWithFallback(
   return judgeCriterion(turn.answer, turn.criterion, {
     ...options.evidenceOptions,
     model: '',
+    language,
   });
 }
 
@@ -113,13 +116,14 @@ function groundedQuestion(
 async function questionWithFallback(
   selected: EvaluatedTurn,
   options: InterviewAnalysisOptions,
+  language: ProjectLanguage,
 ): Promise<QuestionDraft> {
   try {
     const draft = await (options.question ?? generateJudgeQuestion)(
       selected.turn.answer,
       selected.turn.criterion,
       selected.judgment,
-      options.questionOptions,
+      { ...options.questionOptions, language },
     );
     const grounded = groundedQuestion(draft, selected);
     if (grounded) return grounded;
@@ -131,7 +135,7 @@ async function questionWithFallback(
     selected.turn.answer,
     selected.turn.criterion,
     selected.judgment,
-    { ...options.questionOptions, model: '' },
+    { ...options.questionOptions, model: '', language },
   );
 }
 
@@ -147,7 +151,7 @@ export async function analyzeInterview(
   const parsed = InterviewAnalysisRequestSchema.parse(input);
   const evaluated = await Promise.all(parsed.turns.map(async (turn) => ({
     turn,
-    judgment: await judgeWithFallback(turn, options),
+    judgment: await judgeWithFallback(turn, options, parsed.language),
   })));
 
   const selected = selectWeakestCriterion(evaluated.map((item) => ({
@@ -156,7 +160,7 @@ export async function analyzeInterview(
     verdict: { ...item.judgment, studentOverridden: false },
   })));
   if (!selected) throw new Error('Interview analysis returned no question target.');
-  const question = await questionWithFallback(selected, options);
+  const question = await questionWithFallback(selected, options, parsed.language);
   const unitEngines = [
     ...evaluated.map((item) => item.judgment.engine),
     question.engine,

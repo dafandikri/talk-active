@@ -7,11 +7,42 @@ export type SpeechRecognitionState =
   | 'unsupported'
   | 'disposed';
 
+/**
+ * A stretch of the final transcript the recognizer was not sure about.
+ * Offsets index `finalTranscript`, which is what the analyzer receives.
+ */
+export interface LowConfidenceRange {
+  readonly startChar: number;
+  readonly endChar: number;
+  readonly confidence: number;
+}
+
 export interface SpeechTranscriptSnapshot {
   finalTranscript: string;
   interimTranscript: string;
   transcript: string;
   observedAtMs: number;
+  /**
+   * Spans the recognizer guessed at. Empty when it is confident, and empty
+   * when it reports no confidence at all — see LOW_CONFIDENCE_THRESHOLD.
+   */
+  lowConfidenceRanges: readonly LowConfidenceRange[];
+}
+
+/**
+ * Below this, the recognizer is guessing rather than hearing.
+ *
+ * Chrome reports confidence only on final results, and reports exactly 0 when
+ * it has none to give. Treating that 0 as "certainly wrong" would mark an
+ * entire transcript on browsers that simply do not supply the figure, which
+ * trains people to ignore the marks — so 0 is read as unreported and left
+ * alone.
+ */
+export const LOW_CONFIDENCE_THRESHOLD = 0.6;
+
+interface RecognizedPart {
+  readonly text: string;
+  readonly confidence: number;
 }
 
 export interface SpeechRecognitionFailure {
@@ -44,6 +75,7 @@ export interface SpeechRecognitionSession {
 
 interface RecognitionAlternativeLike {
   readonly transcript: string;
+  readonly confidence?: number;
 }
 
 interface RecognitionResultLike {
@@ -142,8 +174,12 @@ export function createSpeechRecognitionSession(
   let startRequested = false;
   let disposed = false;
   let restartTimer: ReturnType<typeof setTimeout> | null = null;
-  let settledTranscript = '';
-  let runFinalTranscript = '';
+  // Parts rather than one joined string: a character range is only meaningful
+  // against the exact text the analyzer will see, and that text is rebuilt on
+  // every result event. Keeping the pieces means the offsets are derived, not
+  // maintained.
+  let settledParts: RecognizedPart[] = [];
+  let runFinalParts: RecognizedPart[] = [];
   let interimTranscript = '';
   let stopWaiters: Array<{
     resolve: (snapshot: SpeechTranscriptSnapshot) => void;
@@ -160,12 +196,30 @@ export function createSpeechRecognitionSession(
   }
 
   function snapshot(): SpeechTranscriptSnapshot {
-    const finalTranscript = cleanTranscript(settledTranscript, runFinalTranscript);
+    // Offsets are computed by walking the same parts the text is built from,
+    // so a range can never drift from the string it points into.
+    const parts = [...settledParts, ...runFinalParts].filter((part) => part.text.length > 0);
+    const lowConfidenceRanges: LowConfidenceRange[] = [];
+    let finalTranscript = '';
+    for (const part of parts) {
+      const startChar = finalTranscript.length === 0 ? 0 : finalTranscript.length + 1;
+      finalTranscript = finalTranscript.length === 0
+        ? part.text
+        : `${finalTranscript} ${part.text}`;
+      if (part.confidence > 0 && part.confidence < LOW_CONFIDENCE_THRESHOLD) {
+        lowConfidenceRanges.push({
+          startChar,
+          endChar: startChar + part.text.length,
+          confidence: part.confidence,
+        });
+      }
+    }
     return {
       finalTranscript,
       interimTranscript,
       transcript: cleanTranscript(finalTranscript, interimTranscript),
       observedAtMs: typeof performance === 'undefined' ? Date.now() : performance.now(),
+      lowConfidenceRanges,
     };
   }
 
@@ -225,16 +279,22 @@ export function createSpeechRecognitionSession(
 
     recognition.onresult = (event) => {
       if (disposed) return;
-      const finalParts: string[] = [];
+      const finalParts: RecognizedPart[] = [];
       const interimParts: string[] = [];
       for (let index = 0; index < event.results.length; index += 1) {
         const result = event.results[index];
-        const transcript = result?.[0]?.transcript?.trim();
+        const alternative = result?.[0];
+        const transcript = alternative?.transcript?.trim();
         if (!transcript) continue;
-        if (result?.isFinal) finalParts.push(transcript);
-        else interimParts.push(transcript);
+        if (result?.isFinal) {
+          // Interim confidence is reported as ~0 as a matter of course, so
+          // only settled results carry a figure worth acting on.
+          finalParts.push({ text: transcript, confidence: alternative?.confidence ?? 0 });
+        } else {
+          interimParts.push(transcript);
+        }
       }
-      runFinalTranscript = cleanTranscript(...finalParts);
+      runFinalParts = finalParts;
       interimTranscript = cleanTranscript(...interimParts);
       emitTranscript();
     };
@@ -254,8 +314,8 @@ export function createSpeechRecognitionSession(
     recognition.onend = () => {
       startRequested = false;
       nativeActive = false;
-      settledTranscript = cleanTranscript(settledTranscript, runFinalTranscript);
-      runFinalTranscript = '';
+      settledParts = [...settledParts, ...runFinalParts];
+      runFinalParts = [];
       interimTranscript = '';
       emitTranscript();
       resolveStopWaiters();
@@ -285,8 +345,8 @@ export function createSpeechRecognitionSession(
       }
       if (wanted || nativeActive || startRequested) return true;
       if (resetTranscript) {
-        settledTranscript = '';
-        runFinalTranscript = '';
+        settledParts = [];
+        runFinalParts = [];
         interimTranscript = '';
         emitTranscript();
       }
@@ -343,8 +403,8 @@ export function createSpeechRecognitionSession(
       resolveStopWaiters();
     },
     clearTranscript() {
-      settledTranscript = '';
-      runFinalTranscript = '';
+      settledParts = [];
+      runFinalParts = [];
       interimTranscript = '';
       emitTranscript();
     },

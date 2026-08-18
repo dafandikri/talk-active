@@ -100,6 +100,21 @@ export const ANALYSIS_SCENARIOS = [
     rubricText: 'Problem clarity | problem, students, evidence, urgency\nSolution fit | rubric, criterion, transcript, maps',
     durationSeconds: 40,
   },
+  {
+    id: 'english-project',
+    description: 'The same seeded draft in a project whose language is English. Every other scenario leaves language unset and therefore pins the id-ID default, so this is the only place the English wording is held still.',
+    transcript: 'Many Indonesian students prepare important presentations alone and only receive feedback after the result is final. Talk-Active lets a student use the actual evaluation rubric while practicing a pitch. It maps each claim in the transcript to a criterion, points out what is still unsupported, and asks a judge-style follow-up question about the weakest claim. The student then retries one focused section and sees whether the evidence improved. The current implementation uses local transcript analysis, so no recording is stored.',
+    rubricText: 'Problem clarity | problem, students, evidence, urgency\nSolution fit | rubric, criterion, transcript, maps\nDifferentiation | unlike, competitor, existing tools, instead\nFeasibility | implementation, local, cost, timeline',
+    durationSeconds: 90,
+    language: 'en-US',
+  },
+  {
+    id: 'dictated-without-punctuation',
+    description: 'A dictated Indonesian transcript with no terminal punctuation — what the browser actually hands us on the id-ID capture route. Pins the clause segmentation so criteria cannot collapse back onto one shared quote.',
+    transcript: 'kami membangun talk active untuk mahasiswa indonesia yang berlatih presentasi sendirian dan kami sudah menguji prototipe ini bersama dua belas mahasiswa selama tiga minggu karena umpan balik yang mereka terima selalu datang setelah nilai keluar sehingga mereka tidak pernah tahu bagian mana yang harus diperbaiki jadi kami memetakan setiap klaim ke kriteria rubrik',
+    rubricText: 'Kejelasan masalah | mahasiswa, presentasi\nValidasi | prototipe, menguji\nKelayakan | rubrik, klaim',
+    durationSeconds: 75,
+  },
 ];
 
 export const DEFENSE_SCENARIOS = [

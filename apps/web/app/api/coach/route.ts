@@ -21,7 +21,7 @@ export const POST = withApiErrors(async (request: Request) => {
     const coachings = await coachCriteria(
       input.transcript,
       input.criteria.map((criterion) => ({ ...criterion, rubricId: 'stateless-analysis' })),
-      { deadlineAt: aiRequestDeadline() },
+      { deadlineAt: aiRequestDeadline(), language: input.language },
     );
     return NextResponse.json(ClaimCoachResponseSchema.parse({
       contractVersion: CONTRACT_VERSION,

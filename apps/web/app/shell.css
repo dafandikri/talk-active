@@ -909,3 +909,65 @@
     line-height: var(--leading-normal);
   }
 }
+
+/* The interface-language control sits in the account panel beside the data
+   tools. It is deliberately understated: it is a preference, not a step in the
+   loop, and it must not compete with the project-language picker on the
+   practice page, which is the one that changes what Kato asks. */
+.interface-language {
+  margin-block: var(--space-4, 1rem);
+}
+
+.interface-language label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+/* src/styles.css already gives every select its border, radius, surface and
+   focus treatment from tokens. Restating them here would be a second source of
+   truth for the same control, which is how the ~40 one-off colours the design
+   system test guards against accumulated in the first place. Layout only. */
+.interface-language select {
+  max-width: 22rem;
+}
+
+.interface-language select:disabled {
+  cursor: progress;
+}
+
+.interface-language small {
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+}
+
+/* Microphone quality and low-confidence notices. Deliberately a notice and not
+   a modal: a booth operator mid-demo must be able to read it and carry on, so
+   it never takes focus and never blocks the controls beneath it. */
+.input-quality-notice {
+  margin-block: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.input-quality-notice strong {
+  color: var(--text-primary);
+}
+
+.input-quality-notice p {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: var(--leading-normal);
+}
+
+.input-quality-notice small {
+  color: var(--text-muted);
+  line-height: var(--leading-normal);
+}

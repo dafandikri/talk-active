@@ -23,7 +23,7 @@ test('with nothing saved, the coach is waiting and the art has loaded', async ({
   const mascot = page.locator('.focus-mascot');
   await expect(mascot).toHaveAttribute('data-coach', 'waiting');
   await expect(mascot).toHaveJSProperty('complete', true);
-  await expect(page.locator('.coach-bubble')).toContainText('Ready for the hard question?');
+  await expect(page.locator('.coach-bubble')).toContainText('Siap untuk pertanyaan sulitnya?');
 });
 
 test('an open gap names the criterion it is open on', async ({ page }) => {
@@ -107,9 +107,9 @@ test('the band names the recurring gap and the direction of the run', async ({ p
   await expect(band).toBeVisible();
   await expect(band.getByText('Differentiation', { exact: true })).toBeVisible();
   await expect(band.getByText('Unsupported in 3 of 3 saved attempts.')).toBeVisible();
-  await expect(band.getByText(/Up 48 points across the last 3 saved attempts/)).toBeVisible();
+  await expect(band.getByText(/Naik 48 poin|Up 48 points/)).toBeVisible();
   // The figure never gets to stand alone.
-  await expect(band.getByText(/not a score for you/i)).toBeVisible();
+  await expect(band.getByText(/bukan nilai untuk Anda/i)).toBeVisible();
   // The chart is readable without seeing it.
   await expect(band.locator('.insight-spark')).toHaveAttribute('aria-label', /40%, 62%, 88%/);
 });
@@ -122,7 +122,7 @@ test('two attempts is a pair, and the band says so instead of drawing a trend', 
   await page.goto('/workspace');
 
   await expect(page.locator('.insight-band')).toBeVisible();
-  await expect(page.getByText(/not yet a trend/i)).toBeVisible();
+  await expect(page.getByText(/belum sebuah tren/i)).toBeVisible();
 });
 
 test('one attempt shows no band at all, because there is nothing to compare', async ({ page }) => {

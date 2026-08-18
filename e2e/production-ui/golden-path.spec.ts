@@ -39,25 +39,25 @@ test.afterEach(async ({ page }) => {
 
 test('cold-start guest completes landing → attempt → evidence → defense → saved reload', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Rehearse the claim a judge will challenge next.' })).toBeVisible();
-  await page.getByRole('link', { name: /^Start practicing\b/i }).first().click();
+  await expect(page.getByRole('heading', { name: 'Latih klaim yang akan ditantang juri berikutnya.' })).toBeVisible();
+  await page.getByRole('link', { name: /^Mulai berlatih\b/i }).first().click();
   await expect(page).toHaveURL(/\/enter$/u);
-  await page.getByRole('button', { name: 'Continue without a name' }).click();
+  await page.getByRole('button', { name: 'Lanjut tanpa nama' }).click();
   await expect(page).toHaveURL(/\/workspace$/u);
-  await expect(page.getByRole('heading', { name: 'Make your next answer harder to challenge.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Buat jawaban berikutnya lebih sulit dibantah.' })).toBeVisible();
   await expect(page.locator('.focus-mascot')).toHaveJSProperty('complete', true);
   await expectVisibleControlsHitTest(page);
 
-  await page.getByRole('link', { name: /Continue practising/i }).click();
+  await page.getByRole('link', { name: /Lanjutkan latihan/i }).click();
   await expect(page).toHaveURL(/\/practice$/u);
   await expect(page.getByRole('link', { name: 'Exit session' })).toHaveCount(0);
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
-  await expect(page.getByLabel('Practice transcript')).toBeVisible();
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
+  await expect(page.getByLabel('Transkrip latihan')).toBeVisible();
   await expectVisibleControlsHitTest(page);
-  const reviewedDraft = await page.getByLabel('Practice transcript').inputValue();
-  await page.getByRole('button', { name: /Review this attempt/i }).click();
+  const reviewedDraft = await page.getByLabel('Transkrip latihan').inputValue();
+  await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
 
-  await expect(page.getByRole('heading', { name: 'What your transcript actually supports' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Apa yang benar-benar didukung transkrip Anda' })).toBeVisible();
   await expect(page.locator('.evidence-item')).toHaveCount(4);
   await expect(page.locator('.evidence-provenance')).toHaveCount(4);
   await expect(page.locator('.production-confirm')).toHaveCount(4);
@@ -71,10 +71,10 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   // review, just like the visible Back controls do.
   await page.goBack();
   await expect(page.locator('.capture-header h2')).toBeFocused();
-  await expect(page.getByLabel('Practice transcript')).toHaveValue(reviewedDraft);
+  await expect(page.getByLabel('Transkrip latihan')).toHaveValue(reviewedDraft);
   await page.goForward();
-  await expect(page.getByRole('heading', { name: /One claim needs your attention/i })).toBeFocused();
-  await expect(page.getByRole('heading', { name: 'What your transcript actually supports' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Satu klaim perlu perhatian Anda/i })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Apa yang benar-benar didukung transkrip Anda' })).toBeVisible();
 
   // Matched by pattern, not by exact string. The visible button says only
   // "Yes"/"No", so the accessible name has to name the criterion AND what
@@ -83,24 +83,24 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   await page.getByRole('button', { name: /^Confirm\b.*\bProblem clarity$/ }).click();
   await expect(page.getByText(/Saved in this browser as a human evaluation label; the original deterministic provenance is preserved\./u)).toBeVisible();
   await page.getByRole('button', { name: /^Reject\b.*\bSolution fit$/ }).click();
-  await expect(page.getByText(/re-checked once with the rejected sentence excluded/i)).toBeVisible();
+  await expect(page.getByText(/diperiksa ulang sekali dengan kalimat yang ditolak dikecualikan/i)).toBeVisible();
   await expect.poll(() => page.evaluate(() => {
     const raw = localStorage.getItem('talkactive.production.evidence-confirmations.v1');
     return raw ? JSON.parse(raw).length : 0;
   })).toBe(2);
 
-  await page.getByRole('button', { name: /Practise my answer/i }).click();
+  await page.getByRole('button', { name: /Latih jawaban saya/i }).click();
   await page.goBack();
-  await expect(page.getByRole('heading', { name: /One claim needs your attention/i })).toBeFocused();
+  await expect(page.getByRole('heading', { name: /Satu klaim perlu perhatian Anda/i })).toBeFocused();
   await page.goForward();
-  await expect(page.getByRole('heading', { name: 'Defend the weakest claim' })).toBeFocused();
-  await page.getByLabel('Your answer').fill(
+  await expect(page.getByRole('heading', { name: 'Pertahankan klaim terlemah' })).toBeFocused();
+  await page.getByLabel('Jawaban Anda').fill(
     'Compared with competitors, our unique logic keeps every verdict traceable to the evaluator rubric.',
   );
-  await page.getByRole('button', { name: /Check this answer/i }).click();
+  await page.getByRole('button', { name: /Periksa jawaban ini/i }).click();
   await expect(page.getByRole('heading', { name: 'defensible' })).toBeVisible();
   await expectVisibleControlsHitTest(page);
-  await page.getByRole('button', { name: /Save this session/i }).click();
+  await page.getByRole('button', { name: /Simpan sesi ini/i }).click();
 
   await expect(page).toHaveURL(/\/progress$/u);
   await expect(page.getByRole('link', { name: 'New practice' })).toHaveCount(0);
@@ -111,8 +111,8 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   await expect(page.locator('.coverage-trend-dot')).toHaveCount(1);
   await expect(page.locator('.coverage-trend-latest')).toBeVisible();
   await expect(page.locator('.full-session-list .session-status').getByText('defensible', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'The criteria that keep returning' })).toBeVisible();
-  await expect(page.getByText(/before Talk-Active calls any gap recurring/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Kriteria yang terus muncul kembali' })).toBeVisible();
+  await expect(page.getByText(/sebelum Talk-Active menyebut sebuah celah berulang/i)).toBeVisible();
   await expectVisibleControlsHitTest(page);
 
   // INV-8 is a persistence path, not merely a navigation path. A reload must
@@ -121,7 +121,7 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   await page.reload();
   await expect(page.locator('.coverage-trend-dot')).toHaveCount(1);
   await expect(page.locator('.full-session-list .session-status').getByText('defensible', { exact: true })).toBeVisible();
-  await expect(page.getByText(/before Talk-Active calls any gap recurring/i)).toBeVisible();
+  await expect(page.getByText(/sebelum Talk-Active menyebut sebuah celah berulang/i)).toBeVisible();
 });
 
 test('workspace keeps one practice action above the fold at 720p', async ({ page }) => {
@@ -129,12 +129,12 @@ test('workspace keeps one practice action above the fold at 720p', async ({ page
   await page.goto('/workspace');
   const practiceActions = page.locator('.view a[href="/practice"]');
   await expect(practiceActions).toHaveCount(1);
-  await expect(practiceActions).toHaveAccessibleName('Continue practising');
+  await expect(practiceActions).toHaveAccessibleName('Lanjutkan latihan');
   const actionBounds = await practiceActions.boundingBox();
   expect(actionBounds, 'the dominant practice action must have rendered bounds').not.toBeNull();
   expect((actionBounds?.y ?? 720) + (actionBounds?.height ?? 0)).toBeLessThanOrEqual(720);
 
-  const skipLink = page.getByRole('link', { name: 'Skip to workspace content' });
+  const skipLink = page.getByRole('link', { name: 'Lompat ke konten ruang kerja' });
   await expect(skipLink).not.toBeInViewport();
   await page.keyboard.press('Tab');
   await expect(skipLink).toBeFocused();
@@ -170,11 +170,11 @@ test('review visibly flags one citation reused across criteria', async ({ page }
     ]),
   ));
   await page.goto('/practice');
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
-  await page.getByLabel('Practice transcript').fill(
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
+  await page.getByLabel('Transkrip latihan').fill(
     'Our rubric maps each claim to evidence before the evaluator asks a question.',
   );
-  await page.getByRole('button', { name: /Review this attempt/i }).click();
+  await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
 
   const reused = page.locator('.evidence-item[data-evidence="reused"]');
   await expect(reused).toHaveCount(2);
@@ -285,9 +285,9 @@ test('local guest workspace uses stateless semantic review when the capability i
   });
 
   await page.goto('/practice');
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
-  await expect(page.getByText(/Semantic review sends this transcript and the typed rubric criteria/u)).toBeVisible();
-  await page.getByRole('button', { name: /Review this attempt/i }).click();
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
+  await expect(page.getByText(/Tinjauan semantik mengirim transkrip ini dan kriteria rubrik/u)).toBeVisible();
+  await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
   await expect(page.getByText(/4 of 4 criteria used semantic mapping/u)).toBeVisible();
   await expect(page.getByText(/judge question used semantic generation/u)).toBeVisible();
   await expect(page.locator('.evidence-provenance')).toHaveCount(4);
@@ -444,21 +444,21 @@ test('private source upload grounds the saved judge question with visible proven
   });
 
   await page.goto('/practice');
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
-  await expect(page.getByText('Ground the judge question in your material')).toBeVisible();
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
+  await expect(page.getByText('Dasarkan pertanyaan juri pada materi Anda')).toBeVisible();
   await page.locator('#practiceSourceFile').setInputFiles({
     name: 'proposal.md',
     mimeType: 'text/markdown',
     buffer: Buffer.from('# Research\nStudents receive rubric feedback only after final submission.'),
   });
-  await page.getByRole('button', { name: 'Attach privately' }).click();
+  await page.getByRole('button', { name: 'Lampirkan secara privat' }).click();
   await expect(page.getByRole('status')).toContainText('proposal.md attached privately');
   await expect(page.locator('.production-source-list')).toContainText('proposal.md');
   expect(uploadCalls).toBe(1);
 
-  await page.getByRole('button', { name: /Review this attempt/i }).click();
-  await expect(page.getByRole('heading', { name: 'What your transcript actually supports' })).toBeVisible();
-  await expect(page.getByText('Grounded in your private source:')).toContainText('proposal.md');
+  await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
+  await expect(page.getByRole('heading', { name: 'Apa yang benar-benar didukung transkrip Anda' })).toBeVisible();
+  await expect(page.getByText('Berdasar pada sumber privat Anda:')).toContainText('proposal.md');
   await expect(page.locator('.judge-preview blockquote')).toContainText('interview finding');
   await expectVisibleControlsHitTest(page);
 });
@@ -483,12 +483,12 @@ test('progress names a weakness only after it recurs and retains its evidence', 
     },
   ])));
   await page.goto('/progress');
-  await expect(page.getByRole('heading', { name: 'What changed between the last two reviewed attempts' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Apa yang berubah antara dua percobaan tertinjau terakhir' })).toBeVisible();
   const feasibilityDiff = page.locator('.attempt-diff-item').filter({ hasText: 'Feasibility' });
   await expect(feasibilityDiff).toContainText('explicit coverage improved · +50 points');
-  await expect(feasibilityDiff.getByText('No cited transcript evidence.')).toBeVisible();
+  await expect(feasibilityDiff.getByText('Tidak ada kutipan bukti dari transkrip.')).toBeVisible();
   await expect(feasibilityDiff.locator('blockquote')).toHaveText('The deterministic fallback keeps the demo usable.');
-  await expect(feasibilityDiff).toContainText('Still missing: measured cost.');
+  await expect(feasibilityDiff).toContainText('Masih kurang: measured cost.');
   await expect(page.locator('.recurring-item')).toHaveCount(1);
   // The sentence became a stat line so the criterion's trajectory could take
   // its place. Both facts it carried — how often, and how far below — are still
@@ -497,7 +497,7 @@ test('progress names a weakness only after it recurs and retains its evidence', 
   await expect(page.locator('.recurring-item')).toContainText('25% average coverage');
   await expect(page.locator('.recurring-item .criterion-spark')).toHaveAttribute('data-direction', 'rising');
   await expect(page.locator('.recurring-evidence blockquote')).toHaveText('The deterministic fallback keeps the demo usable.');
-  await expect(page.getByText(/Latest explicit gaps: measured cost/i)).toBeVisible();
+  await expect(page.getByText(/Celah eksplisit terbaru: measured cost/i)).toBeVisible();
   await expectVisibleControlsHitTest(page);
 });
 
@@ -510,16 +510,16 @@ test('rubric import stays traceable and requires human confirmation', async ({ p
   await page.goto('/rubric');
   await expectVisibleControlsHitTest(page);
 
-  await page.getByText('Import from a scoring matrix').click();
-  await page.getByLabel('Paste the scoring matrix').fill(
+  await page.getByText('Impor dari matriks penilaian').click();
+  await page.getByLabel('Tempel matriks penilaian').fill(
     'Problem evidence | affected students, frequency, source\nFeasibility | architecture, cost, timeline',
   );
-  await page.getByRole('button', { name: 'Structure these criteria' }).click();
+  await page.getByRole('button', { name: 'Strukturkan kriteria ini' }).click();
 
   // Structured, and explicitly not saved yet.
   await expect(page.locator('[data-toast-variant="warning"]'))
     .toContainText('2 criteria structured in deterministic mode');
-  await expect(page.getByRole('button', { name: 'Save rubric' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Simpan rubrik' })).toBeVisible();
 
   // Each imported row still says which sentence it came from. Without this the
   // criteria are unattributable and the import stops being auditable.
@@ -535,7 +535,7 @@ test('rubric editor caps the criteria list and keeps Save at the end', async ({ 
   await addCriterion.click();
   await expect(page.locator('.rubric-row')).toHaveCount(5);
   await expect(addCriterion).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Save rubric' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Simpan rubrik' })).toBeVisible();
   await expect(page.locator('.rubric-status')).toHaveCount(0);
   await expectVisibleControlsHitTest(page);
 });
@@ -543,19 +543,19 @@ test('rubric editor caps the criteria list and keeps Save at the end', async ({ 
 test('rubric library remains editable, explicitly saved, and source-labelled', async ({ page }) => {
   await page.goto('/rubric');
   await page.getByRole('button', { name: /Skripsi defense/i }).click();
-  await expect(page.locator('[data-toast-variant="warning"]')).toContainText(/starter loaded but not saved/iu);
+  await expect(page.locator('[data-toast-variant="warning"]')).toContainText(/Rubrik awal dimuat tetapi belum tersimpan/iu);
   await expect(page.locator('.rubric-row')).toHaveCount(5);
 
-  const firstCriterion = page.getByLabel('Criterion').first();
+  const firstCriterion = page.getByLabel('Kriteria').first();
   await firstCriterion.fill('Research gap and urgency');
-  await page.getByRole('button', { name: 'Save rubric' }).click();
+  await page.getByRole('button', { name: 'Simpan rubrik' }).click();
   await expect(page.locator('[data-toast-variant="positive"]')).toContainText('5 confirmed criteria saved');
   await expect.poll(() => page.evaluate(() => localStorage.getItem(
     'talkactive.production.rubric-source.v1',
   ))).toBe('library');
 
   await page.reload();
-  await expect(page.getByLabel('Criterion').first()).toHaveValue('Research gap and urgency');
+  await expect(page.getByLabel('Kriteria').first()).toHaveValue('Research gap and urgency');
   await expect(page.locator('.rubric-row')).toHaveCount(5);
   await expectVisibleControlsHitTest(page);
 });
@@ -563,13 +563,13 @@ test('rubric library remains editable, explicitly saved, and source-labelled', a
 test('mobile workspace exposes the complete frozen navigation', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/workspace');
-  const nav = page.getByRole('navigation', { name: 'Mobile navigation' });
+  const nav = page.getByRole('navigation', { name: 'Navigasi seluler' });
   await expect(nav).toBeVisible();
   await expect(nav.getByRole('link')).toHaveCount(4);
   await expectVisibleControlsHitTest(page);
-  await nav.getByRole('link', { name: /Rubric/i }).click();
+  await nav.getByRole('link', { name: /Rubrik/i }).click();
   await expect(page).toHaveURL(/\/rubric$/u);
-  await expect(page.getByRole('heading', { name: 'Modify rubric' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ubah rubrik' })).toBeVisible();
 });
 
 test('account sync is optional and fails closed when secrets are absent', async ({ page, request }) => {
@@ -579,9 +579,9 @@ test('account sync is optional and fails closed when secrets are absent', async 
     sessions: [],
   })));
   await page.goto('/account');
-  await expect(page.getByRole('heading', { name: 'Account sync is not configured here.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sinkronisasi akun belum dikonfigurasi di sini.' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Continue as guest' })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Start a local rehearsal' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Mulai latihan lokal' })).toBeVisible();
   await expectVisibleControlsHitTest(page);
 
   const session = await request.get('/api/auth/get-session');
@@ -593,7 +593,7 @@ test('account sync is optional and fails closed when secrets are absent', async 
   const sourceBefore = await page.evaluate(() => localStorage.getItem('talkactive.workspace.v1'));
   const [download] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: 'Export local data' }).click(),
+    page.getByRole('button', { name: 'Ekspor data lokal' }).click(),
   ]);
   expect(download.suggestedFilename()).toBe('talk-active-local-export.json');
   await expect.poll(() => page.evaluate(() => localStorage.getItem('talkactive.workspace.v1'))).toBe(sourceBefore);

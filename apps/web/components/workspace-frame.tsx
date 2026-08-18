@@ -10,13 +10,17 @@ import {
   PROJECT_ROUTE_CHANGE_EVENT,
   projectIdFromSearch,
 } from '@/lib/project-route';
+import { useTranslations } from 'next-intl';
+
 import { useOwnedProjects } from './use-owned-projects';
 
+// The table is module-level, so it cannot call a hook. It carries the message
+// key and the label is resolved where it is rendered.
 const navigation = [
-  { href: '/workspace', icon: 'home', label: 'Home' },
-  { href: '/practice', icon: 'practice', label: 'Practice' },
-  { href: '/rubric', icon: 'rubric', label: 'Rubric' },
-  { href: '/progress', icon: 'progress', label: 'Progress' },
+  { href: '/workspace', icon: 'home', labelKey: 'navHome' },
+  { href: '/practice', icon: 'practice', labelKey: 'navPractice' },
+  { href: '/rubric', icon: 'rubric', labelKey: 'navRubric' },
+  { href: '/progress', icon: 'progress', labelKey: 'navProgress' },
 ] as const;
 
 type NavigationIconName = typeof navigation[number]['icon'] | 'landing';
@@ -43,6 +47,7 @@ function NavigationItems({ pathname, mobile, projectId }: Readonly<{
   mobile: boolean;
   projectId: string | null;
 }>) {
+  const t = useTranslations('workspaceFrame');
   return navigation.map((item) => (
     <Link
       aria-current={isActive(pathname, item.href) ? 'page' : undefined}
@@ -50,7 +55,7 @@ function NavigationItems({ pathname, mobile, projectId }: Readonly<{
       href={navigationHref(item.href, projectId)}
       key={item.href}
     >
-      <span className="nav-icon"><NavigationIcon name={item.icon} /></span><span>{item.label}</span>
+      <span className="nav-icon"><NavigationIcon name={item.icon} /></span><span>{t(item.labelKey)}</span>
     </Link>
   ));
 }
@@ -127,15 +132,16 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
   // Read after mount, never during render: the name lives in localStorage and
   // the server has no way to know it. Reading it during render would make the
   // server and client markup disagree and React would throw out the tree.
+  const t = useTranslations('workspaceFrame');
   const [displayName, setDisplayName] = useState<string | null>(null);
   useEffect(() => { setDisplayName(readGuestIdentity()?.name ?? null); }, []);
   const { projects } = useOwnedProjects();
 
   return (
     <div className="app-shell">
-      <a className="skip-link" href="#workspace-main">Skip to workspace content</a>
-      <aside className="sidebar" aria-label="Main navigation">
-        <Link className="brand" href="/" aria-label="Back to Talk-Active landing page">
+      <a className="skip-link" href="#workspace-main">{t('skipLink')}</a>
+      <aside className="sidebar" aria-label={t('mainNav')}>
+        <Link className="brand" href="/" aria-label={t('brandHome')}>
           <img className="brand-mark" src={logo.src} alt="" />
           <span className="brand-wordmark">Talk-<strong className="brand-wordmark-accent">Active</strong></span>
         </Link>
@@ -144,7 +150,7 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
             <ProjectAwareNavigationItems pathname={pathname} mobile={false} />
           </Suspense>
           <Link className="nav-item" href="/">
-            <span className="nav-icon"><NavigationIcon name="landing" /></span><span>Landing page</span>
+            <span className="nav-icon"><NavigationIcon name="landing" /></span><span>{t('navLanding')}</span>
           </Link>
         </nav>
         {/* The sidebar listed one project, and that project's name was written
@@ -153,10 +159,10 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
             that owns them. A guest has no synced project and keeps the local
             workspace, named for what it actually is. */}
         <div className="sidebar-projects">
-          <div className="sidebar-label-row"><span>{projects.length > 1 ? 'Projects' : 'Project'}</span></div>
+          <div className="sidebar-label-row"><span>{projects.length > 1 ? t('projectsMany') : t('projectsOne')}</span></div>
           <div className="sidebar-project-list">
             {projects.length === 0
-              ? <Link aria-current={pathname === '/workspace' ? 'page' : undefined} className="sidebar-project is-active" href="/workspace"><i /><span>Local workspace</span></Link>
+              ? <Link aria-current={pathname === '/workspace' ? 'page' : undefined} className="sidebar-project is-active" href="/workspace"><i /><span>{t('localWorkspace')}</span></Link>
               : projects.map((summary) => (
                 <Suspense
                   fallback={<Link className="sidebar-project" href={`/practice?project=${encodeURIComponent(summary.project.id)}`}><i /><span>{summary.project.title}</span></Link>}
@@ -168,16 +174,16 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
           </div>
         </div>
         <div className="sidebar-bottom">
-          <div className="privacy-chip"><span aria-hidden="true">●</span> Local guest workspace</div>
+          <div className="privacy-chip"><span aria-hidden="true">●</span> {t('privacyChip')}</div>
           <Link
             className="profile-chip"
             href={displayName ? '/account' : '/enter'}
-            aria-label={displayName ? `Rehearsing as ${displayName}. Open account options.` : 'Put your name on this workspace'}
+            aria-label={displayName ? t('profileNamed', { name: displayName }) : t('profileAnonymous')}
           >
             <span className="avatar" aria-hidden="true">{displayName ? initialsFor(displayName) : 'G'}</span>
             <span>
-              <strong>{displayName ?? 'Guest'}</strong>
-              <small>{displayName ? 'Optional account sync' : 'Add your name'}</small>
+              <strong>{displayName ?? t('guest')}</strong>
+              <small>{displayName ? t('profileSyncHint') : t('profileAddName')}</small>
             </span>
             <span aria-hidden="true">•••</span>
           </Link>
@@ -185,7 +191,7 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
       </aside>
 
       <header className="mobile-header">
-        <Link className="brand" href="/" aria-label="Back to Talk-Active landing page">
+        <Link className="brand" href="/" aria-label={t('brandHome')}>
           <img className="brand-mark" src={logo.src} alt="" />
           <span className="brand-wordmark">Talk-<strong className="brand-wordmark-accent">Active</strong></span>
         </Link>
@@ -193,7 +199,7 @@ export function WorkspaceFrame({ children }: Readonly<{ children: ReactNode }>) 
 
       <main className="workspace" id="workspace-main" tabIndex={-1}>{children}</main>
 
-      <nav className="mobile-nav" aria-label="Mobile navigation">
+      <nav className="mobile-nav" aria-label={t('mobileNav')}>
         <Suspense fallback={<NavigationItems pathname={pathname} mobile projectId={null} />}>
           <ProjectAwareNavigationItems pathname={pathname} mobile />
         </Suspense>

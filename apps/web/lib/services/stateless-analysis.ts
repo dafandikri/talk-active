@@ -73,10 +73,13 @@ async function evidenceWithFallback(
     return await (options.judge ?? judgeEvidence)(
       input.transcript,
       criteria,
-      options.evidenceOptions,
+      { ...options.evidenceOptions, language: input.language },
     );
   } catch {
-    return judgeEvidence(input.transcript, criteria, { model: '' });
+    return judgeEvidence(input.transcript, criteria, {
+      model: '',
+      language: input.language,
+    });
   }
 }
 
@@ -86,15 +89,22 @@ async function questionWithFallback(
   judgment: EvidenceJudgment,
   options: StatelessAnalysisOptions,
 ): Promise<QuestionDraft> {
+  // The language rides on both paths. A caller that overrides questionOptions
+  // still cannot accidentally drop it, and the deterministic rescue below is
+  // exactly the path that runs when the gateway is throttled — which is when a
+  // student is most likely to see the fallback wording.
   try {
     return await (options.question ?? generateJudgeQuestion)(
       input.transcript,
       criterion,
       judgment,
-      options.questionOptions,
+      { ...options.questionOptions, language: input.language },
     );
   } catch {
-    return generateJudgeQuestion(input.transcript, criterion, judgment, { model: '' });
+    return generateJudgeQuestion(input.transcript, criterion, judgment, {
+      model: '',
+      language: input.language,
+    });
   }
 }
 
@@ -107,6 +117,7 @@ export async function analyzeStatelessAttempt(
     transcript: input.transcript,
     rubricText: deterministicRubricText(criteria),
     durationSeconds: input.durationSeconds,
+    language: input.language,
   });
   const judgments = await evidenceWithFallback(input, criteria, options);
   const byCriterion = new Map(judgments.map((judgment) => [judgment.criterionId, judgment]));
@@ -171,7 +182,7 @@ export async function analyzeStatelessAttempt(
       criteria: mappedCriteria,
       weakest,
       judgeQuestion: question.questionText,
-      drill: makeDrill(weakest),
+      drill: makeDrill(weakest, input.language),
     },
     mode,
     criterionEngines: judgments.map((judgment) => ({

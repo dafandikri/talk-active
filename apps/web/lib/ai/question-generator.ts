@@ -2,7 +2,7 @@ import type { GatewayLanguageModelOptions } from '@ai-sdk/gateway';
 import { generateText, NoObjectGeneratedError, Output } from 'ai';
 import { z } from 'zod';
 
-import type { Criterion } from '../contracts.ts';
+import type { Criterion, ProjectLanguage } from '../contracts.ts';
 import { tokenize } from '../analyzer.ts';
 import { findGroundedSpan, normaliseForGrounding } from '../grounding.ts';
 import {
@@ -72,6 +72,9 @@ export interface QuestionGeneratorOptions {
   timeoutMs?: number;
   deadlineAt?: number;
   sourceDocuments?: SourceMaterial[];
+  /** The project's language, not the transcript's. Defaults to the same
+   *  id-ID that ProjectSchema uses, so the two cannot disagree. */
+  language?: ProjectLanguage;
 }
 
 class QuestionGroundingError extends Error {}
@@ -172,7 +175,27 @@ function validateBasis(
   return { ...question, challengedClaim: matched };
 }
 
-function composeQuestion(target: QuestionOutput, criterion: Criterion): string {
+/**
+ * The model chooses the target; this writes the sentence. That split is what
+ * keeps the question grounded, and it is also why the visible question was
+ * English regardless of the project language — nothing here ever asked. The
+ * challenged claim is the student's own words or their own rubric text, so it
+ * is quoted through untranslated on both branches.
+ */
+function composeQuestion(
+  target: QuestionOutput,
+  criterion: Criterion,
+  language: ProjectLanguage,
+): string {
+  if (language === 'id-ID') {
+    if (target.basis === 'missing-evidence') {
+      return `Bukti eksplisit apa yang bisa Anda tambahkan untuk “${target.challengedClaim}” agar memenuhi “${criterion.name}”?`;
+    }
+    if (target.basis === 'source-document') {
+      return `Bagaimana kutipan sumber ini mendukung “${criterion.name}”: “${target.challengedClaim}”?`;
+    }
+    return `Bukti apa yang mendukung pernyataan ini dari latihan Anda: “${target.challengedClaim}”?`;
+  }
   if (target.basis === 'missing-evidence') {
     return `What explicit evidence can you add for “${target.challengedClaim}” to satisfy “${criterion.name}”?`;
   }
@@ -187,6 +210,7 @@ function sourceGroundedFallback(
   judgment: EvidenceJudgment,
   sourceDocuments: SourceMaterial[],
   degradedReason: string,
+  language: ProjectLanguage,
 ): QuestionDraft | null {
   const targetTokens = new Set(tokenize([
     criterion.name,
@@ -216,7 +240,7 @@ function sourceGroundedFallback(
   };
   return {
     ...target,
-    questionText: composeQuestion(target, criterion),
+    questionText: composeQuestion(target, criterion, language),
     engine: 'deterministic',
     model: null,
     degradedReason,
@@ -228,12 +252,14 @@ function deterministicQuestion(
   judgment: EvidenceJudgment,
   sourceDocuments: SourceMaterial[],
   degradedReason: string,
+  language: ProjectLanguage,
 ): QuestionDraft {
   const sourceQuestion = sourceGroundedFallback(
     criterion,
     judgment,
     sourceDocuments,
     degradedReason,
+    language,
   );
   if (sourceQuestion) return sourceQuestion;
   const basis = judgment.citedSpan ? 'transcript' : 'missing-evidence';
@@ -247,7 +273,7 @@ function deterministicQuestion(
   };
   return {
     ...target,
-    questionText: composeQuestion(target, criterion),
+    questionText: composeQuestion(target, criterion, language),
     engine: 'deterministic',
     model: null,
     degradedReason,
@@ -269,12 +295,14 @@ export async function generateJudgeQuestion(
   options: QuestionGeneratorOptions = {},
 ): Promise<QuestionDraft> {
   const sourceDocuments = boundedSourceMaterials(options.sourceDocuments ?? []);
+  const language: ProjectLanguage = options.language ?? 'id-ID';
   const model = options.model ?? process.env.AI_QUESTION_MODEL?.trim() ?? '';
   if (!model) return deterministicQuestion(
     criterion,
     judgment,
     sourceDocuments,
     'Semantic question generation is not configured.',
+    language,
   );
 
   const generate = options.generate ?? generateWithAiSdk;
@@ -297,7 +325,7 @@ export async function generateJudgeQuestion(
       const question = validateBasis(response.output, transcript, judgment, sourceDocuments);
       return {
         ...question,
-        questionText: composeQuestion(question, criterion),
+        questionText: composeQuestion(question, criterion, language),
         engine: 'semantic',
         model: response.modelId ?? model,
         degradedReason: null,
@@ -310,6 +338,7 @@ export async function generateJudgeQuestion(
           judgment,
           sourceDocuments,
           'The semantic question could not be grounded.',
+          language,
         );
       }
     }
@@ -319,5 +348,6 @@ export async function generateJudgeQuestion(
     judgment,
     sourceDocuments,
     'Semantic question generation did not complete.',
+    language,
   );
 }

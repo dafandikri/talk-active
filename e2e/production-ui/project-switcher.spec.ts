@@ -101,9 +101,9 @@ test('a second project brings a switcher, and switching changes the history show
   await switcher.locator('select').selectOption('p-thesis');
 
   await expect(page).toHaveURL('/progress?project=p-thesis');
-  await expect(page.locator('.main-nav a').filter({ hasText: 'Home' }))
+  await expect(page.locator('.main-nav a').filter({ hasText: 'Beranda' }))
     .toHaveAttribute('href', '/workspace?project=p-thesis');
-  await expect(page.locator('.mobile-nav a').filter({ hasText: 'Rubric' }))
+  await expect(page.locator('.mobile-nav a').filter({ hasText: 'Rubrik' }))
     .toHaveAttribute('href', '/rubric?project=p-thesis');
   await expect(page.locator('.full-session-list')).toContainText('Thesis defence · Semester 7');
   await expect(page.locator('.full-session-list')).not.toContainText('RISTEK Finals');
@@ -145,7 +145,7 @@ test('the workspace project choice carries its identity into practice and surviv
   await expect(switcher).toBeVisible();
   await switcher.locator('select').selectOption('p-thesis');
   await expect(page.locator('.project-kicker')).toContainText('Thesis defence · Semester 7');
-  await expect(page.getByRole('link', { name: 'Continue practising' }))
+  await expect(page.getByRole('link', { name: 'Lanjutkan latihan' }))
     .toHaveAttribute('href', '/practice?project=p-thesis');
   await expect(page).toHaveURL(/\/workspace\?project=p-thesis$/u);
 
@@ -177,7 +177,7 @@ test('the switcher reports what each project actually holds', async ({ page }) =
     .toHaveText('3 synced attempts · 1 browser-only summary');
 
   await switcher.locator('select').selectOption('p-empty');
-  await expect(switcher.locator('.project-switcher-meta')).toContainText('No attempts saved to this project yet');
+  await expect(switcher.locator('.project-switcher-meta')).toContainText('Belum ada percobaan yang tersimpan di proyek ini');
 });
 
 test('the sidebar lists every owned project instead of one written-in name', async ({ page }) => {
@@ -216,7 +216,7 @@ test('a signed-out visitor asks for no project list and keeps its local workspac
     return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
   });
   await page.goto('/progress');
-  await expect(page.locator('.sidebar-project-list')).toContainText('Local workspace');
+  await expect(page.locator('.sidebar-project-list')).toContainText('Ruang kerja lokal');
 
   // The list route requires a synced identity, so asking as a guest would 401 —
   // and a 401 is a console error, which the demo gate treats as a broken path.

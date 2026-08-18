@@ -192,6 +192,13 @@ export function getFaceGeometry(
   };
 }
 
+/**
+ * Interview framing: a seated head-and-shoulders shot.
+ *
+ * This rule is interview-only. Presentation mode never reaches it — it frames
+ * on the pose, not the face — which is why making this mode-aware fixed
+ * nothing when presentation framing was the complaint.
+ */
 export function isFaceFramed(geometry: FaceGeometry): boolean {
   return (
     geometry.centerX >= 0.26 &&
@@ -203,6 +210,26 @@ export function isFaceFramed(geometry: FaceGeometry): boolean {
     geometry.height >= 0.22 &&
     geometry.height <= 0.88
   );
+}
+
+/**
+ * Presentation framing: are you in shot, and not at the edge of it?
+ *
+ * This used to be `fullBodyVisible`, which required both knees and both ankles
+ * to be tracked — a whole-body shot. The product is used with a laptop on a
+ * desk and a person standing behind it, so the ordinary case scored 0% framing
+ * coverage and lost visual score for being close enough to read.
+ *
+ * Torso presence is already guaranteed: getPoseGeometry returns null unless
+ * both shoulders and both hips are visible. So framing adds exactly one thing
+ * on top of that — lateral position — which keeps it a real check rather than
+ * a restatement of tracking coverage. Walking out of shot is still caught;
+ * having your feet cropped is not.
+ */
+export function isPresentationFramed(
+  geometry: Pick<PoseGeometry, 'hipCenterX'>,
+): boolean {
+  return geometry.hipCenterX >= 0.12 && geometry.hipCenterX <= 0.88;
 }
 
 function longestDuration(
@@ -402,6 +429,7 @@ export class PresentationMetricsAccumulator {
   private measuredFrames = 0;
   private trackedFrames = 0;
   private fullBodyFrames = 0;
+  private framedFrames = 0;
   private handsVisibleFrames = 0;
   private gestureFrames = 0;
   private lastTimestampMs = 0;
@@ -476,9 +504,11 @@ export class PresentationMetricsAccumulator {
         this.trackPositionChange(geometry, timestampMs);
       }
       if (geometry?.fullBodyVisible) this.fullBodyFrames += 1;
+      if (geometry && isPresentationFramed(geometry)) this.framedFrames += 1;
       if (geometry?.handsVisible) this.handsVisibleFrames += 1;
       if (gestureActive) this.gestureFrames += 1;
-      this.bodyOutOfFrame.update(!geometry?.fullBodyVisible, timestampMs);
+      // Out of frame now means out of frame, not "feet cropped".
+      this.bodyOutOfFrame.update(!(geometry && isPresentationFramed(geometry)), timestampMs);
       this.gestureBurst.update(gestureActive, timestampMs);
       this.torsoAngleChange.update(
         torsoAngleDeltaDegrees !== null && Math.abs(torsoAngleDeltaDegrees) >= 10,
@@ -526,6 +556,7 @@ export class PresentationMetricsAccumulator {
       metrics: {
         trackingCoveragePercent: percent(this.trackedFrames, this.measuredFrames),
         fullBodyVisiblePercent: percent(this.fullBodyFrames, this.measuredFrames),
+        framedPercent: percent(this.framedFrames, this.measuredFrames),
         handsVisiblePercent: percent(this.handsVisibleFrames, this.measuredFrames),
         gestureActivePercent: percent(this.gestureFrames, this.measuredFrames),
         gestureBurstCount: frozenEvents.filter(

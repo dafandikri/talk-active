@@ -1,5 +1,8 @@
 'use client';
 
+import { useLocale, useTranslations } from 'next-intl';
+
+import { HTML_LANG, interfaceLocaleFrom } from '@/i18n/locales';
 import type { CriterionTrail } from '@/lib/progress';
 
 /**
@@ -34,8 +37,11 @@ function pointsToPath(values: readonly number[], width: number, height: number):
     .join(' ');
 }
 
-function dateLabel(value: string): string {
-  return new Date(value).toLocaleDateString('en', { day: 'numeric', month: 'short' });
+// Hardcoded 'en' produced "5 Sep" for every reader. The month abbreviation
+// differs between the two locales ("Agu" not "Aug"), and a chart axis is
+// exactly where an untranslated fragment is easiest to miss.
+function dateLabel(value: string, locale: string): string {
+  return new Date(value).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 }
 
 /**
@@ -50,8 +56,10 @@ export function CoverageTrend({
   points,
   labelledBy,
 }: Readonly<{ points: readonly TrendPoint[]; labelledBy: string }>) {
+  const t = useTranslations('progressCharts');
+  const locale = HTML_LANG[interfaceLocaleFrom(useLocale())];
   if (points.length === 0) {
-    return <p className="chart-empty">Save a practice session to begin the evidence trend.</p>;
+    return <p className="chart-empty">{t('trendEmpty')}</p>;
   }
 
   const values = points.map((point) => point.evidenceScore);
@@ -95,7 +103,7 @@ export function CoverageTrend({
             key={point.id}
             className="coverage-trend-dot"
             data-cy={(TREND_HEIGHT - (Math.min(100, Math.max(0, point.evidenceScore)) / 100) * TREND_HEIGHT).toFixed(2)}
-            title={`${dateLabel(point.createdAt)} · ${point.evidenceScore}% coverage`}
+            title={`${dateLabel(point.createdAt, locale)} · ${point.evidenceScore}%`}
             style={{
               left: points.length === 1 ? '50%' : `${(index / (points.length - 1)) * 100}%`,
               bottom: `${Math.min(100, Math.max(0, point.evidenceScore))}%`,
@@ -107,14 +115,20 @@ export function CoverageTrend({
         <span className="coverage-trend-scale" aria-hidden="true"><b>100%</b><b>50%</b><b>0</b></span>
       </div>
       <figcaption className="coverage-trend-axis">
-        <span>{dateLabel(points[0]?.createdAt ?? '')}</span>
+        <span>{dateLabel(points[0]?.createdAt ?? '', locale)}</span>
         <span className="coverage-trend-latest">
-          <strong>{latest?.evidenceScore ?? 0}%</strong> latest
+          <strong>{latest?.evidenceScore ?? 0}%</strong> {t('trendLatest')}
         </span>
-        <span>{points.length > 1 ? dateLabel(latest?.createdAt ?? '') : 'first attempt'}</span>
+        <span>{points.length > 1 ? dateLabel(latest?.createdAt ?? '', locale) : t('trendFirstAttempt')}</span>
       </figcaption>
       <p className="sr-only">
-        Complete series: {points.map((point, index) => `attempt ${index + 1}, ${dateLabel(point.createdAt)}, ${point.evidenceScore}%`).join('; ')}.
+        {t('trendSeries', {
+          series: points.map((point, index) => t('trendSeriesItem', {
+            index: index + 1,
+            date: dateLabel(point.createdAt, locale),
+            score: point.evidenceScore,
+          })).join('; '),
+        })}
       </p>
     </figure>
   );
@@ -128,6 +142,7 @@ export function CoverageTrend({
  * whether to change tactics or keep going.
  */
 export function CriterionSparkline({ trail }: Readonly<{ trail: CriterionTrail }>) {
+  const t = useTranslations('progressCharts');
   const values = trail.points.map((point) => Math.round(point.coverage * 100));
   if (values.length < 2) return null;
 
@@ -144,7 +159,11 @@ export function CriterionSparkline({ trail }: Readonly<{ trail: CriterionTrail }
           viewBox="0 0 100 22"
           preserveAspectRatio="none"
           role="img"
-          aria-label={`${trail.criterionName} explicit coverage across ${values.length} attempts: ${values.map((value) => `${value}%`).join(', ')}.`}
+          aria-label={t('sparkLabel', {
+            criterion: trail.criterionName,
+            count: values.length,
+            values: values.map((value) => `${value}%`).join(', '),
+          })}
         >
           <path
             className="criterion-spark-line"
@@ -164,8 +183,11 @@ export function CriterionSparkline({ trail }: Readonly<{ trail: CriterionTrail }
         {first}% → {last}%
         <small>
           {direction === 'flat'
-            ? 'unchanged across these attempts'
-            : `${movement > 0 ? '+' : ''}${movement} points across ${values.length} attempts`}
+            ? t('sparkFlat')
+            : t('sparkMoved', {
+              movement: `${movement > 0 ? '+' : ''}${movement}`,
+              count: values.length,
+            })}
         </small>
       </span>
     </div>

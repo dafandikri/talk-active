@@ -48,13 +48,18 @@ function configuredStore(environment: NodeJS.ProcessEnv): StatelessAnalysisCache
 }
 
 export function statelessAnalysisCacheKey(
-  input: Pick<StatelessAnalysisRequest, 'transcript' | 'criteria'>,
+  input: Pick<StatelessAnalysisRequest, 'transcript' | 'criteria' | 'language'>,
   environment: NodeJS.ProcessEnv = process.env,
 ): string {
   const digest = createHash('sha256')
     .update(JSON.stringify({
       transcript: input.transcript,
       criteria: [...input.criteria].sort((left, right) => left.displayOrder - right.displayOrder),
+      // The response wording depends on this. The system prompts below are
+      // hashed for the same reason, but the language directive rides in the
+      // per-request user prompt, so nothing else here would separate two
+      // projects that share a transcript and rubric.
+      language: input.language,
       prompts: {
         evidence: EVIDENCE_JUDGE_SYSTEM_PROMPT,
         question: QUESTION_GENERATOR_SYSTEM_PROMPT,
@@ -91,6 +96,7 @@ export async function readCachedStatelessAnalysis(
           return `${criterion.name} | ${evidence}`;
         }).join('\n'),
         durationSeconds: input.durationSeconds,
+        language: input.language,
       }).delivery;
       return StatelessAnalysisResponseSchema.parse({
         ...memoryEntry.response,
@@ -117,6 +123,7 @@ export async function readCachedStatelessAnalysis(
         return `${criterion.name} | ${evidence}`;
       }).join('\n'),
       durationSeconds: input.durationSeconds,
+      language: input.language,
     }).delivery;
     return StatelessAnalysisResponseSchema.parse({
       ...cached.data,

@@ -27,19 +27,19 @@ test('landing, entry, and workspace keep a predictable browser-back path', async
   await page.goto('/');
 
   await expect(page.getByText(/How it works/i)).toHaveCount(0);
-  await page.getByRole('link', { name: /Start practicing/i }).first().click();
+  await page.getByRole('link', { name: /Mulai berlatih/i }).first().click();
   await expect(page).toHaveURL(/\/enter$/u);
-  await expect(page.getByRole('link', { name: 'Back to landing' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Kembali ke halaman depan' })).toBeVisible();
 
   await page.goBack();
   await expect(page).toHaveURL(/\/$/u);
-  await expect(page.getByRole('link', { name: /Start practicing/i }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: /Mulai berlatih/i }).first()).toBeVisible();
 
   await page.goForward();
   await expect(page).toHaveURL(/\/enter$/u);
-  await page.getByRole('button', { name: 'Continue without a name' }).click();
+  await page.getByRole('button', { name: 'Lanjut tanpa nama' }).click();
   await expect(page).toHaveURL(/\/workspace$/u);
-  const landingLink = page.getByRole('link', { name: 'Back to Talk-Active landing page' }).last();
+  const landingLink = page.getByRole('link', { name: 'Kembali ke halaman depan Talk-Active' }).last();
   await expect(landingLink).toBeVisible();
   await landingLink.click();
   await expect(page).toHaveURL(/\/$/u);
@@ -48,9 +48,9 @@ test('landing, entry, and workspace keep a predictable browser-back path', async
 
   await page.goBack();
   await expect(page).toHaveURL(/\/enter$/u);
-  await expect(page.getByRole('heading', { name: 'Put your name on this workspace.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Beri nama ruang kerja ini.' })).toBeVisible();
 
-  await page.getByRole('link', { name: 'Back to landing' }).click();
+  await page.getByRole('link', { name: 'Kembali ke halaman depan' }).click();
   await expect(page).toHaveURL(/\/$/u);
 });
 
@@ -86,7 +86,7 @@ test('short landscape uses reachable mobile chrome without overflow or color-onl
 test('reduced-motion preference keeps stage transitions usable and effectively instant', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/practice');
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
   await expect(page.locator('.capture-header h2')).toBeFocused();
   const durations = await page.locator('.view.is-visible').evaluate((view) => ({
     animation: getComputedStyle(view).animationDuration,

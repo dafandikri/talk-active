@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -148,8 +149,28 @@ test('movement bands differ explicitly between interview and presentation modes'
     metric(interview.visual, 'movement-activity').rehearsalScore
       < metric(presentation.visual, 'movement-activity').rehearsalScore,
   );
-  assert.match(metric(interview.visual, 'movement-activity').target, /interview/u);
-  assert.match(metric(presentation.visual, 'movement-activity').target, /presentation/u);
+  // The target used to be a rendered sentence carrying the mode word. It is
+  // now a catalogue variant plus the band numbers, because a metric label is
+  // interface vocabulary and belongs to the reader's locale rather than to
+  // this module. The property is unchanged: the shaded zone must say which
+  // mode's rule it draws.
+  const interviewTarget = metric(interview.visual, 'movement-activity').target;
+  const presentationTarget = metric(presentation.visual, 'movement-activity').target;
+  assert.equal(interviewTarget.variant, 'targetInterview');
+  assert.equal(presentationTarget.variant, 'targetPresentation');
+  assert.notDeepEqual(interviewTarget.values, presentationTarget.values);
+
+  // Checking both locales actually name the mode is stricter than the string
+  // match this replaces, which only ever saw English.
+  for (const locale of ['id', 'en']) {
+    const catalogue = JSON.parse(
+      readFileSync(new URL(`../apps/web/messages/${locale}.json`, import.meta.url), 'utf8'),
+    ).deliveryMetrics.movementActivity;
+    assert.match(catalogue.targetInterview, /wawancara|interview/iu,
+      `${locale} interview movement band must name the mode`);
+    assert.match(catalogue.targetPresentation, /presentasi|presentation/iu,
+      `${locale} presentation movement band must name the mode`);
+  }
 });
 
 test('zero tracked frames do not fabricate framing or movement observations', () => {

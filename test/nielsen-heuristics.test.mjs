@@ -34,6 +34,27 @@ const STYLES = read('src/styles.css');
 const SHELL_STYLES = read('apps/web/app/shell.css');
 const SURFACES = [PRACTICE, PROGRESS, RUBRIC, FRAME, STUDIO].join('\n');
 
+// As user-facing copy moves into the message catalogues (issue #36), a
+// heuristic asserted by grepping a component for its English sentence stops
+// finding it. The property being asserted has not moved — the user can still
+// always leave — so the assertion follows the copy rather than being dropped.
+// Checking every locale is the stricter version of what was there before: an
+// escape hatch that exists only in English is not an escape hatch for the
+// audience this product is for.
+const CATALOGUES = ['id', 'en'].map(
+  (locale) => JSON.parse(read(`apps/web/messages/${locale}.json`)),
+);
+
+function everyLocaleTranslates(namespace, key, message) {
+  for (const [index, catalogue] of CATALOGUES.entries()) {
+    const value = catalogue[namespace]?.[key];
+    assert.ok(
+      typeof value === 'string' && value.trim().length > 0,
+      `${message} (missing ${namespace}.${key} in ${['id', 'en'][index]}.json)`,
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
 //  1. Visibility of system status
 // ---------------------------------------------------------------------------
@@ -41,9 +62,15 @@ test('H-1 every asynchronous action reports that it is running', () => {
   // A button that does nothing visible for two seconds reads as broken. Each
   // long action names its own state rather than sharing one global spinner.
   assert.match(PRACTICE, /aria-busy=\{busy/u, 'the review action must expose a busy state');
-  assert.match(PRACTICE, /Reviewing each criterion…/u, 'the busy state must say what is running');
-  assert.match(PRACTICE, /Checking only this answer…/u, 'the defense action must name its own work');
-  assert.match(PROGRESS, /Checking synced history…/u, 'history loading must be visible');
+  assert.match(PRACTICE, /t\('readingEachCriterion'\)/u, 'the busy state must say what is running');
+  assert.match(PRACTICE, /t\('checkingOnlyThisAnswer'\)/u, 'the defense action must name its own work');
+  everyLocaleTranslates('practice', 'checkingOnlyThisAnswer', 'the defense busy state must be named in every locale');
+  // The words moved to the catalogues with the rest of this screen (#36). The
+  // property is unchanged and now checked in every locale, because a loading
+  // state that only exists in English leaves the default-locale reader looking
+  // at a blank panel with no explanation.
+  assert.match(PROGRESS, /t\('checkingSynced'\)/u, 'history loading must be visible');
+  everyLocaleTranslates('progressView', 'checkingSynced', 'the loading state must be named in every locale');
 });
 
 test('H-1 status messages are announced, not only drawn', () => {
@@ -79,11 +106,22 @@ test('H-3 every stage of the practice flow has a marked exit', () => {
   for (const destination of ['/workspace', '/practice', '/rubric', '/progress']) {
     assert.ok(FRAME.includes(`href: '${destination}'`), `the persistent nav must reach ${destination}`);
   }
-  assert.match(PRACTICE, /Revise transcript/u, 'review must be able to return to the attempt');
+  assert.match(PRACTICE, /t\('reviseTranscript'\)/u, 'review must be able to return to the attempt');
+  everyLocaleTranslates('practice', 'reviseTranscript', 'the way back to the attempt must be labelled everywhere');
   assert.match(PRACTICE, /Back to attempt review/u, 'the Q&A drill must be able to go back');
-  assert.match(STUDIO, /Finish &amp; assemble review/u, 'a running capture must be stoppable by the user');
-  assert.match(ENTRY, /Back to landing/u, 'the entry decision must offer a visible return to the landing page');
-  assert.match(FRAME, /Back to Talk-Active landing page/u, 'workspace chrome must always return to the landing page');
+  assert.match(STUDIO, /t\('finishAssemble'\)/u, 'a running capture must be stoppable by the user');
+  everyLocaleTranslates('studio', 'finishAssemble', 'the stop control must be labelled in every locale');
+  // The link itself is still asserted in the component; only its words moved.
+  assert.match(ENTRY, /className="entry-back" href="\/"/u, 'the entry decision must link back to the landing page');
+  everyLocaleTranslates('entryGate', 'back', 'the entry decision must offer a visible return to the landing page');
+  // Structure in the component, words in the catalogues. The brand link is
+  // rendered twice — sidebar and mobile header — so both survive a viewport
+  // that hides one of them.
+  assert.ok(
+    (FRAME.match(/className="brand" href="\/"/gu) ?? []).length >= 2,
+    'workspace chrome must always return to the landing page, on both layouts',
+  );
+  everyLocaleTranslates('workspaceFrame', 'brandHome', 'the return link must be labelled in every locale');
 });
 
 test('H-3 the attempt step opens on writing, and capture is a choice the user makes', () => {
@@ -101,16 +139,23 @@ test('H-3 the attempt step opens on writing, and capture is a choice the user ma
     /\{captureMode === 'record' && <MultimodalStudio/u,
     'the capture panel must be absent until live capture is chosen',
   );
-  for (const label of ['Write or paste', 'Record live']) {
-    assert.ok(PRACTICE.includes(label), `both capture routes must be named on screen: ${label}`);
+  // Both routes must be offered by name, in whichever language is read: a
+  // capture choice the user cannot read is not a choice.
+  for (const key of ['writeOrPaste', 'recordLive']) {
+    assert.ok(PRACTICE.includes(`t('${key}')`), `both capture routes must be named on screen: ${key}`);
+    everyLocaleTranslates('practice', key, `the ${key} capture route must be named in every locale`);
   }
   // Choosing capture is not consenting to any signal within it. The checklist
   // states that in the words the user reads, before anything is requested.
   assert.match(
     STUDIO,
-    /Choose what this rehearsal may observe/u,
+    /t\('chooseObserve'\)/u,
     'live capture must present its observation checklist before Start',
   );
+  // Consent copy is the one thing that must never be readable in only one
+  // language: a checklist a user cannot read is not informed consent.
+  everyLocaleTranslates('studio', 'chooseObserve', 'the consent checklist must be readable in every locale');
+  everyLocaleTranslates('studio', 'consentBoundary', 'what each signal does must be stated in every locale');
   assert.match(
     STUDIO,
     /every signal starts off/u,
@@ -124,10 +169,17 @@ test('H-3 an irreversible action says so before it is taken', () => {
   // moment — it is to say so BEFORE the click, where it changes the decision.
   assert.match(
     PRACTICE,
-    /recorded once as your own evaluation label, and cannot be changed/u,
+    /t\('yourYesOrNoOn'\)/u,
     'the finality of an evidence label must be stated before the buttons',
   );
-  const boundaryIndex = PRACTICE.indexOf('cannot be changed afterwards');
+  // An irreversible action's warning has to exist in the language being read,
+  // or the irreversibility is a surprise rather than a disclosure.
+  for (const locale of ['id', 'en']) {
+    const entries = JSON.parse(read(`apps/web/messages/${locale}.json`)).practice;
+    assert.match(entries.yourYesOrNoOn, /tidak dapat diubah|cannot be changed/u,
+      `${locale}: the label must be stated as final`);
+  }
+  const boundaryIndex = PRACTICE.indexOf("t('yourYesOrNoOn')");
   const buttonsIndex = PRACTICE.indexOf('production-confirm');
   assert.ok(
     boundaryIndex > 0 && boundaryIndex < buttonsIndex,
@@ -159,8 +211,22 @@ test('H-4 consistency is enforced by the design system, not by memory', () => {
 test('H-4 an action keeps its name through the flow', () => {
   // "Save rubric" must not produce "Rubric updated". The vocabulary of an
   // interface is its signposting.
-  assert.match(RUBRIC, /Save rubric/u);
-  assert.match(RUBRIC, /title: 'Rubric saved'/u, 'the confirmation must echo the verb on the button');
+  // The vocabulary claim survives translation: the confirmation must echo the
+  // verb on the button, in whatever language both are written in. Checked as a
+  // relationship between two catalogue entries rather than as English text.
+  assert.match(RUBRIC, /t\('saveRubric'\)/u);
+  assert.match(RUBRIC, /title: t\('saved'\)/u, 'the confirmation must echo the verb on the button');
+  for (const locale of ['id', 'en']) {
+    const entries = JSON.parse(read(`apps/web/messages/${locale}.json`)).rubricEditor;
+    const verb = entries.saveRubric.split(/\s+/u)[0].toLocaleLowerCase(locale);
+    assert.ok(
+      entries.saved.toLocaleLowerCase(locale).includes(verb)
+        || entries.saveRubric.toLocaleLowerCase(locale).includes(
+          entries.saved.split(/\s+/u)[0].toLocaleLowerCase(locale),
+        ),
+      `${locale}: "${entries.saved}" must echo the action "${entries.saveRubric}"`,
+    );
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -245,16 +311,15 @@ test('H-8 a control with one option is not shown at all', () => {
 //  9. Help users recognise, diagnose, and recover from errors
 // ---------------------------------------------------------------------------
 test('H-9 an error says what happened and what to do next', () => {
-  assert.match(
-    RUBRIC,
-    /Keep at least one named criterion\. Add a description or evidence cues/u,
-    'a rejected save must name the fix, not just the failure',
-  );
+  assert.match(RUBRIC, /t\('keepOne'\)/u, 'a rejected save must name the fix, not just the failure');
+  everyLocaleTranslates('rubricEditor', 'keepOne', 'the fix for a rejected save must exist in every locale');
   assert.match(
     PRACTICE,
-    /Your saved project could not be restored just now/u,
+    /t\('yourSavedProjectCouldNot'\)/u,
     'a failed recovery must be reported rather than silently downgrading the session',
   );
+  everyLocaleTranslates('practice', 'yourSavedProjectCouldNot',
+    'a failed recovery must be reportable in every locale');
   assert.match(TOAST, /negative|warning|positive/u, 'errors must be distinguishable from confirmations');
 });
 
@@ -276,15 +341,22 @@ test('H-9 an error is never signalled by colour alone', () => {
 //  10. Help and documentation
 // ---------------------------------------------------------------------------
 test('H-10 the limits of the analysis are documented in the product, not a manual', () => {
-  assert.match(FRAME, /Landing page/u, 'the public landing page must be reachable from every workspace page');
+  assert.match(FRAME, /<Link className="nav-item" href="\/">/u,
+    'the public landing page must be reachable from every workspace page');
+  everyLocaleTranslates('workspaceFrame', 'navLanding', 'the landing-page nav item must be labelled in every locale');
   assert.doesNotMatch(FRAME, /How it works/u, 'workspace navigation must not add a redundant help destination');
   assert.doesNotMatch(LANDING, /How it works/u, 'the landing page must not restore the removed explanatory section');
   assert.match(PRACTICE, /not confidence or speaking ability/u, 'the review must state what it is not');
+  // INV-6: a number may describe one rehearsal, never the speaker, and it must
+  // say so beside itself. Checked in every locale — a boundary that exists only
+  // in English does not bound anything for the reader it was written for.
   assert.match(
     MULTIMODAL_REVIEW,
-    /describes one rehearsal attempt, not your ability/u,
+    /t\('oneAttemptBoundary'\)/u,
     'the summary figure must carry its own boundary beside it',
   );
+  everyLocaleTranslates('multimodalReview', 'oneAttemptBoundary',
+    'the summary figure boundary must exist in every locale');
 });
 
 // ---------------------------------------------------------------------------
