@@ -51,7 +51,16 @@
     "useCase3Body": "Find where a method or conclusion still lacks a defensible explanation.",
     "useCase4Title": "and more…",
     "useCase4Body": "Any room where a written rubric decides the outcome.",
-    "footerTagline": "Rubric-grounded rehearsal for answers that need evidence."
+    "footerTagline": "Rubric-grounded rehearsal for answers that need evidence.",
+    "loopTitle": "Four steps, one piece of evidence.",
+    "loopStep1Title": "Make a project",
+    "loopStep1Body": "One place for one talk you are preparing.",
+    "loopStep2Title": "Paste the rubric",
+    "loopStep2Body": "The real one you will be marked against, not a generic example.",
+    "loopStep3Title": "Rehearse it once",
+    "loopStep3Body": "Type it or say it. Camera and microphone stay off until you turn them on.",
+    "loopStep4Title": "See the evidence",
+    "loopStep4Body": "Your own sentences mapped to each criterion — and what is still missing."
   },
   "toast": {
     "dismiss": "Dismiss notification",

@@ -58,6 +58,18 @@ export function ProductionShell({ project }: Readonly<{ project: Project }>) {
         </div>
       </section>
 
+      <section className="production-shell__loop" aria-labelledby="loop-title">
+        <div className="production-shell__section-intro">
+          <h2 id="loop-title">{t('loopTitle')}</h2>
+        </div>
+        <ol>
+          <li><span>1</span><h3>{t('loopStep1Title')}</h3><p>{t('loopStep1Body')}</p></li>
+          <li><span>2</span><h3>{t('loopStep2Title')}</h3><p>{t('loopStep2Body')}</p></li>
+          <li><span>3</span><h3>{t('loopStep3Title')}</h3><p>{t('loopStep3Body')}</p></li>
+          <li className="production-shell__evidence-step"><span>4</span><h3>{t('loopStep4Title')}</h3><p>{t('loopStep4Body')}</p></li>
+        </ol>
+      </section>
+
       <section className="production-shell__use-cases" aria-labelledby="use-cases-title">
         <div className="production-shell__section-intro">
           <h2 id="use-cases-title">{t('useCasesTitle')}</h2>

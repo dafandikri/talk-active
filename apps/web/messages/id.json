@@ -51,7 +51,16 @@
     "useCase3Body": "Temukan bagian metode atau kesimpulan yang penjelasannya masih belum kuat.",
     "useCase4Title": "dan lainnya…",
     "useCase4Body": "Ruangan mana pun yang hasilnya ditentukan oleh rubrik tertulis.",
-    "footerTagline": "Latihan berbasis rubrik untuk jawaban yang butuh bukti."
+    "footerTagline": "Latihan berbasis rubrik untuk jawaban yang butuh bukti.",
+    "loopTitle": "Empat langkah, satu bukti.",
+    "loopStep1Title": "Bikin proyek",
+    "loopStep1Body": "Satu tempat buat satu presentasi yang kamu siapkan.",
+    "loopStep2Title": "Tempel rubriknya",
+    "loopStep2Body": "Rubrik asli yang bakal dipakai buat menilai kamu, bukan contoh umum.",
+    "loopStep3Title": "Latihan sekali jalan",
+    "loopStep3Body": "Ketik atau ucapkan. Kamera dan mikrofon tetap mati sampai kamu nyalain.",
+    "loopStep4Title": "Lihat buktinya",
+    "loopStep4Body": "Kalimat kamu sendiri, dipetakan ke tiap kriteria — plus yang masih kurang."
   },
   "toast": {
     "dismiss": "Tutup notifikasi",

@@ -39,7 +39,7 @@
 .production-shell__section-intro { max-width: 46rem; margin-bottom: var(--space-7); }
 .production-shell__section-intro h2 { max-width: 24ch; font-size: var(--step-4); }
 .production-shell__section-intro > p:last-child { max-width: var(--measure); margin-top: var(--space-3); color: var(--text-secondary); }
-.production-shell__loop ol { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.production-shell__loop ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
 .production-shell__loop li { min-height: 15rem; padding: var(--space-5); background: var(--surface); border: 2px solid var(--text-primary); border-radius: var(--radius-md); }
 .production-shell__loop li:nth-child(2) { background: var(--accent-sun-wash); }
 .production-shell__loop .production-shell__evidence-step { background: var(--evidence-wash); }
