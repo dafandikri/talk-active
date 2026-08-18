@@ -317,11 +317,16 @@ test('H-10 the limits of the analysis are documented in the product, not a manua
   assert.doesNotMatch(FRAME, /How it works/u, 'workspace navigation must not add a redundant help destination');
   assert.doesNotMatch(LANDING, /How it works/u, 'the landing page must not restore the removed explanatory section');
   assert.match(PRACTICE, /not confidence or speaking ability/u, 'the review must state what it is not');
+  // INV-6: a number may describe one rehearsal, never the speaker, and it must
+  // say so beside itself. Checked in every locale — a boundary that exists only
+  // in English does not bound anything for the reader it was written for.
   assert.match(
     MULTIMODAL_REVIEW,
-    /describes one rehearsal attempt, not your ability/u,
+    /t\('oneAttemptBoundary'\)/u,
     'the summary figure must carry its own boundary beside it',
   );
+  everyLocaleTranslates('multimodalReview', 'oneAttemptBoundary',
+    'the summary figure boundary must exist in every locale');
 });
 
 // ---------------------------------------------------------------------------

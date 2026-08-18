@@ -285,8 +285,8 @@ test('camera-only capture renders concise observations with fully disclosed deta
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   const review = page.locator('.multimodal-review');
   await expect(review).toBeVisible();
-  await expect(review.getByRole('heading', { name: 'Inspect the moments that may need another look.' })).toBeVisible();
-  await expect(review.getByRole('heading', { name: 'Rubric, voice, and camera on one clock' })).toBeVisible();
+  await expect(review.getByRole('heading', { name: 'Periksa momen-momen yang mungkin perlu dilihat lagi.' })).toBeVisible();
+  await expect(review.getByRole('heading', { name: 'Rubrik, suara, dan kamera dalam satu jam yang sama' })).toBeVisible();
   await expect(review.getByText(/do not measure confidence.*health.*hiring suitability/i)).toBeVisible();
 
   // Dense readings are still present, but no longer compete with rubric proof
@@ -294,14 +294,14 @@ test('camera-only capture renders concise observations with fully disclosed deta
   const fullReading = review.locator('.review-full-reading');
   await expect(fullReading.locator('.reading-total')).not.toBeVisible();
   await fullReading.locator('summary').click();
-  await expect(review.getByRole('heading', { name: 'Voice readings' })).toBeVisible();
-  await expect(review.getByRole('heading', { name: 'Camera readings' })).toBeVisible();
+  await expect(review.getByRole('heading', { name: 'Pembacaan suara' })).toBeVisible();
+  await expect(review.getByRole('heading', { name: 'Pembacaan kamera' })).toBeVisible();
   // A summary figure is allowed, but only while a judge can take it apart. Each
   // clause below is one of the conditions AD-9 puts on showing the number at all.
   const summary = review.locator('.reading-total');
   await expect(summary).toHaveCount(1);
   await expect(summary.getByText('this attempt', { exact: true })).toBeVisible();
-  await expect(review.getByText(/describes one rehearsal attempt, not your ability/i)).toBeVisible();
+  await expect(review.getByText(/menggambarkan satu percobaan latihan, bukan kemampuan Anda/i)).toBeVisible();
   await expect(review.getByText(/excluded from the mean rather than counted as zero/i)).toBeVisible();
 
   // This assertion used to pin the literal sentence
