@@ -78,14 +78,14 @@ async function observedMediaTrackStops(page: Page) {
 
 async function openMultimodalAttempt(page: Page) {
   await page.goto('/practice');
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
   await expect(page.locator('.capture-header h2')).toBeFocused();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   // The attempt opens on writing, so the capture panel is not merely idle —
   // it is not on the page at all until the user asks for it.
-  await expect(page.getByRole('heading', { name: 'Rehearse the whole performance.' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Record live' }).click();
-  await expect(page.getByRole('heading', { name: 'Rehearse the whole performance.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Latih keseluruhan penampilan.' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Rekam langsung' }).click();
+  await expect(page.getByRole('heading', { name: 'Latih keseluruhan penampilan.' })).toBeVisible();
 }
 
 async function expectNoHorizontalOverflow(page: Page) {
@@ -190,12 +190,12 @@ test('multimodal media stays off until Start and each consent is independent at 
 
 test('Mansiz presentation auto-stops once at the configured bell and carries the limit into review', async ({ page }) => {
   await openMultimodalAttempt(page);
-  await page.getByLabel('Practice transcript').fill(
+  await page.getByLabel('Transkrip latihan').fill(
     'Our problem affects students, and our evidence shows urgency. '
     + 'Rubric feedback makes every claim traceable and gives the presenter a focused retry. '
     + 'The prototype is feasible because its privacy boundary is explicit.',
   );
-  await page.getByLabel('Time limit').fill('1');
+  await page.getByLabel('Batas waktu').fill('1');
   await page.getByRole('checkbox', { name: /Suara isyarat lokal/i }).check();
 
   // Install after hydration but before capture so the session origin and bell
@@ -222,7 +222,7 @@ test('Mansiz presentation auto-stops once at the configured bell and carries the
   await expect(page.locator('.studio-status')).toContainText(
     'Waktu habis dan perekaman berhenti sendiri, persis seperti yang dilakukan penilai.',
   );
-  await expect(page.getByLabel('Spoken length')).toHaveValue('60');
+  await expect(page.getByLabel('Panjang bicara')).toHaveValue('60');
   await expect.poll(() => observedMediaTrackStops(page)).toBe(1);
 
   // A later timer turn must not complete or release the same capture again.
@@ -232,7 +232,7 @@ test('Mansiz presentation auto-stops once at the configured bell and carries the
     'Waktu habis dan perekaman berhenti sendiri, persis seperti yang dilakukan penilai.',
   );
 
-  await page.getByRole('button', { name: /Review this attempt/i }).click();
+  await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
   const review = page.locator('.multimodal-review');
   await expect(review).toBeVisible();
   await expect(review.locator('.timeline-duration')).toContainText('01:00 total · 01:00 limit');
@@ -249,7 +249,7 @@ test('camera-only capture renders concise observations with fully disclosed deta
   test.slow();
   await page.setViewportSize({ width: 390, height: 844 });
   await openMultimodalAttempt(page);
-  await page.getByLabel('Practice transcript').fill(
+  await page.getByLabel('Transkrip latihan').fill(
     'Um, our problem affects students and our evidence shows urgency. '
     + 'Our rubric feedback keeps every claim traceable. '
     + 'We built a feasible prototype architecture with explicit privacy limitations.',
@@ -280,7 +280,7 @@ test('camera-only capture renders concise observations with fully disclosed deta
     '/mediapipe/models/pose_landmarker_lite.task',
   );
 
-  await page.getByRole('button', { name: /Review this attempt/i }).click();
+  await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
   await expect(page.locator('.review-hero h2')).toBeFocused();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   const review = page.locator('.multimodal-review');

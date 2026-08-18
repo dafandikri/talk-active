@@ -62,8 +62,9 @@ test('H-1 every asynchronous action reports that it is running', () => {
   // A button that does nothing visible for two seconds reads as broken. Each
   // long action names its own state rather than sharing one global spinner.
   assert.match(PRACTICE, /aria-busy=\{busy/u, 'the review action must expose a busy state');
-  assert.match(PRACTICE, /Reviewing each criterion…/u, 'the busy state must say what is running');
-  assert.match(PRACTICE, /Checking only this answer…/u, 'the defense action must name its own work');
+  assert.match(PRACTICE, /t\('readingEachCriterion'\)/u, 'the busy state must say what is running');
+  assert.match(PRACTICE, /t\('checkingOnlyThisAnswer'\)/u, 'the defense action must name its own work');
+  everyLocaleTranslates('practice', 'checkingOnlyThisAnswer', 'the defense busy state must be named in every locale');
   // The words moved to the catalogues with the rest of this screen (#36). The
   // property is unchanged and now checked in every locale, because a loading
   // state that only exists in English leaves the default-locale reader looking
@@ -105,7 +106,8 @@ test('H-3 every stage of the practice flow has a marked exit', () => {
   for (const destination of ['/workspace', '/practice', '/rubric', '/progress']) {
     assert.ok(FRAME.includes(`href: '${destination}'`), `the persistent nav must reach ${destination}`);
   }
-  assert.match(PRACTICE, /Revise transcript/u, 'review must be able to return to the attempt');
+  assert.match(PRACTICE, /t\('reviseTranscript'\)/u, 'review must be able to return to the attempt');
+  everyLocaleTranslates('practice', 'reviseTranscript', 'the way back to the attempt must be labelled everywhere');
   assert.match(PRACTICE, /Back to attempt review/u, 'the Q&A drill must be able to go back');
   assert.match(STUDIO, /t\('finishAssemble'\)/u, 'a running capture must be stoppable by the user');
   everyLocaleTranslates('studio', 'finishAssemble', 'the stop control must be labelled in every locale');
@@ -137,8 +139,11 @@ test('H-3 the attempt step opens on writing, and capture is a choice the user ma
     /\{captureMode === 'record' && <MultimodalStudio/u,
     'the capture panel must be absent until live capture is chosen',
   );
-  for (const label of ['Write or paste', 'Record live']) {
-    assert.ok(PRACTICE.includes(label), `both capture routes must be named on screen: ${label}`);
+  // Both routes must be offered by name, in whichever language is read: a
+  // capture choice the user cannot read is not a choice.
+  for (const key of ['writeOrPaste', 'recordLive']) {
+    assert.ok(PRACTICE.includes(`t('${key}')`), `both capture routes must be named on screen: ${key}`);
+    everyLocaleTranslates('practice', key, `the ${key} capture route must be named in every locale`);
   }
   // Choosing capture is not consenting to any signal within it. The checklist
   // states that in the words the user reads, before anything is requested.
@@ -164,10 +169,17 @@ test('H-3 an irreversible action says so before it is taken', () => {
   // moment — it is to say so BEFORE the click, where it changes the decision.
   assert.match(
     PRACTICE,
-    /recorded once as your own evaluation label, and cannot be changed/u,
+    /t\('yourYesOrNoOn'\)/u,
     'the finality of an evidence label must be stated before the buttons',
   );
-  const boundaryIndex = PRACTICE.indexOf('cannot be changed afterwards');
+  // An irreversible action's warning has to exist in the language being read,
+  // or the irreversibility is a surprise rather than a disclosure.
+  for (const locale of ['id', 'en']) {
+    const entries = JSON.parse(read(`apps/web/messages/${locale}.json`)).practice;
+    assert.match(entries.yourYesOrNoOn, /tidak dapat diubah|cannot be changed/u,
+      `${locale}: the label must be stated as final`);
+  }
+  const boundaryIndex = PRACTICE.indexOf("t('yourYesOrNoOn')");
   const buttonsIndex = PRACTICE.indexOf('production-confirm');
   assert.ok(
     boundaryIndex > 0 && boundaryIndex < buttonsIndex,
@@ -303,9 +315,11 @@ test('H-9 an error says what happened and what to do next', () => {
   everyLocaleTranslates('rubricEditor', 'keepOne', 'the fix for a rejected save must exist in every locale');
   assert.match(
     PRACTICE,
-    /Your saved project could not be restored just now/u,
+    /t\('yourSavedProjectCouldNot'\)/u,
     'a failed recovery must be reported rather than silently downgrading the session',
   );
+  everyLocaleTranslates('practice', 'yourSavedProjectCouldNot',
+    'a failed recovery must be reportable in every locale');
   assert.match(TOAST, /negative|warning|positive/u, 'errors must be distinguishable from confirmations');
 });
 

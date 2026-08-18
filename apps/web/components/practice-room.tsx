@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -143,7 +145,13 @@ function storedRubric(): {
 
 // Timestamped observations are saved separately from the replay they came from,
 // so deleting the media later leaves the feedback intact.
-function deliveryReviewPayload(result: MultimodalAttemptResult): SaveAttemptDeliveryReviewRequest {
+type Translate = (key: string) => string;
+
+// Module-level helpers cannot hold the hook, so they take the translator.
+function deliveryReviewPayload(
+  result: MultimodalAttemptResult,
+  t: Translate,
+): SaveAttemptDeliveryReviewRequest {
   const visual = result.visionSummary;
   return {
     mode: result.mode,
@@ -173,7 +181,7 @@ function deliveryReviewPayload(result: MultimodalAttemptResult): SaveAttemptDeli
         startMs: Math.max(0, Math.round(event.startMs)),
         endMs: Math.max(0, Math.round(event.endMs)),
         label: event.label,
-        evidence: 'Derived from on-device camera landmarks; review the surrounding replay before interpreting it.',
+        evidence: t('derivedFromOnDeviceCamera'),
       })),
     ],
   };
@@ -221,7 +229,7 @@ function defenseResultFromJudgment(
   };
 }
 
-function strictLocalAnalysis(result: AnalysisResult): AnalysisResult {
+function strictLocalAnalysis(result: AnalysisResult, t: Translate): AnalysisResult {
   const criteria = result.criteria.map((criterion) => ({
     ...criterion,
     status: criterion.missingSignals.length === 0
@@ -229,7 +237,7 @@ function strictLocalAnalysis(result: AnalysisResult): AnalysisResult {
       : criterion.matchedSignals.length > 0 ? 'partial' as const : 'missing' as const,
   }));
   const weakest = criteria.find((criterion) => criterion.id === result.weakest.id);
-  if (!weakest) throw new Error('The deterministic review returned no weakest criterion.');
+  if (!weakest) throw new Error(t('theDeterministicReviewReturnedNo'));
   return {
     ...result,
     coveredCount: criteria.filter((criterion) => criterion.status === 'covered').length,
@@ -307,6 +315,7 @@ export function PracticeRoom({
   const activeStageRef = useRef<Stage>('setup');
   const stageHistoryReadyRef = useRef(false);
   const { projects: ownedProjects, loading: ownedProjectsLoading } = useOwnedProjects();
+  const t = useTranslations('practice');
   const [stage, setStage] = useState<Stage>('setup');
   const [transcript, setTranscript] = useState(STARTER_DRAFT);
   const [duration, setDuration] = useState(90);
@@ -340,7 +349,7 @@ export function PracticeRoom({
   // rehearsing for somebody else's competition.
   const [projectTitle, setProjectTitle] = useState(REMOTE_PROJECT_TITLE);
   const [remoteAttemptId, setRemoteAttemptId] = useState<string | null>(null);
-  const [engineNote, setEngineNote] = useState('Evidence mapped by deterministic cue matching on this device.');
+  const [engineNote, setEngineNote] = useState(t('evidenceMappedByDeterministicCue'));
   const [defenseEngineNote, setDefenseEngineNote] = useState('');
   const [criterionEngines, setCriterionEngines] = useState<Record<string, 'semantic' | 'deterministic'>>({});
   const [reusedCitations, setReusedCitations] = useState<ReusedCitation[]>([]);
@@ -352,7 +361,7 @@ export function PracticeRoom({
   // Writing is where an attempt starts, so it is what the step opens on. Live
   // capture asks for a camera and a microphone; a screen that opens holding
   // out its hand for both has made the choice on the user's behalf. Choosing
-  // "Record live" is one click, and until it is clicked nothing is requested.
+  // {t('recordLive')} is one click, and until it is clicked nothing is requested.
   const [captureMode, setCaptureMode] = useState<CaptureMode>('write');
   const [multimodalResult, setMultimodalResult] = useState<MultimodalAttemptResult | null>(null);
   const [recordingsAvailable, setRecordingsAvailable] = useState(false);
@@ -547,7 +556,7 @@ export function PracticeRoom({
       setSourceDocuments(workspace.sourceDocuments);
       if (!workspace.rubric?.confirmedAt || workspace.criteria.length === 0) {
         setRemoteContext(null);
-        setProjectLoadError('This project has no confirmed rubric yet. Confirm its rubric before starting a rehearsal.');
+        setProjectLoadError(t('thisProjectHasNoConfirmed'));
         return;
       }
       const criteria = workspace.criteria.map((criterion) => ({
@@ -568,7 +577,7 @@ export function PracticeRoom({
       localStorage.setItem(RUBRIC_SOURCE_STORAGE_KEY, workspace.rubric.sourceType);
       if (localRubricText !== recoveredRubricText) {
         setSourceStatus(
-          'This signed-in project already has a confirmed rubric. Its saved criteria were restored; browser-only rubric edits do not replace a synced project rubric.',
+          t('thisSignedInProjectAlready'),
         );
       }
     }
@@ -611,8 +620,8 @@ export function PracticeRoom({
         } catch (caught) {
           if (cancelled) return;
           const message = initialProjectId
-            ? 'That selected project could not be opened. Choose another project; no saved project data was changed.'
-            : 'Your saved project could not be restored just now, so this attempt uses the rubric stored in this browser. Nothing saved on the server has been changed.';
+            ? t('thatSelectedProjectCouldNot')
+            : t('yourSavedProjectCouldNot');
           setProjectLoadError(initialProjectId ? message : '');
           setSourceStatus(`${message}${caught instanceof Error ? ` ${caught.message}` : ''}`);
         } finally {
@@ -656,7 +665,7 @@ export function PracticeRoom({
     const syncedProject = Boolean(selectedProjectId) && persistence === 'neon';
     setProjectLanguage(language);
     writeLocalProjectLanguage(localStorage, language);
-    setProjectLanguageNote(syncedProject ? 'Saving project language…' : 'Saved for this browser.');
+    setProjectLanguageNote(syncedProject ? t('savingProjectLanguage') : t('savedForThisBrowser'));
     if (!selectedProjectId || !syncedProject) return;
 
     setProjectLanguageBusy(true);
@@ -668,11 +677,11 @@ export function PracticeRoom({
       );
       setProjectLanguage(response.project.language);
       writeLocalProjectLanguage(localStorage, response.project.language);
-      setProjectLanguageNote('Project language synced. Questions, narration, and live transcript now use it.');
+      setProjectLanguageNote(t('projectLanguageSyncedQuestionsNarration'));
     } catch (caught) {
       setProjectLanguage(previous);
       writeLocalProjectLanguage(localStorage, previous);
-      setProjectLanguageNote(`Project language was not changed. ${caught instanceof Error ? caught.message : 'Try again.'}`);
+      setProjectLanguageNote(`Project language was not changed. ${caught instanceof Error ? caught.message : t('tryAgain')}`);
     } finally {
       setProjectLanguageBusy(false);
     }
@@ -682,12 +691,12 @@ export function PracticeRoom({
   // not take the timestamped feedback down with it. Neither step can change a
   // rubric verdict; both report what happened rather than failing silently.
   async function syncMultimodalAttempt(attemptId: string, result: MultimodalAttemptResult) {
-    setRecordingStatus('Saving timestamped delivery observations…');
+    setRecordingStatus(t('savingTimestampedDeliveryObservations'));
     try {
       await requestContract(
         `/api/attempts/${attemptId}/review`,
         SaveAttemptDeliveryReviewResponseSchema,
-        jsonRequest('POST', deliveryReviewPayload(result)),
+        jsonRequest('POST', deliveryReviewPayload(result, t)),
       );
     } catch (caught) {
       setRecordingStatus(result.recording
@@ -697,20 +706,20 @@ export function PracticeRoom({
     }
 
     if (!result.recording) {
-      setRecordingStatus('Timestamped delivery observations were saved with this attempt. No replay was recorded.');
+      setRecordingStatus(t('timestampedDeliveryObservationsWereSaved'));
       return;
     }
     if (!recordingsAvailable) {
-      setRecordingStatus('Timestamped observations were saved. This replay stays in this page only; download it before leaving.');
+      setRecordingStatus(t('timestampedObservationsWereSavedThis'));
       return;
     }
 
-    setRecordingStatus('Uploading the private replay… Keep this review open until it finishes.');
+    setRecordingStatus(t('uploadingThePrivateReplayKeep'));
     try {
       await uploadAttemptRecording(attemptId, result.recording, {
         onProgress: (percentage) => setRecordingStatus(`Uploading the private replay… ${Math.round(percentage)}%`),
       });
-      setRecordingStatus('Private replay saved. It is now available from attempt history and can be deleted without deleting feedback.');
+      setRecordingStatus(t('privateReplaySavedItIs'));
     } catch (caught) {
       setRecordingStatus(`The timestamped observations were saved, but the replay upload failed. Download this page copy before leaving. ${caught instanceof Error ? caught.message : ''}`.trim());
     }
@@ -719,7 +728,7 @@ export function PracticeRoom({
   async function ensureRemoteContext(): Promise<RemoteContext> {
     if (remoteContext) return remoteContext;
     if (selectedProjectId) {
-      throw new Error('Confirm this project’s rubric before saving an attempt to it.');
+      throw new Error(t('confirmThisProjectSRubric'));
     }
     const project = await requestContract('/api/projects', CreateProjectResponseSchema, jsonRequest('POST', {
       title: REMOTE_PROJECT_TITLE,
@@ -778,6 +787,7 @@ export function PracticeRoom({
           durationSeconds: reviewDuration,
           language: projectLanguage,
         }),
+        t,
       );
       const localReusedCitations = detectReusedCitations(localResult.criteria.map((criterion) => ({
         criterionId: criterion.id,
@@ -853,7 +863,7 @@ export function PracticeRoom({
           const mappedCriteria = context.criteria.map((criterion, index) => {
             const verdict = byCriterion.get(criterion.id);
             const local = localResult.criteria[index];
-            if (!verdict || !local) throw new Error('A persisted verdict did not map to its confirmed criterion.');
+            if (!verdict || !local) throw new Error(t('aPersistedVerdictDidNot'));
             return {
               id: criterion.id,
               label: criterion.name,
@@ -869,7 +879,7 @@ export function PracticeRoom({
           const weakest = mappedCriteria.find(
             (criterion) => criterion.id === question.question.targetCriterionId,
           );
-          if (!weakest) throw new Error('The persisted review contained no criteria.');
+          if (!weakest) throw new Error(t('thePersistedReviewContainedNo'));
           setAnalysis({
             ...localResult,
             evidenceScore: Math.round(mappedCriteria.reduce((sum, criterion) => sum + criterion.score, 0) / mappedCriteria.length),
@@ -900,7 +910,7 @@ export function PracticeRoom({
       setError('');
       openPracticeStage('review');
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'The attempt could not be analysed.');
+      setError(caught instanceof Error ? caught.message : t('theAttemptCouldNotBe'));
     } finally {
       setBusy(false);
     }
@@ -936,8 +946,8 @@ export function PracticeRoom({
     setRetakeDraft('');
     setReviewId(crypto.randomUUID());
     setObservationNote(completion.multimodalResult
-      ? 'One continuous interview capture is attached to this page-local review.'
-      : 'No camera or microphone capture was attached to this interview.');
+      ? t('oneContinuousInterviewCaptureIs')
+      : t('noCameraOrMicrophoneCapture'));
     setError('');
     openPracticeStage('review');
   }
@@ -959,7 +969,7 @@ export function PracticeRoom({
       setSourceFile(null);
       setSourceStatus(`${saved.sourceDocument.filename} attached privately to this project.`);
     } catch (caught) {
-      setSourceStatus(caught instanceof Error ? caught.message : 'The source document could not be attached.');
+      setSourceStatus(caught instanceof Error ? caught.message : t('theSourceDocumentCouldNot'));
     } finally {
       setSourceBusy(false);
     }
@@ -978,7 +988,7 @@ export function PracticeRoom({
       setSourceDocuments((current) => current.filter((item) => item.id !== sourceDocument.id));
       setSourceStatus(`${sourceDocument.filename} was permanently removed from private storage.`);
     } catch (caught) {
-      setSourceStatus(caught instanceof Error ? caught.message : 'The source document could not be removed.');
+      setSourceStatus(caught instanceof Error ? caught.message : t('theSourceDocumentCouldNot2'));
     } finally {
       setSourceBusy(false);
     }
@@ -1084,9 +1094,9 @@ export function PracticeRoom({
           ...current,
           [criterionId]: saved.rejudged
             ? saved.degraded
-              ? 'Saved. No different grounded evidence was found, so this criterion is now unsupported.'
-              : 'Saved. This criterion was re-judged once without the rejected evidence.'
-            : 'Saved as a human-confirmed evaluation label. No model call was made.',
+              ? t('savedNoDifferentGroundedEvidence')
+              : t('savedThisCriterionWasRe')
+            : t('savedAsAHumanConfirmed'),
         }));
       } else {
         const createdAt = new Date().toISOString();
@@ -1205,19 +1215,19 @@ export function PracticeRoom({
           [criterionId]: accepted
             ? `Saved in this browser as a human evaluation label; the original ${originalEngine} provenance is preserved.`
             : rejudgeMode === 'semantic'
-              ? 'Saved in this browser. A one-time semantic re-judge used different grounded evidence and refreshed the question.'
+              ? t('savedInThisBrowserA')
               : rejudgeMode === 'mixed'
-                ? 'Saved in this browser. The one-time re-judge used mixed semantic and deterministic units, shown in provenance.'
+                ? t('savedInThisBrowserThe2')
                 : rejudgeMode === 'local-fallback'
-                  ? 'Saved in this browser. The hosted re-judge was unavailable, so one visible deterministic fallback ran locally.'
-                  : 'Saved in this browser. This criterion was re-checked once with the rejected sentence excluded.',
+                  ? t('savedInThisBrowserThe')
+                  : t('savedInThisBrowserThis'),
         }));
       }
       setConfirmations((current) => ({ ...current, [criterionId]: accepted }));
     } catch (caught) {
       setConfirmationNotes((current) => ({
         ...current,
-        [criterionId]: caught instanceof Error ? caught.message : 'This evaluation label could not be saved.',
+        [criterionId]: caught instanceof Error ? caught.message : t('thisEvaluationLabelCouldNot'),
       }));
     } finally {
       setConfirmationBusy((current) => ({ ...current, [criterionId]: false }));
@@ -1261,7 +1271,7 @@ export function PracticeRoom({
         discardedClaims: 0,
         strongerForm: null,
         blanks: [],
-        degradedReason: 'Coaching for this answer was unavailable. Its verdict above is unaffected.',
+        degradedReason: t('coachingForThisAnswerWas'),
         model: null,
       }],
     )));
@@ -1302,7 +1312,7 @@ export function PracticeRoom({
     } catch (caught) {
       setCoachNote(caught instanceof Error
         ? `${caught.message} The rubric verdicts above are unaffected.`
-        : 'Claim coaching is unavailable right now. The rubric verdicts above are unaffected.');
+        : t('claimCoachingIsUnavailableRight'));
     } finally {
       setCoachBusy(false);
     }
@@ -1346,7 +1356,7 @@ export function PracticeRoom({
     const criterion = analysis.criteria.find((item) => item.id === target.criterionId);
     const typedCriterion = rubricCriteria.find((item) => item.id === target.criterionId);
     try {
-      if (!criterion) throw new Error('That criterion is no longer part of this review.');
+      if (!criterion) throw new Error(t('thatCriterionIsNoLonger'));
       const response = await requestContract(
         '/api/rejudge',
         StatelessRejudgeResponseSchema,
@@ -1401,7 +1411,7 @@ export function PracticeRoom({
   async function runDefense() {
     setBusy(true);
     try {
-      if (!analysis) throw new Error('Review an attempt before entering the judge room.');
+      if (!analysis) throw new Error(t('reviewAnAttemptBeforeEntering'));
       const localDefense = strictLocalDefense(
         evaluateDefense({ answer, criterion: analysis.weakest }),
       );
@@ -1424,12 +1434,12 @@ export function PracticeRoom({
           );
           setDefense(defenseResultFromJudgment(analysis.weakest, saved.verdict));
           setDefenseEngineNote(saved.degraded
-            ? 'Saved with a labelled deterministic fallback. Only this answer was evaluated.'
-            : 'Saved with semantic evidence mapping. The cited text comes only from this answer.');
+            ? t('savedWithALabelledDeterministic')
+            : t('savedWithSemanticEvidenceMapping'));
         } catch (remoteError) {
           setDefense(localDefense);
-          setDefenseEngineNote('Hosted defense evaluation was unavailable. This visible deterministic fallback was not synced.');
-          setError(remoteError instanceof Error ? remoteError.message : 'The defense could not be synced.');
+          setDefenseEngineNote(t('hostedDefenseEvaluationWasUnavailable'));
+          setError(remoteError instanceof Error ? remoteError.message : t('theDefenseCouldNotBe2'));
           return;
         }
       } else if (semanticDefenseAvailable) {
@@ -1441,7 +1451,7 @@ export function PracticeRoom({
           );
           setDefense(defenseResultFromJudgment(analysis.weakest, response.judgment));
           setDefenseEngineNote(response.judgment.engine === 'semantic'
-            ? 'Mapped semantically against this answer, then grounded to the exact cited span.'
+            ? t('mappedSemanticallyAgainstThisAnswer')
             : `The model path did not return grounded evidence, so this answer uses a labelled deterministic fallback. ${response.judgment.degradedReason ?? ''}`.trim());
         } catch (semanticError) {
           setDefense(localDefense);
@@ -1449,11 +1459,11 @@ export function PracticeRoom({
         }
       } else {
         setDefense(localDefense);
-        setDefenseEngineNote('Checked by deterministic cue matching because semantic defense evaluation is not configured.');
+        setDefenseEngineNote(t('checkedByDeterministicCueMatching'));
       }
       setError('');
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'The defense could not be evaluated.');
+      setError(caught instanceof Error ? caught.message : t('theDefenseCouldNotBe'));
     } finally {
       setBusy(false);
     }
@@ -1505,11 +1515,11 @@ export function PracticeRoom({
   return (
     <section className="view is-visible" aria-labelledby="practiceTitle" ref={roomRef}>
       <header className="page-header compact-header">
-        <div className="workflow-heading"><img className="workflow-mark" src={logo.src} alt="" /><div><p className="overline">Practice room</p><h1 id="practiceTitle">Rehearse one attempt at a time.</h1></div></div>
+        <div className="workflow-heading"><img className="workflow-mark" src={logo.src} alt="" /><div><p className="overline">{t('practiceRoom')}</p><h1 id="practiceTitle">{t('rehearseOneAttemptAtA')}</h1></div></div>
         <Link className="text-button" href={`/workspace${projectQuery}`}>← Back to workspace</Link>
       </header>
 
-      <ol className="practice-steps" aria-label="Practice progress">
+      <ol className="practice-steps" aria-label={t('practiceProgress')}>
         {visibleStageOrder.map((item, index) => {
           const current = visibleStageOrder.indexOf(stage);
           const state = index === current ? ' is-active' : index < current ? ' is-complete' : '';
@@ -1521,24 +1531,24 @@ export function PracticeRoom({
       </ol>
 
       {stage === 'setup' && <section className="practice-stage is-visible" data-practice-stage="setup">
-        <div className="stage-intro"><p className="overline">Before you begin</p><h2 data-stage-heading tabIndex={-1}>What are you preparing for?</h2><p>Confirm the project and evaluator rubric. Both stay attached to this session.</p></div>
+        <div className="stage-intro"><p className="overline">{t('beforeYouBegin')}</p><h2 data-stage-heading tabIndex={-1}>{t('whatAreYouPreparingFor')}</h2><p>{t('confirmTheProjectAndEvaluator')}</p></div>
         <div className="setup-grid">
           <div className="surface setup-form">
-            <p className="overline" id="practiceProjectLabel">Project</p>
+            <p className="overline" id="practiceProjectLabel">{t('project')}</p>
             <div className="setup-project-summary" aria-labelledby="practiceProjectLabel"><span className="project-avatar" aria-hidden="true">{projectInitials(projectTitle)}</span><div><strong>{projectTitle}</strong><small>7-minute pitch · 3-minute Q&amp;A</small></div></div>
-            {(ownedProjects.length > 0 || selectedProjectId) && <label className="interview-language-picker" htmlFor="practiceProject">Choose project<select id="practiceProject" value={selectedProjectId ?? ''} disabled={ownedProjectsLoading || projectLoading || studioBusy} onChange={(event) => chooseProject(event.target.value)}><option value="" disabled>{ownedProjectsLoading ? 'Loading projects…' : 'Choose a confirmed project'}</option>{ownedProjects.map((item) => <option key={item.project.id} value={item.project.id} disabled={!item.rubricConfirmed}>{item.project.title}{item.rubricConfirmed ? '' : ' · rubric not confirmed'}</option>)}</select></label>}
-            <label className="interview-language-picker" htmlFor="projectLanguage">Project language<select id="projectLanguage" value={projectLanguage} disabled={projectLanguageBusy || projectLoading || studioBusy} onChange={(event) => void changeProjectLanguage(event.target.value as ProjectLanguage)}><option value="id-ID">Bahasa Indonesia</option><option value="en-US">English</option></select><small>Used for Kato&apos;s questions, narration, and live browser transcript.</small></label>
+            {(ownedProjects.length > 0 || selectedProjectId) && <label className="interview-language-picker" htmlFor="practiceProject">{t('chooseProject')}<select id="practiceProject" value={selectedProjectId ?? ''} disabled={ownedProjectsLoading || projectLoading || studioBusy} onChange={(event) => chooseProject(event.target.value)}><option value="" disabled>{ownedProjectsLoading ? t('loadingProjects') : t('chooseAConfirmedProject')}</option>{ownedProjects.map((item) => <option key={item.project.id} value={item.project.id} disabled={!item.rubricConfirmed}>{item.project.title}{item.rubricConfirmed ? '' : ' · rubric not confirmed'}</option>)}</select></label>}
+            <label className="interview-language-picker" htmlFor="projectLanguage">{t('projectLanguage')}<select id="projectLanguage" value={projectLanguage} disabled={projectLanguageBusy || projectLoading || studioBusy} onChange={(event) => void changeProjectLanguage(event.target.value as ProjectLanguage)}><option value="id-ID">Bahasa Indonesia</option><option value="en-US">English</option></select><small>{t('usedForKatoAposS')}</small></label>
             {projectLanguageNote && <p className="rubric-import-status" role="status">{projectLanguageNote}</p>}
             {projectLoadError && <p className="form-error" role="alert">{projectLoadError}</p>}
             <fieldset className="rehearsal-format-picker">
-              <legend>Rehearsal format</legend>
-              <label className={rehearsalFormat === 'presentation' ? 'is-selected' : ''}><input type="radio" name="rehearsalFormat" value="presentation" checked={rehearsalFormat === 'presentation'} onChange={() => { setRehearsalFormat('presentation'); setInterviewTurns([]); setInterviewHardestQuestion(null); }} /><span><strong>Presentation attempt</strong><small>Deliver one continuous pitch, then review it.</small></span></label>
-              <label className={rehearsalFormat === 'interview' ? 'is-selected' : ''}><input type="radio" name="rehearsalFormat" value="interview" checked={rehearsalFormat === 'interview'} onChange={() => { setRehearsalFormat('interview'); setInterviewTurns([]); setInterviewHardestQuestion(null); }} /><span><strong>Interview Q&amp;A</strong><small>Five fixed rubric questions, then one final answer-local review.</small></span></label>
+              <legend>{t('rehearsalFormat')}</legend>
+              <label className={rehearsalFormat === 'presentation' ? 'is-selected' : ''}><input type="radio" name="rehearsalFormat" value="presentation" checked={rehearsalFormat === 'presentation'} onChange={() => { setRehearsalFormat('presentation'); setInterviewTurns([]); setInterviewHardestQuestion(null); }} /><span><strong>{t('presentationAttempt')}</strong><small>{t('deliverOneContinuousPitchThen')}</small></span></label>
+              <label className={rehearsalFormat === 'interview' ? 'is-selected' : ''}><input type="radio" name="rehearsalFormat" value="interview" checked={rehearsalFormat === 'interview'} onChange={() => { setRehearsalFormat('interview'); setInterviewTurns([]); setInterviewHardestQuestion(null); }} /><span><strong>{t('interviewQAmpA')}</strong><small>{t('fiveFixedRubricQuestionsThen')}</small></span></label>
             </fieldset>
-            <button className="button button-primary button-full" type="button" disabled={projectLoading || Boolean(projectLoadError)} onClick={() => openPracticeStage('attempt')}>{projectLoading ? 'Opening project…' : rehearsalFormat === 'interview' ? 'Start Kato interview' : 'Begin this attempt'} <span aria-hidden="true">→</span></button>
+            <button className="button button-primary button-full" type="button" disabled={projectLoading || Boolean(projectLoadError)} onClick={() => openPracticeStage('attempt')}>{projectLoading ? t('openingProject') : rehearsalFormat === 'interview' ? t('startKatoInterview') : t('beginThisAttempt')} <span aria-hidden="true">→</span></button>
           </div>
           <aside className="surface setup-rubric">
-            <div className="section-title-row"><div><p className="overline">Active rubric</p><h3>{rubric.length} criteria</h3></div><Link className="text-button" href={`/rubric${projectQuery}`}>Edit</Link></div>
+            <div className="section-title-row"><div><p className="overline">{t('activeRubric')}</p><h3>{rubric.length} criteria</h3></div><Link className="text-button" href={`/rubric${projectQuery}`}>{t('edit')}</Link></div>
             <div className="setup-criteria-list">{rubric.map((criterion) => <div className="mini-criterion" key={criterion.id}><i /><span>{criterion.label}</span></div>)}</div>
             <p className="trust-note"><span aria-hidden="true">◆</span> Every critique must map back to one of these criteria.</p>
           </aside>
@@ -1563,19 +1573,19 @@ export function PracticeRoom({
         <button className="text-button back-review" type="button" disabled={studioBusy} onClick={goToSetup}>← Back to project setup</button>
         <div className="attempt-layout">
           <div className="surface capture-panel">
-            <div className="capture-header"><div><p className="overline">Current attempt</p><h2 data-stage-heading tabIndex={-1}>{projectTitle}</h2></div><div className="timer">{projectLanguage === 'id-ID' ? 'ID' : 'EN'}</div></div>
+            <div className="capture-header"><div><p className="overline">{t('currentAttempt')}</p><h2 data-stage-heading tabIndex={-1}>{projectTitle}</h2></div><div className="timer">{projectLanguage === 'id-ID' ? 'ID' : 'EN'}</div></div>
             {/* The attempt opens on writing. Live capture is one click away and
                 asks for nothing until it is chosen — a screen that opens by
                 requesting a camera has decided for the user (Nielsen 3). These
                 are toggle buttons rather than tabs because the transcript below
                 belongs to both modes; only the way it gets filled changes. */}
-            <div className="capture-tabs" role="group" aria-label="How to capture this attempt">
-              <button aria-pressed={captureMode === 'write'} className={captureMode === 'write' ? 'is-active' : ''} disabled={studioBusy} type="button" onClick={() => setCaptureMode('write')}>Write or paste</button>
-              <button aria-pressed={captureMode === 'record'} className={`${captureMode === 'record' ? 'is-active' : ''}${presentationCaptureActive ? ' is-recording' : ''}`.trim()} disabled={studioBusy} type="button" onClick={() => setCaptureMode('record')}><span className="record-dot" aria-hidden="true" />Record live</button>
+            <div className="capture-tabs" role="group" aria-label={t('howToCaptureThisAttempt')}>
+              <button aria-pressed={captureMode === 'write'} className={captureMode === 'write' ? 'is-active' : ''} disabled={studioBusy} type="button" onClick={() => setCaptureMode('write')}>{t('writeOrPaste')}</button>
+              <button aria-pressed={captureMode === 'record'} className={`${captureMode === 'record' ? 'is-active' : ''}${presentationCaptureActive ? ' is-recording' : ''}`.trim()} disabled={studioBusy} type="button" onClick={() => setCaptureMode('record')}><span className="record-dot" aria-hidden="true" />{t('recordLive')}</button>
             </div>
             <p className="capture-mode-note">{captureMode === 'write'
-              ? 'Type or paste the attempt below, then review it. No camera or microphone is involved.'
-              : 'Tick what this rehearsal may observe. Every signal is off until you choose it, and nothing is requested before Start.'}</p>
+              ? t('typeOrPasteTheAttempt')
+              : t('tickWhatThisRehearsalMay')}</p>
             {captureMode === 'record' && <MultimodalStudio
               transcript={retakeCriterion ? retakeDraft : transcript}
               language={projectLanguage}
@@ -1583,8 +1593,8 @@ export function PracticeRoom({
               targetDurationMs={targetDurationMs}
               fixedMode="presentation"
               resetToken={retakeCriterion ? `retake:${retakeCriterion.criterionId}` : 'presentation'}
-              title={retakeCriterion ? `Add evidence for ${retakeCriterion.label}.` : 'Rehearse the whole performance.'}
-              description={retakeCriterion ? 'Capture only the missing passage. It will be labelled as an addition and re-judge this criterion alone.' : 'Camera, voice, live transcript, and replay stay independently optional.'}
+              title={retakeCriterion ? `Add evidence for ${retakeCriterion.label}.` : t('rehearseTheWholePerformance')}
+              description={retakeCriterion ? t('captureOnlyTheMissingPassage') : t('cameraVoiceLiveTranscriptAnd')}
               onTranscriptChange={(value) => {
                 if (retakeCriterion) {
                   setRetakeDraft(value);
@@ -1593,51 +1603,51 @@ export function PracticeRoom({
                 setTranscript(value);
                 if (multimodalResult && value.trim() !== multimodalResult.transcript.trim()) {
                   setMultimodalResult(null);
-                  setObservationNote('The transcript changed, so the prior sensor summary was detached. Capture again to include fresh observations.');
+                  setObservationNote(t('theTranscriptChangedSoThe'));
                 }
               }}
               onResult={(result) => {
                 if (retakeCriterion) {
                   if (result) {
                     setRetakeDraft(result.transcript);
-                    setObservationNote('The addition transcript is ready. Review it, then append and re-judge this criterion.');
+                    setObservationNote(t('theAdditionTranscriptIsReady'));
                   }
                   return;
                 }
                 setMultimodalResult(result);
                 if (result) setDuration(Math.max(1, Math.round(result.durationSeconds)));
-                setObservationNote(result ? 'Derived sensor summaries are available for this review only.' : '');
+                setObservationNote(result ? t('derivedSensorSummariesAreAvailable') : '');
               }}
               onBusyChange={setStudioBusy}
               onSessionStateChange={(session) => setPresentationCaptureActive(session.active)}
             />}
             {retakeCriterion && <section className="criterion-retake-panel" aria-labelledby="retakeDraftTitle">
               <div className="section-title-row">
-                <div><p className="overline">Addition in progress</p><h3 id="retakeDraftTitle">{retakeCriterion.label}</h3></div>
-                <button className="text-button" type="button" disabled={studioBusy} onClick={() => { setRetakeCriterion(null); setRetakeDraft(''); setObservationNote(''); }}>Cancel this addition</button>
+                <div><p className="overline">{t('additionInProgress')}</p><h3 id="retakeDraftTitle">{retakeCriterion.label}</h3></div>
+                <button className="text-button" type="button" disabled={studioBusy} onClick={() => { setRetakeCriterion(null); setRetakeDraft(''); setObservationNote(''); }}>{t('cancelThisAddition')}</button>
               </div>
-              <p>Say or type only the passage that proves this criterion. It is appended to the attempt and labelled as an addition — the original take is never rewritten — and only this criterion is judged again.</p>
-              <p className="production-field-note">Type the addition below, or switch to <strong>Record live</strong> and dictate it. Either way, only this criterion is re-judged.</p>
+              <p>{t('sayOrTypeOnlyThe')}</p>
+              <p className="production-field-note">{t('typeTheAdditionBelowOr')}<strong>{t('recordLive')}</strong> and dictate it. Either way, only this criterion is re-judged.</p>
               <label className="sr-only" htmlFor="retakeDraft">Addition for {retakeCriterion.label}</label>
-              <textarea id="retakeDraft" rows={4} maxLength={2_000} value={retakeDraft} disabled={studioBusy} placeholder="Name the number, method, or mechanism this criterion asks for." onChange={(event) => setRetakeDraft(event.target.value)} />
-              <button className="button button-primary" type="button" disabled={!retakeDraft.trim() || retakeBusy || studioBusy} aria-busy={retakeBusy} onClick={() => void appendRetakeAddition(retakeDraft)}>{retakeBusy ? 'Re-judging this criterion…' : studioBusy ? 'Finish capture first' : 'Append and re-judge this criterion'}</button>
+              <textarea id="retakeDraft" rows={4} maxLength={2_000} value={retakeDraft} disabled={studioBusy} placeholder={t('nameTheNumberMethodOr')} onChange={(event) => setRetakeDraft(event.target.value)} />
+              <button className="button button-primary" type="button" disabled={!retakeDraft.trim() || retakeBusy || studioBusy} aria-busy={retakeBusy} onClick={() => void appendRetakeAddition(retakeDraft)}>{retakeBusy ? t('reJudgingThisCriterion') : studioBusy ? t('finishCaptureFirst') : t('appendAndReJudgeThis')}</button>
             </section>}
-            <div className="section-title-row"><div><p className="overline">{captureMode === 'record' ? 'Captured so far' : 'Your attempt'}</p><h3>Transcript</h3></div><span className="save-state">{captureMode === 'record' ? 'Live transcript writes here' : 'Reviewed word for word'}</span></div>
-            <label className="sr-only" htmlFor="attemptTranscript">Practice transcript</label>
+            <div className="section-title-row"><div><p className="overline">{captureMode === 'record' ? t('capturedSoFar') : t('yourAttempt')}</p><h3>{t('transcript')}</h3></div><span className="save-state">{captureMode === 'record' ? t('liveTranscriptWritesHere') : t('reviewedWordForWord')}</span></div>
+            <label className="sr-only" htmlFor="attemptTranscript">{t('practiceTranscript')}</label>
             <textarea id="attemptTranscript" rows={15} maxLength={12_000} value={transcript} disabled={studioBusy} onChange={(event) => {
               const value = event.target.value;
               setTranscript(value);
               if (multimodalResult && value.trim() !== multimodalResult.transcript.trim()) {
                 setMultimodalResult(null);
-                setObservationNote('The transcript changed, so the prior sensor summary was detached. Capture again to include fresh observations.');
+                setObservationNote(t('theTranscriptChangedSoThe'));
               }
             }} />
             {observationNote && <p className="production-field-note" role="status">{observationNote}</p>}
             {sourceDocumentsAvailable && <section className="production-source-attachment" aria-labelledby="sourceAttachmentTitle">
-              <div><strong id="sourceAttachmentTitle">Ground the judge question in your material</strong><p>Optional: attach up to three UTF-8 text, Markdown, or JSON files, 40 KB each. Files stay in private project storage.</p></div>
-              <div className="production-source-controls"><label className="button button-secondary" htmlFor="practiceSourceFile">Choose source</label><input key={sourceDocuments.length} id="practiceSourceFile" type="file" accept=".txt,.md,.markdown,.json,text/plain,text/markdown,application/json" onChange={(event) => setSourceFile(event.target.files?.[0] ?? null)} /><span>{sourceFile?.name ?? 'No file chosen'}</span><button className="button button-secondary" type="button" disabled={!sourceFile || sourceBusy || sourceDocuments.length >= 3} onClick={() => void uploadSourceDocument()}>{sourceBusy ? 'Saving…' : 'Attach privately'}</button></div>
-              {sourceDocuments.length > 0 && <ul className="production-source-list">{sourceDocuments.map((document) => <li key={document.id}><span><strong>{document.filename}</strong><small>{Math.ceil(document.sizeBytes / 1000)} KB · private</small></span><button className="text-button" type="button" disabled={sourceBusy} onClick={() => void deleteSourceDocument(document)}>Remove</button></li>)}</ul>}
-              <p className="production-field-note">When semantic question generation is configured, the weakest criterion and attached text are processed by the configured model provider. Otherwise, Talk-Active selects an exact source sentence deterministically.</p>
+              <div><strong id="sourceAttachmentTitle">{t('groundTheJudgeQuestionIn')}</strong><p>{t('optionalAttachUpToThree')}</p></div>
+              <div className="production-source-controls"><label className="button button-secondary" htmlFor="practiceSourceFile">{t('chooseSource')}</label><input key={sourceDocuments.length} id="practiceSourceFile" type="file" accept=".txt,.md,.markdown,.json,text/plain,text/markdown,application/json" onChange={(event) => setSourceFile(event.target.files?.[0] ?? null)} /><span>{sourceFile?.name ?? t('noFileChosen')}</span><button className="button button-secondary" type="button" disabled={!sourceFile || sourceBusy || sourceDocuments.length >= 3} onClick={() => void uploadSourceDocument()}>{sourceBusy ? t('saving') : t('attachPrivately')}</button></div>
+              {sourceDocuments.length > 0 && <ul className="production-source-list">{sourceDocuments.map((document) => <li key={document.id}><span><strong>{document.filename}</strong><small>{Math.ceil(document.sizeBytes / 1000)} KB · private</small></span><button className="text-button" type="button" disabled={sourceBusy} onClick={() => void deleteSourceDocument(document)}>{t('remove')}</button></li>)}</ul>}
+              <p className="production-field-note">{t('whenSemanticQuestionGenerationIs')}</p>
               {sourceStatus && <p className="rubric-import-status" role="status">{sourceStatus}</p>}
             </section>}
             {/* Two numbers and their units on one line; the explanation sits
@@ -1646,23 +1656,23 @@ export function PracticeRoom({
                 and made the simplest controls on the screen the busiest. */}
             <div className="capture-footer">
               <div className="duration-control">
-                <label htmlFor="attemptLimit">Time limit</label>
+                <label htmlFor="attemptLimit">{t('timeLimit')}</label>
                 <input id="attemptLimit" type="number" min="0" max="60" value={targetMinutes} disabled={studioBusy} onChange={(event) => { const value = Number(event.target.value); if (Number.isFinite(value)) setTargetMinutes(Math.max(0, Math.min(60, Math.round(value)))); }} />
-                <span>minutes</span>
-                <small>Capture stops itself at the bell. 0 removes the limit.</small>
+                <span>{t('minutes')}</span>
+                <small>{t('captureStopsItselfAtThe')}</small>
               </div>
               {/* Only meaningful when nothing measured the take for you: a
                   camera capture overwrites this with what it actually ran. */}
               <div className="duration-control">
-                <label htmlFor="attemptDuration">Spoken length</label>
+                <label htmlFor="attemptDuration">{t('spokenLength')}</label>
                 <input id="attemptDuration" type="number" min="1" max="3600" value={duration} disabled={studioBusy} onChange={(event) => { const value = Number(event.target.value); if (Number.isFinite(value)) setDuration(Math.max(1, Math.min(3_600, Math.round(value)))); }} />
-                <span>seconds</span>
-                <small>Set by capture. Edit it when you typed the transcript.</small>
+                <span>{t('seconds')}</span>
+                <small>{t('setByCaptureEditIt')}</small>
               </div>
               <span className="save-state"><span aria-hidden="true">●</span> Local guest draft</span>
             </div>
             {error && <p className="form-error" role="alert">{error}</p>}
-            <button className="button button-primary button-full" type="button" disabled={busy || studioBusy || presentationCaptureActive} aria-busy={busy || studioBusy} onClick={() => void runAnalysis()}>{presentationCaptureActive ? 'Finish local capture first' : busy ? 'Reviewing each criterion…' : 'Review this attempt'} <span aria-hidden="true">→</span></button>
+            <button className="button button-primary button-full" type="button" disabled={busy || studioBusy || presentationCaptureActive} aria-busy={busy || studioBusy} onClick={() => void runAnalysis()}>{presentationCaptureActive ? t('finishLocalCaptureFirst') : busy ? 'Reviewing each criterion…' : t('reviewThisAttempt')} <span aria-hidden="true">→</span></button>
           </div>
           <aside className="session-sidebar">
             {/* The rubric is the target, so it is on screen while the attempt
@@ -1670,38 +1680,38 @@ export function PracticeRoom({
                 has to be covered is the difference between rehearsing and
                 talking (Nielsen: recognition rather than recall). */}
             <section className="surface attempt-target-card">
-              <p className="overline">Cover these before the bell</p>
+              <p className="overline">{t('coverTheseBeforeTheBell')}</p>
               <h3>{rubric.length} criteria{targetMinutes > 0 ? ` · ${targetMinutes} min` : ''}</h3>
               <ol className="attempt-target-list">{rubric.map((criterion) => <li key={criterion.id}><i aria-hidden="true" />{criterion.label}</li>)}</ol>
-              <p className="trust-note"><span aria-hidden="true">◆</span> {targetMinutes > 0 ? 'The review marks which of these you reached, and when.' : 'Set a time limit to see what an evaluator stopping on time would miss.'}</p>
+              <p className="trust-note"><span aria-hidden="true">◆</span> {targetMinutes > 0 ? t('theReviewMarksWhichOf') : t('setATimeLimitTo')}</p>
             </section>
-            <section className="surface session-goal"><p className="overline">Session goal</p><h3>Make every important claim defensible.</h3><p>Complete the attempt naturally. The review isolates only the next weakness worth fixing.</p></section><section className="surface privacy-card"><span className="privacy-icon" aria-hidden="true">⌾</span><div><strong>{persistence === 'local' ? 'Session history stays in this browser' : 'Project sync is active on this deployment'}</strong><p>{persistence === 'local' ? (statelessSemanticAvailable ? 'Semantic review sends this transcript and the typed rubric criteria to the configured model provider. Grounded review results may be cached for up to 24 hours. Raw audio is never saved.' : 'Semantic review is off, so this attempt is checked on-device. Raw audio is never saved.') : 'Attempts and private source files are saved to the configured project services. Raw audio is never saved.'}</p></div></section></aside>
+            <section className="surface session-goal"><p className="overline">{t('sessionGoal')}</p><h3>{t('makeEveryImportantClaimDefensible')}</h3><p>{t('completeTheAttemptNaturallyThe')}</p></section><section className="surface privacy-card"><span className="privacy-icon" aria-hidden="true">⌾</span><div><strong>{persistence === 'local' ? t('sessionHistoryStaysInThis') : t('projectSyncIsActiveOn')}</strong><p>{persistence === 'local' ? (statelessSemanticAvailable ? t('semanticReviewSendsThisTranscript') : t('semanticReviewIsOffSo')) : t('attemptsAndPrivateSourceFiles')}</p></div></section></aside>
         </div>
       </section>}
 
       {stage === 'review' && analysis && <section className="practice-stage is-visible" data-practice-stage="review">
-        <div className="review-hero"><div><p className="overline overline-light">{rehearsalFormat === 'interview' ? 'Interview review' : 'Attempt review'}</p><h2 data-stage-heading tabIndex={-1}>{rehearsalFormat === 'interview' ? 'Your answer evidence, mapped across the whole rubric.' : 'One claim needs your attention before the judges find it.'}</h2><p>This result measures explicit rubric evidence in {rehearsalFormat === 'interview' ? 'your answers' : 'this transcript'}—not confidence or speaking ability.</p><p className="evidence-analysis-mode"><strong>Analysis provenance</strong><span>{engineNote}</span></p></div><div className="coverage-gauge-summary"><div className="coverage-gauge" style={{ '--gauge': `${analysis.evidenceScore * 3.6}deg` } as React.CSSProperties}><strong>{analysis.evidenceScore}%</strong><span>evidence coverage</span></div><small>Equal mean of {analysis.criteria.length} criterion readings. Each criterion has the same weight; this does not measure evidence quality or speaking ability.</small></div></div>
+        <div className="review-hero"><div><p className="overline overline-light">{rehearsalFormat === 'interview' ? t('interviewReview') : t('attemptReview')}</p><h2 data-stage-heading tabIndex={-1}>{rehearsalFormat === 'interview' ? t('yourAnswerEvidenceMappedAcross') : t('oneClaimNeedsYourAttention')}</h2><p>This result measures explicit rubric evidence in {rehearsalFormat === 'interview' ? 'your answers' : 'this transcript'}—not confidence or speaking ability.</p><p className="evidence-analysis-mode"><strong>{t('analysisProvenance')}</strong><span>{engineNote}</span></p></div><div className="coverage-gauge-summary"><div className="coverage-gauge" style={{ '--gauge': `${analysis.evidenceScore * 3.6}deg` } as React.CSSProperties}><strong>{analysis.evidenceScore}%</strong><span>{t('evidenceCoverage')}</span></div><small>Equal mean of {analysis.criteria.length} criterion readings. Each criterion has the same weight; this does not measure evidence quality or speaking ability.</small></div></div>
         <div className="review-grid">
-          <section className="surface weakness-card"><div className="weakness-heading"><span className="attention-icon" aria-hidden="true">!</span><div><p className="overline">Focus next</p><h3>{analysis.weakest.label}</h3></div></div><p>{analysis.drill}</p><div className="missing-cues"><span>Still implicit</span><div><SignalChips signals={analysis.weakest.missingSignals.slice(0, 5)} empty="No declared cues missing" /></div></div></section>
+          <section className="surface weakness-card"><div className="weakness-heading"><span className="attention-icon" aria-hidden="true">!</span><div><p className="overline">{t('focusNext')}</p><h3>{analysis.weakest.label}</h3></div></div><p>{analysis.drill}</p><div className="missing-cues"><span>{t('stillImplicit')}</span><div><SignalChips signals={analysis.weakest.missingSignals.slice(0, 5)} empty={t('noDeclaredCuesMissing')} /></div></div></section>
           {rehearsalFormat === 'presentation'
-            ? <section className="surface judge-preview"><p className="overline">Likely judge question</p><blockquote>{analysis.judgeQuestion}</blockquote>{questionSourceFilename && <p className="question-source-evidence">Grounded in your private source: <strong>{questionSourceFilename}</strong></p>}<button className="button button-primary button-full" type="button" onClick={() => openPracticeStage('defend')}>Practise my answer <span aria-hidden="true">→</span></button></section>
-            : <section className="surface interview-summary-card"><p className="overline">Next rehearsal focus</p><h3>{interviewTurns.length} fixed rubric questions completed</h3><p>Every verdict below used only its paired answer. Kato&apos;s wording was excluded from evidence.</p>{interviewHardestQuestion && <blockquote>{interviewHardestQuestion.questionText}</blockquote>}</section>}
+            ? <section className="surface judge-preview"><p className="overline">{t('likelyJudgeQuestion')}</p><blockquote>{analysis.judgeQuestion}</blockquote>{questionSourceFilename && <p className="question-source-evidence">{t('groundedInYourPrivateSource')}<strong>{questionSourceFilename}</strong></p>}<button className="button button-primary button-full" type="button" onClick={() => openPracticeStage('defend')}>{t('practiseMyAnswer')}<span aria-hidden="true">→</span></button></section>
+            : <section className="surface interview-summary-card"><p className="overline">{t('nextRehearsalFocus')}</p><h3>{interviewTurns.length} fixed rubric questions completed</h3><p>{t('everyVerdictBelowUsedOnly')}</p>{interviewHardestQuestion && <blockquote>{interviewHardestQuestion.questionText}</blockquote>}</section>}
         </div>
         {rehearsalFormat === 'interview' && interviewTurns.length > 0 && <details className="surface review-disclosure interview-turn-summary">
-          <summary><span><small>Turn record</small>Review questions and answer-local evidence</span><strong>{interviewTurns.length} answers</strong></summary>
+          <summary><span><small>{t('turnRecord')}</small>{t('reviewQuestionsAndAnswerLocal')}</span><strong>{interviewTurns.length} answers</strong></summary>
           <div className="review-disclosure-body">
-            <p className="delivery-boundary">One final batch produced these answer-local verdicts. Question text is shown for context but was never sent as answer evidence.</p>
-            <ol aria-label="Interview answers">{interviewTurns.map((turn, index) => <li key={turn.id}>
+            <p className="delivery-boundary">{t('oneFinalBatchProducedThese')}</p>
+            <ol aria-label={t('interviewAnswers')}>{interviewTurns.map((turn, index) => <li key={turn.id}>
               <div><span>Question {index + 1} · {turn.question.criterion.name}</span><strong>{turn.judgment.verdict === 'supported' ? 'evidence covered' : turn.judgment.verdict === 'partial' ? 'partial evidence' : 'evidence missing'}</strong></div>
               <blockquote>{turn.question.text}</blockquote>
-              <p><span>Your answer</span>{turn.answer}</p>
+              <p><span>{t('yourAnswer')}</span>{turn.answer}</p>
               {turn.judgment.citedSpan ? <cite>“{turn.judgment.citedSpan}” — exact answer span</cite> : <small>Missing: {turn.judgment.missingEvidence.slice(0, 5).join(', ')}</small>}
               <small>Answer window: {Math.round(turn.answerStartMs / 100) / 10}s–{Math.round(turn.answerEndMs / 100) / 10}s on the single interview timeline.</small>
             </li>)}</ol>
           </div>
         </details>}
         <section className="surface evidence-section">
-          <div className="section-title-row"><div><p className="overline">Rubric evidence map</p><h2>What your transcript actually supports</h2></div></div>
+          <div className="section-title-row"><div><p className="overline">{t('rubricEvidenceMap')}</p><h2>{t('whatYourTranscriptActuallySupports')}</h2></div></div>
           {/* The whole rubric on one line, before the detail.
               With six criteria the list below runs several screens — the quote
               is deliberately the largest text on the page, and that is not
@@ -1709,7 +1719,7 @@ export function PracticeRoom({
               each direction. The map answers it in place, and each cell jumps
               to its own criterion (Nielsen: user control, and recognition over
               recall). Nothing here replaces the evidence; it indexes it. */}
-          <ol className="evidence-map" aria-label="Every rubric criterion and whether this attempt cites a transcript span for it">
+          <ol className="evidence-map" aria-label={t('everyRubricCriterionAndWhether')}>
             {analysis.criteria.map((criterion) => {
               const reuse = reusedCitations.find((item) => item.criterionIds.includes(criterion.id));
               const state = reuse ? 'reused' : criterion.excerpt ? 'found' : 'absent';
@@ -1734,21 +1744,21 @@ export function PracticeRoom({
               mistake, and stating the limit costs one line (Nielsen 5). */}
           {semanticCoachAvailable && (rehearsalFormat === 'presentation' || interviewTurns.length > 0) && <div className="coach-trigger">
             <div>
-              <strong>{rehearsalFormat === 'interview' ? 'Break this down answer by answer' : 'Break this down criterion by criterion'}</strong>
+              <strong>{rehearsalFormat === 'interview' ? t('breakThisDownAnswerBy') : t('breakThisDownCriterionBy')}</strong>
               <p>{rehearsalFormat === 'interview'
-                ? 'Every answer gets its own reading: what you asserted for its criterion, which of those assertions you backed with your own words, and a stronger form built only from what you already said. Each answer is read on its own, so Kato’s wording never counts as your evidence.'
-                : 'Every criterion gets its own reading: what you asserted for it, which of those assertions you backed with your own words, and a stronger form built only from what you already said.'}</p>
+                ? t('everyAnswerGetsItsOwn')
+                : t('everyCriterionGetsItsOwn')}</p>
             </div>
             <button className="button button-secondary" type="button" disabled={coachBusy} aria-busy={coachBusy} onClick={() => void runCoach()}>
               {coachBusy
-                ? rehearsalFormat === 'interview' ? 'Reading each answer…' : 'Reading each criterion…'
+                ? rehearsalFormat === 'interview' ? t('readingEachAnswer') : t('readingEachCriterion')
                 : Object.keys(coachings).length > 0
-                  ? 'Read them again'
-                  : rehearsalFormat === 'interview' ? 'Break down each answer' : 'Break down each criterion'}
+                  ? t('readThemAgain')
+                  : rehearsalFormat === 'interview' ? t('breakDownEachAnswer') : t('breakDownEachCriterion')}
             </button>
           </div>}
           {coachNote && <p className="rubric-import-status" role="status">{coachNote}</p>}
-          <p className="evidence-confirm-boundary">Your Yes or No on a criterion is recorded once as your own evaluation label, and cannot be changed afterwards.</p>
+          <p className="evidence-confirm-boundary">{t('yourYesOrNoOn')}</p>
           <div className="evidence-list">{analysis.criteria.map((criterion) => {
             const found = Boolean(criterion.excerpt);
             const criterionEngine = criterionEngines[criterion.id] ?? 'deterministic';
@@ -1768,8 +1778,8 @@ export function PracticeRoom({
                   is most of the room. So the wording shortens and the word that
                   carries the limit — "deterministic" — survives verbatim. */}
               <div className="evidence-topline"><strong>{criterion.label}</strong><span className="evidence-meta"><span className="evidence-state">{reuse ? 'citation reused' : found ? criterionEngine === 'semantic' ? 'grounded evidence' : 'cue match' : criterionEngine === 'semantic' ? 'evidence gap' : 'no cue matched'}</span><span className="evidence-provenance">{criterionEngine === 'semantic' ? 'semantic, checked against your transcript' : 'deterministic cue matching, not semantic analysis'}</span></span></div>
-              {found ? <blockquote className="evidence-quote"><span className="evidence-quote-text">{criterion.excerpt}</span><cite className="evidence-source">your words, from this attempt</cite></blockquote> : criterionEngine === 'semantic' ? <p className="evidence-absent">The semantic review found no exact passage that supplies this criterion&apos;s required evidence. <span>Still needed: {criterion.missingSignals.slice(0, 4).join(', ')}.</span></p> : <p className="evidence-absent">Nothing in this attempt matched the declared cues for this criterion. <span>Looked for: {criterion.missingSignals.slice(0, 4).join(', ')}.</span></p>}
-              {reuse && <p className="citation-reuse-note"><strong>One quote is doing more than one job.</strong> This exact span was also cited for {reusedWith.join(', ')}. Both readings stay visible, but this is not independent evidence for each criterion.</p>}
+              {found ? <blockquote className="evidence-quote"><span className="evidence-quote-text">{criterion.excerpt}</span><cite className="evidence-source">{t('yourWordsFromThisAttempt')}</cite></blockquote> : criterionEngine === 'semantic' ? <p className="evidence-absent">{t('theSemanticReviewFoundNo')}<span>Still needed: {criterion.missingSignals.slice(0, 4).join(', ')}.</span></p> : <p className="evidence-absent">{t('nothingInThisAttemptMatched')}<span>Looked for: {criterion.missingSignals.slice(0, 4).join(', ')}.</span></p>}
+              {reuse && <p className="citation-reuse-note"><strong>{t('oneQuoteIsDoingMore')}</strong> This exact span was also cited for {reusedWith.join(', ')}. Both readings stay visible, but this is not independent evidence for each criterion.</p>}
               {/* Per-criterion coaching. The verdict above says whether this
                   requirement was met; this says what you actually asserted for
                   it, which of those assertions you backed, and what a stronger
@@ -1782,35 +1792,35 @@ export function PracticeRoom({
                 const coachingSummary = [
                   coaching?.claims.length ? `${backedClaims}/${coaching.claims.length} claims backed` : null,
                   criterionWording.length ? `${criterionWording.length} wording ${criterionWording.length === 1 ? 'cue' : 'cues'}` : null,
-                ].filter(Boolean).join(' · ') || 'No claim found';
+                ].filter(Boolean).join(' · ') || t('noClaimFound');
                 return <details className="criterion-coaching">
-                  <summary><span>Inspect claim and wording coaching</span><strong>{coachingSummary}</strong></summary>
+                  <summary><span>{t('inspectClaimAndWordingCoaching')}</span><strong>{coachingSummary}</strong></summary>
                   <div className="criterion-coaching-body">
                   {coaching && coaching.claims.length > 0 && <ul className="claim-citation-list">
                     {coaching.claims.map((claim, index) => <li key={index} data-supported={claim.supported}>
                       <q className="claim-quote">{claim.citedSpan}</q>
                       {claim.supported && claim.supportSpan
-                        ? <p className="claim-support"><strong>Backed in your own words:</strong> “{claim.supportSpan}”</p>
-                        : <p className="claim-gap"><strong>Nothing in this attempt backs it.</strong> An evaluator asks: “{claim.invitedQuestion}”</p>}
+                        ? <p className="claim-support"><strong>{t('backedInYourOwnWords')}</strong> “{claim.supportSpan}”</p>
+                        : <p className="claim-gap"><strong>{t('nothingInThisAttemptBacks')}</strong> An evaluator asks: “{claim.invitedQuestion}”</p>}
                     </li>)}
                   </ul>}
-                  {coaching && coaching.claims.length === 0 && !coaching.degradedReason && <p className="criterion-coaching-empty">This attempt asserts nothing about this criterion — there is no claim to back or challenge yet.</p>}
+                  {coaching && coaching.claims.length === 0 && !coaching.degradedReason && <p className="criterion-coaching-empty">{t('thisAttemptAssertsNothingAbout')}</p>}
                   {criterionWording.length > 0 && <p className="criterion-wording">
-                    <strong>Wording an evaluator will probe:</strong>
+                    <strong>{t('wordingAnEvaluatorWillProbe')}</strong>
                     {criterionWording.slice(0, 3).map((cue) => <span key={cue.label}>“{cue.label}” — {cue.invites}</span>)}
                   </p>}
                   {coaching?.discardedClaims ? <p className="citation-reuse-note"><strong>{coaching.discardedClaims} model reading{coaching.discardedClaims > 1 ? 's were' : ' was'} rejected</strong> because the quote was not a verbatim span of your transcript. Rejected readings are discarded, never repaired.</p> : null}
                   {coaching?.strongerForm && <div className="stronger-form">
-                    <p className="overline">A stronger form of this answer</p>
+                    <p className="overline">{t('aStrongerFormOfThis')}</p>
                     <blockquote>{coaching.strongerForm}</blockquote>
-                    {coaching.blanks.length > 0 && <div className="stronger-form-blanks"><span>Each blank is data this attempt never stated. Fill it with a number you have — or say the measurement has not been done, which is also an answer.</span><ol>{coaching.blanks.map((blank, index) => <li key={index}>{blank}</li>)}</ol></div>}
-                    <p className="evidence-provenance">Rearranged from your own words only. A number absent from your transcript is rejected before this is shown.</p>
+                    {coaching.blanks.length > 0 && <div className="stronger-form-blanks"><span>{t('eachBlankIsDataThis')}</span><ol>{coaching.blanks.map((blank, index) => <li key={index}>{blank}</li>)}</ol></div>}
+                    <p className="evidence-provenance">{t('rearrangedFromYourOwnWords')}</p>
                   </div>}
                   {coaching?.degradedReason && <p className="criterion-coaching-note" role="status">{coaching.degradedReason}</p>}
                   </div>
                 </details>;
               })()}
-              <div className="production-confirm"><span>{found ? 'Would an evaluator accept this?' : 'Is this gap accurate?'}</span><button aria-label={found ? `Confirm that the cited span covers ${criterion.label}` : `Confirm the evidence gap for ${criterion.label}`} className={`button button-secondary${confirmations[criterion.id] === true ? ' is-selected' : ''}`} type="button" disabled={confirmationBusy[criterion.id] || confirmations[criterion.id] !== undefined} onClick={() => void confirmEvidence(criterion.id, true)}>Yes</button><button aria-label={found ? `Reject the cited span for ${criterion.label}` : `Reject the evidence gap for ${criterion.label}`} className={`button button-secondary${confirmations[criterion.id] === false ? ' is-selected' : ''}`} type="button" disabled={confirmationBusy[criterion.id] || confirmations[criterion.id] !== undefined} onClick={() => void confirmEvidence(criterion.id, false)}>No</button>{confirmationNotes[criterion.id] && <small role="status">{confirmationNotes[criterion.id]}</small>}</div>
+              <div className="production-confirm"><span>{found ? t('wouldAnEvaluatorAcceptThis') : t('isThisGapAccurate')}</span><button aria-label={found ? `Confirm that the cited span covers ${criterion.label}` : `Confirm the evidence gap for ${criterion.label}`} className={`button button-secondary${confirmations[criterion.id] === true ? ' is-selected' : ''}`} type="button" disabled={confirmationBusy[criterion.id] || confirmations[criterion.id] !== undefined} onClick={() => void confirmEvidence(criterion.id, true)}>Yes</button><button aria-label={found ? `Reject the cited span for ${criterion.label}` : `Reject the evidence gap for ${criterion.label}`} className={`button button-secondary${confirmations[criterion.id] === false ? ' is-selected' : ''}`} type="button" disabled={confirmationBusy[criterion.id] || confirmations[criterion.id] !== undefined} onClick={() => void confirmEvidence(criterion.id, false)}>No</button>{confirmationNotes[criterion.id] && <small role="status">{confirmationNotes[criterion.id]}</small>}</div>
             </article>;
           })}</div>
         </section>
@@ -1825,13 +1835,13 @@ export function PracticeRoom({
           onRetakeCriterion={rehearsalFormat === 'presentation' ? beginCriterionRetake : undefined}
         />}
         {(!multimodalResult || wordingCues.length > 0) && <details className="surface review-disclosure delivery-section">
-          <summary><span><small>Supporting transcript context</small>Inspect pace and word-pattern cues</span><strong>{multimodalResult
+          <summary><span><small>{t('supportingTranscriptContext')}</small>{t('inspectPaceAndWordPattern')}</span><strong>{multimodalResult
             ? `${wordingCues.length} language ${wordingCues.length === 1 ? 'cue' : 'cues'}`
             : `${transcriptCueCount} ${transcriptCueCount === 1 ? 'cue' : 'cues'}`}</strong></summary>
           <div className="review-disclosure-body">
-            <p className="delivery-boundary">Word-pattern counts from this transcript, and not a measure of speaking ability. This does not change the rubric evidence above.</p>
+            <p className="delivery-boundary">{t('wordPatternCountsFromThis')}</p>
             {!multimodalResult && <>
-              <div className="delivery-metrics"><div className="delivery-metric"><strong>{analysis.delivery.wordsPerMinute}</strong><span>words per minute</span></div><div className="delivery-metric"><strong>{analysis.delivery.wordCount}</strong><span>words spoken</span></div><div className="delivery-metric"><strong>{analysis.delivery.fillerCount}</strong><span>potential fillers</span></div></div>
+              <div className="delivery-metrics"><div className="delivery-metric"><strong>{analysis.delivery.wordsPerMinute}</strong><span>{t('wordsPerMinute')}</span></div><div className="delivery-metric"><strong>{analysis.delivery.wordCount}</strong><span>{t('wordsSpoken')}</span></div><div className="delivery-metric"><strong>{analysis.delivery.fillerCount}</strong><span>{t('potentialFillers')}</span></div></div>
               {/* A total alone is not actionable, so every matched filler stays
                   available here by name while the whole block remains quiet
                   until somebody asks for delivery detail. */}
@@ -1840,7 +1850,7 @@ export function PracticeRoom({
               </ul> : null}
             </>}
             {wordingCues.length > 0 && <div className="wording-cue-block">
-              <div className="section-title-row"><div><p className="overline">Wording an evaluator will probe</p><h3>Words that invite the next question</h3></div></div>
+              <div className="section-title-row"><div><p className="overline">{t('wordingAnEvaluatorWillProbe2')}</p><h3>{t('wordsThatInviteTheNext')}</h3></div></div>
               <ul className="wording-cue-list">
                 {wordingCues.slice(0, 8).map((cue) => <li key={cue.label} data-cue-kind={cue.kind}>
                   <strong>{cue.label}</strong>
@@ -1848,19 +1858,19 @@ export function PracticeRoom({
                   <small>{cue.kind === 'vague-quantity' ? 'an amount nobody can check' : 'a claim weakened before it is challenged'} — invites “{cue.invites}”</small>
                 </li>)}
               </ul>
-              <p className="metrics-boundary">Counted by exact word matching in this transcript, on this device. Ordinary phrasing can be perfectly fine — the point is knowing which follow-up each word invites before an evaluator asks it.</p>
+              <p className="metrics-boundary">{t('countedByExactWordMatching')}</p>
             </div>}
           </div>
         </details>}
-        <div className="review-actions"><button className="button button-secondary" type="button" onClick={() => { if (rehearsalFormat === 'interview') { setInterviewTurns([]); setInterviewHardestQuestion(null); setMultimodalResult(null); } backToPracticeStage('attempt'); }}>{rehearsalFormat === 'interview' ? 'Repeat interview' : 'Revise transcript'}</button><button className="button button-secondary" type="button" onClick={saveSession}>{/* A string literal, not JSX text: an entity written here reaches the
+        <div className="review-actions"><button className="button button-secondary" type="button" onClick={() => { if (rehearsalFormat === 'interview') { setInterviewTurns([]); setInterviewHardestQuestion(null); setMultimodalResult(null); } backToPracticeStage('attempt'); }}>{rehearsalFormat === 'interview' ? t('repeatInterview') : t('reviseTranscript')}</button><button className="button button-secondary" type="button" onClick={saveSession}>{/* A string literal, not JSX text: an entity written here reaches the
                 button as the six characters "&amp;". */}
-              {rehearsalFormat === 'interview' ? 'Save interview review' : 'Save without Q&A'}</button></div>
+              {rehearsalFormat === 'interview' ? t('saveInterviewReview') : t('saveWithoutQA')}</button></div>
       </section>}
 
-      {stage === 'defend' && rehearsalFormat === 'presentation' && analysis && <section className="practice-stage is-visible" data-practice-stage="defend"><h2 className="sr-only" data-stage-heading tabIndex={-1}>Defend the weakest claim</h2><div className="defense-layout">
-        <section className="judge-room"><div className="judge-room-topline"><div className="judge-profile"><span className="judge-avatar" aria-hidden="true">J</span><span><strong>Competition evaluator</strong><small>Questioning <b>{analysis.weakest.label}</b></small></span></div><span className="live-chip"><i /> Q&amp;A drill</span></div><blockquote>{analysis.judgeQuestion}</blockquote>{questionSourceFilename && <p className="question-source-evidence">Grounded in your private source: <strong>{questionSourceFilename}</strong></p>}<p>Answer directly. Name the mechanism, comparison, or proof the rubric expects.</p></section>
-        <div className="defense-workspace"><section className="surface answer-panel"><label htmlFor="defenseAnswer">Your answer</label><textarea id="defenseAnswer" rows={10} value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder="Start with a direct answer..." />{error && <p className="form-error" role="alert">{error}</p>}<button className="button button-primary button-full" type="button" disabled={busy} onClick={() => void runDefense()}>{busy ? 'Checking only this answer…' : 'Check this answer'} <span aria-hidden="true">→</span></button></section>
-          <section className="surface defense-feedback" aria-live="polite">{defense ? <div><div className="verdict-row"><div><p className="overline">Answer evidence coverage</p><h3>{defense.status}</h3></div><strong>{defense.score}%</strong></div><p>{defense.feedback}</p>{defenseEngineNote && <p className="evidence-provenance"><strong>Defense provenance:</strong> {defenseEngineNote}</p>}<div className="signal-review"><div><span>Grounded answer evidence</span><div><SignalChips signals={defense.matchedSignals} empty="No grounded answer span yet" /></div></div><div><span>Still missing</span><div><SignalChips signals={defense.missingSignals} empty="No declared cues missing" /></div></div></div><div className="follow-up"><span>The judge pushes once more</span><p>{defense.followUp}</p></div><button className="button button-primary button-full" type="button" onClick={saveSession}>Save this session <span aria-hidden="true">✓</span></button></div> : <div className="feedback-empty"><img className="mascot-guide" src={logo.src} alt="" /><h3>Say it in your own words.</h3><p>This check uses only the answer above, never the original pitch.</p></div>}</section>
+      {stage === 'defend' && rehearsalFormat === 'presentation' && analysis && <section className="practice-stage is-visible" data-practice-stage="defend"><h2 className="sr-only" data-stage-heading tabIndex={-1}>{t('defendTheWeakestClaim')}</h2><div className="defense-layout">
+        <section className="judge-room"><div className="judge-room-topline"><div className="judge-profile"><span className="judge-avatar" aria-hidden="true">J</span><span><strong>{t('competitionEvaluator')}</strong><small>{t('questioning')}<b>{analysis.weakest.label}</b></small></span></div><span className="live-chip"><i /> Q&amp;A drill</span></div><blockquote>{analysis.judgeQuestion}</blockquote>{questionSourceFilename && <p className="question-source-evidence">{t('groundedInYourPrivateSource')}<strong>{questionSourceFilename}</strong></p>}<p>{t('answerDirectlyNameTheMechanism')}</p></section>
+        <div className="defense-workspace"><section className="surface answer-panel"><label htmlFor="defenseAnswer">{t('yourAnswer')}</label><textarea id="defenseAnswer" rows={10} value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder={t('startWithADirectAnswer')} />{error && <p className="form-error" role="alert">{error}</p>}<button className="button button-primary button-full" type="button" disabled={busy} onClick={() => void runDefense()}>{busy ? t('checkingOnlyThisAnswer') : t('checkThisAnswer')} <span aria-hidden="true">→</span></button></section>
+          <section className="surface defense-feedback" aria-live="polite">{defense ? <div><div className="verdict-row"><div><p className="overline">{t('answerEvidenceCoverage')}</p><h3>{defense.status}</h3></div><strong>{defense.score}%</strong></div><p>{defense.feedback}</p>{defenseEngineNote && <p className="evidence-provenance"><strong>{t('defenseProvenance')}</strong> {defenseEngineNote}</p>}<div className="signal-review"><div><span>{t('groundedAnswerEvidence')}</span><div><SignalChips signals={defense.matchedSignals} empty={t('noGroundedAnswerSpanYet')} /></div></div><div><span>{t('stillMissing')}</span><div><SignalChips signals={defense.missingSignals} empty={t('noDeclaredCuesMissing')} /></div></div></div><div className="follow-up"><span>{t('theJudgePushesOnceMore')}</span><p>{defense.followUp}</p></div><button className="button button-primary button-full" type="button" onClick={saveSession}>{t('saveThisSession')}<span aria-hidden="true">✓</span></button></div> : <div className="feedback-empty"><img className="mascot-guide" src={logo.src} alt="" /><h3>{t('sayItInYourOwn')}</h3><p>{t('thisCheckUsesOnlyThe')}</p></div>}</section>
         </div><button className="text-button back-review" type="button" onClick={() => backToPracticeStage('review')}>← Back to attempt review</button>
       </div></section>}
     </section>

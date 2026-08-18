@@ -51,13 +51,13 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   await page.getByRole('link', { name: /Lanjutkan latihan/i }).click();
   await expect(page).toHaveURL(/\/practice$/u);
   await expect(page.getByRole('link', { name: 'Exit session' })).toHaveCount(0);
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
-  await expect(page.getByLabel('Practice transcript')).toBeVisible();
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
+  await expect(page.getByLabel('Transkrip latihan')).toBeVisible();
   await expectVisibleControlsHitTest(page);
-  const reviewedDraft = await page.getByLabel('Practice transcript').inputValue();
-  await page.getByRole('button', { name: /Review this attempt/i }).click();
+  const reviewedDraft = await page.getByLabel('Transkrip latihan').inputValue();
+  await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
 
-  await expect(page.getByRole('heading', { name: 'What your transcript actually supports' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Apa yang benar-benar didukung transkrip Anda' })).toBeVisible();
   await expect(page.locator('.evidence-item')).toHaveCount(4);
   await expect(page.locator('.evidence-provenance')).toHaveCount(4);
   await expect(page.locator('.production-confirm')).toHaveCount(4);
@@ -71,10 +71,10 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   // review, just like the visible Back controls do.
   await page.goBack();
   await expect(page.locator('.capture-header h2')).toBeFocused();
-  await expect(page.getByLabel('Practice transcript')).toHaveValue(reviewedDraft);
+  await expect(page.getByLabel('Transkrip latihan')).toHaveValue(reviewedDraft);
   await page.goForward();
-  await expect(page.getByRole('heading', { name: /One claim needs your attention/i })).toBeFocused();
-  await expect(page.getByRole('heading', { name: 'What your transcript actually supports' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Satu klaim perlu perhatian Anda/i })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Apa yang benar-benar didukung transkrip Anda' })).toBeVisible();
 
   // Matched by pattern, not by exact string. The visible button says only
   // "Yes"/"No", so the accessible name has to name the criterion AND what
@@ -83,24 +83,24 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   await page.getByRole('button', { name: /^Confirm\b.*\bProblem clarity$/ }).click();
   await expect(page.getByText(/Saved in this browser as a human evaluation label; the original deterministic provenance is preserved\./u)).toBeVisible();
   await page.getByRole('button', { name: /^Reject\b.*\bSolution fit$/ }).click();
-  await expect(page.getByText(/re-checked once with the rejected sentence excluded/i)).toBeVisible();
+  await expect(page.getByText(/diperiksa ulang sekali dengan kalimat yang ditolak dikecualikan/i)).toBeVisible();
   await expect.poll(() => page.evaluate(() => {
     const raw = localStorage.getItem('talkactive.production.evidence-confirmations.v1');
     return raw ? JSON.parse(raw).length : 0;
   })).toBe(2);
 
-  await page.getByRole('button', { name: /Practise my answer/i }).click();
+  await page.getByRole('button', { name: /Latih jawaban saya/i }).click();
   await page.goBack();
-  await expect(page.getByRole('heading', { name: /One claim needs your attention/i })).toBeFocused();
+  await expect(page.getByRole('heading', { name: /Satu klaim perlu perhatian Anda/i })).toBeFocused();
   await page.goForward();
-  await expect(page.getByRole('heading', { name: 'Defend the weakest claim' })).toBeFocused();
-  await page.getByLabel('Your answer').fill(
+  await expect(page.getByRole('heading', { name: 'Pertahankan klaim terlemah' })).toBeFocused();
+  await page.getByLabel('Jawaban Anda').fill(
     'Compared with competitors, our unique logic keeps every verdict traceable to the evaluator rubric.',
   );
-  await page.getByRole('button', { name: /Check this answer/i }).click();
+  await page.getByRole('button', { name: /Periksa jawaban ini/i }).click();
   await expect(page.getByRole('heading', { name: 'defensible' })).toBeVisible();
   await expectVisibleControlsHitTest(page);
-  await page.getByRole('button', { name: /Save this session/i }).click();
+  await page.getByRole('button', { name: /Simpan sesi ini/i }).click();
 
   await expect(page).toHaveURL(/\/progress$/u);
   await expect(page.getByRole('link', { name: 'New practice' })).toHaveCount(0);
@@ -170,11 +170,11 @@ test('review visibly flags one citation reused across criteria', async ({ page }
     ]),
   ));
   await page.goto('/practice');
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
-  await page.getByLabel('Practice transcript').fill(
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
+  await page.getByLabel('Transkrip latihan').fill(
     'Our rubric maps each claim to evidence before the evaluator asks a question.',
   );
-  await page.getByRole('button', { name: /Review this attempt/i }).click();
+  await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
 
   const reused = page.locator('.evidence-item[data-evidence="reused"]');
   await expect(reused).toHaveCount(2);
@@ -285,9 +285,9 @@ test('local guest workspace uses stateless semantic review when the capability i
   });
 
   await page.goto('/practice');
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
-  await expect(page.getByText(/Semantic review sends this transcript and the typed rubric criteria/u)).toBeVisible();
-  await page.getByRole('button', { name: /Review this attempt/i }).click();
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
+  await expect(page.getByText(/Tinjauan semantik mengirim transkrip ini dan kriteria rubrik/u)).toBeVisible();
+  await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
   await expect(page.getByText(/4 of 4 criteria used semantic mapping/u)).toBeVisible();
   await expect(page.getByText(/judge question used semantic generation/u)).toBeVisible();
   await expect(page.locator('.evidence-provenance')).toHaveCount(4);
@@ -444,21 +444,21 @@ test('private source upload grounds the saved judge question with visible proven
   });
 
   await page.goto('/practice');
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
-  await expect(page.getByText('Ground the judge question in your material')).toBeVisible();
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
+  await expect(page.getByText('Dasarkan pertanyaan juri pada materi Anda')).toBeVisible();
   await page.locator('#practiceSourceFile').setInputFiles({
     name: 'proposal.md',
     mimeType: 'text/markdown',
     buffer: Buffer.from('# Research\nStudents receive rubric feedback only after final submission.'),
   });
-  await page.getByRole('button', { name: 'Attach privately' }).click();
+  await page.getByRole('button', { name: 'Lampirkan secara privat' }).click();
   await expect(page.getByRole('status')).toContainText('proposal.md attached privately');
   await expect(page.locator('.production-source-list')).toContainText('proposal.md');
   expect(uploadCalls).toBe(1);
 
-  await page.getByRole('button', { name: /Review this attempt/i }).click();
-  await expect(page.getByRole('heading', { name: 'What your transcript actually supports' })).toBeVisible();
-  await expect(page.getByText('Grounded in your private source:')).toContainText('proposal.md');
+  await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
+  await expect(page.getByRole('heading', { name: 'Apa yang benar-benar didukung transkrip Anda' })).toBeVisible();
+  await expect(page.getByText('Berdasar pada sumber privat Anda:')).toContainText('proposal.md');
   await expect(page.locator('.judge-preview blockquote')).toContainText('interview finding');
   await expectVisibleControlsHitTest(page);
 });

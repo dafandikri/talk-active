@@ -103,56 +103,56 @@ test('selected project owns the rubric, language, direct studio, and browser his
 
   await expect(page.locator('.setup-project-summary strong')).toHaveText('English product pitch');
   await expect(page.locator('.setup-rubric')).toContainText('Verified impact');
-  await expect(page.getByLabel('Choose project')).toHaveValue(ENGLISH_PROJECT_ID);
-  await expect(page.getByLabel('Project language')).toHaveValue('en-US');
+  await expect(page.getByLabel('Pilih proyek')).toHaveValue(ENGLISH_PROJECT_ID);
+  await expect(page.getByLabel('Bahasa proyek')).toHaveValue('en-US');
 
-  await page.getByLabel('Project language').selectOption('id-ID');
-  await expect(page.getByRole('status')).toContainText('Project language synced');
+  await page.getByLabel('Bahasa proyek').selectOption('id-ID');
+  await expect(page.getByRole('status')).toContainText('Bahasa proyek tersinkron');
   expect(patches).toEqual([{ id: ENGLISH_PROJECT_ID, language: 'id-ID' }]);
 
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
 
   // Writing is the default route to a transcript, so the step opens with no
   // capture panel at all and nothing asked of the camera or microphone.
   await expect(page.locator('.capture-header h2')).toHaveText('English product pitch');
-  await expect(page.getByLabel('Practice transcript')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Write or paste' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('heading', { name: 'Rehearse the whole performance.' })).toHaveCount(0);
+  await expect(page.getByLabel('Transkrip latihan')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tulis atau tempel' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('heading', { name: 'Latih keseluruhan penampilan.' })).toHaveCount(0);
 
   // Choosing live capture reveals the observation checklist, and every signal
   // in it starts off. The project language decides the dictation language.
-  await page.getByRole('button', { name: 'Record live' }).click();
-  await expect(page.getByRole('heading', { name: 'Rehearse the whole performance.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Rekam langsung' }).click();
+  await expect(page.getByRole('heading', { name: 'Latih keseluruhan penampilan.' })).toBeVisible();
   await expect(page.getByRole('group', { name: /Pilih apa yang boleh diamati latihan ini/i })).toBeVisible();
   await expect(page.getByText('Project language: Bahasa Indonesia', { exact: true })).toBeVisible();
   await expect(page.getByRole('checkbox', { name: /Kamera landmark lokal/i })).not.toBeChecked();
   await expect(page.getByRole('checkbox', { name: /Suara isyarat lokal/i })).not.toBeChecked();
   await expect(page.getByRole('checkbox', { name: /Transkrip langsung Bahasa Indonesia/i })).not.toBeChecked();
   await expect(page.getByRole('checkbox', { name: /Simpan rekaman kamera \+ mikrofon/i })).not.toBeChecked();
-  await page.getByRole('button', { name: 'Write or paste' }).click();
+  await page.getByRole('button', { name: 'Tulis atau tempel' }).click();
 
   const preservedDraft = 'This draft must survive browser Back and Forward inside Practice.';
-  await page.getByLabel('Practice transcript').fill(preservedDraft);
+  await page.getByLabel('Transkrip latihan').fill(preservedDraft);
   await page.goBack();
-  await expect(page.getByRole('heading', { name: 'What are you preparing for?' })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Anda sedang bersiap untuk apa?' })).toBeFocused();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await page.goForward();
   await expect(page.locator('.capture-header h2')).toBeFocused();
-  await expect(page.getByLabel('Practice transcript')).toHaveValue(preservedDraft);
+  await expect(page.getByLabel('Transkrip latihan')).toHaveValue(preservedDraft);
 
   await page.getByRole('link', { name: 'Back to workspace' }).click();
   await expect(page).toHaveURL(`/workspace?project=${ENGLISH_PROJECT_ID}`);
   await page.goBack();
   await expect(page).toHaveURL(`/practice?project=${ENGLISH_PROJECT_ID}`);
   await expect(page.locator('.capture-header h2')).toHaveText('English product pitch');
-  await expect(page.getByLabel('Practice transcript')).toHaveValue(preservedDraft);
+  await expect(page.getByLabel('Transkrip latihan')).toHaveValue(preservedDraft);
 
   await page.getByRole('button', { name: 'Back to project setup' }).click();
-  await expect(page.getByRole('heading', { name: 'What are you preparing for?' })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Anda sedang bersiap untuk apa?' })).toBeFocused();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
-  await expect(page.getByRole('link', { name: 'Edit' }))
+  await expect(page.getByRole('link', { name: 'Ubah' }))
     .toHaveAttribute('href', `/rubric?project=${ENGLISH_PROJECT_ID}`);
-  await page.getByLabel('Choose project').selectOption(INDONESIAN_PROJECT_ID);
+  await page.getByLabel('Pilih proyek').selectOption(INDONESIAN_PROJECT_ID);
   await expect(page).toHaveURL(`/practice?project=${INDONESIAN_PROJECT_ID}`);
   await expect(page.locator('.setup-project-summary strong')).toHaveText('Pitch inovasi Indonesia');
   await expect(page.locator('.setup-rubric')).toContainText('Dampak terukur');

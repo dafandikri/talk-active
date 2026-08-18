@@ -440,19 +440,31 @@ test('INV-4 delivery coaching names its own limit and stays subordinate to evide
 
   assertContains(
     room,
-    /not a measure of speaking ability/u,
+    /t\('wordPatternCountsFromThis'\)/u,
     'the delivery panel must state that it does not measure speaking ability',
   );
-  assertContains(
-    room,
-    /does not change the rubric evidence/u,
-    'the delivery panel must state that it does not affect the rubric verdicts',
-  );
+  // INV-4: the limit is only disclosed if it is disclosed in the locale read.
+  for (const locale of ['id', 'en']) {
+    const entries = JSON.parse(read(`apps/web/messages/${locale}.json`)).practice;
+    assert.match(entries.wordPatternCountsFromThis,
+      /bukan ukuran kemampuan berbicara|not a measure of speaking ability/u,
+      `${locale}: the delivery panel must disclaim speaking ability`);
+  }
+  // Same sentence, same key: delivery is supporting context and never moves a
+  // criterion verdict. Checked in every locale for the same reason as above.
+  for (const locale of ['id', 'en']) {
+    const entries = JSON.parse(read(`apps/web/messages/${locale}.json`)).practice;
+    assert.match(entries.wordPatternCountsFromThis,
+      /tidak mengubah bukti rubrik|does not change the rubric evidence/u,
+      `${locale}: the delivery panel must state it cannot change a verdict`);
+  }
 
   // Position encodes priority. If delivery ever moves above the evidence map,
   // the screen starts arguing that HOW you spoke matters more than WHETHER you
   // supported the criterion, which inverts the entire product thesis.
-  const evidenceAt = room.indexOf('Rubric evidence map');
+  // Anchored on the message key: the ordering claim is about where the markup
+  // sits, which translation does not move.
+  const evidenceAt = room.indexOf("t('rubricEvidenceMap')");
   const deliveryAt = room.indexOf('delivery-section');
   assert.ok(evidenceAt !== -1 && deliveryAt !== -1, 'both the evidence map and the delivery panel must exist');
   assert.ok(

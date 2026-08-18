@@ -86,7 +86,7 @@ test('short landscape uses reachable mobile chrome without overflow or color-onl
 test('reduced-motion preference keeps stage transitions usable and effectively instant', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/practice');
-  await page.getByRole('button', { name: /Begin this attempt/i }).click();
+  await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
   await expect(page.locator('.capture-header h2')).toBeFocused();
   const durations = await page.locator('.view.is-visible').evaluate((view) => ({
     animation: getComputedStyle(view).animationDuration,

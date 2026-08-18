@@ -38,9 +38,9 @@ async function chooseInterview(page: Page, expectedCriterionCount?: number) {
   if (expectedCriterionCount !== undefined) {
     await expect(page.locator('.setup-rubric h3')).toHaveText(`${expectedCriterionCount} criteria`);
   }
-  await page.getByRole('radio', { name: /Interview Q&A/i }).check();
-  await page.getByLabel('Project language').selectOption('en-US');
-  await page.getByRole('button', { name: 'Start Kato interview' }).click();
+  await page.getByRole('radio', { name: /Tanya jawab wawancara/i }).check();
+  await page.getByLabel('Bahasa proyek').selectOption('en-US');
+  await page.getByRole('button', { name: 'Mulai wawancara Kato' }).click();
   await expect(page.getByRole('heading', { name: 'Kato bertanya' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Jawab satu pertanyaan rubrik dalam satu waktu.' })).toBeFocused();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
@@ -161,7 +161,7 @@ test('Kato asks five fixed rubric questions and sends one answer-local final bat
     await expect(nextQuestion).toBeFocused();
     expect(requests, `question ${index + 1} must not trigger final analysis`).toHaveLength(0);
     expect(legacyAnalyzeRequests).toBe(0);
-    await expect(page.getByRole('heading', { name: 'Your answer evidence, mapped across the whole rubric.' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Bukti jawaban Anda, dipetakan ke seluruh rubrik.' })).toHaveCount(0);
   }
 
   await expect(page.locator('.interview-progress li[aria-current="step"]')).toContainText(
@@ -176,7 +176,7 @@ test('Kato asks five fixed rubric questions and sends one answer-local final bat
   // heading renders only once the batch response has been applied, so waiting
   // for it makes the count deterministic without weakening what it asserts:
   // exactly one request, never one per question.
-  await expect(page.getByRole('heading', { name: 'Your answer evidence, mapped across the whole rubric.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bukti jawaban Anda, dipetakan ke seluruh rubrik.' })).toBeVisible();
 
   expect(requests).toHaveLength(1);
   expect(legacyAnalyzeRequests).toBe(0);
@@ -194,11 +194,11 @@ test('Kato asks five fixed rubric questions and sends one answer-local final bat
     expect(turn.durationSeconds).toBe(45);
   }
 
-  await expect(page.getByRole('heading', { name: 'Your answer evidence, mapped across the whole rubric.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bukti jawaban Anda, dipetakan ke seluruh rubrik.' })).toBeVisible();
   const turnDisclosure = page.locator('.interview-turn-summary');
   await expect(turnDisclosure.locator('summary')).toContainText('5 answers');
   await turnDisclosure.locator('summary').click();
-  const reviewedTurns = turnDisclosure.locator('ol[aria-label="Interview answers"] > li');
+  const reviewedTurns = turnDisclosure.locator('ol[aria-label="Jawaban wawancara"] > li');
   await expect(reviewedTurns).toHaveCount(5);
   for (let index = 0; index < answers.length; index += 1) {
     const reviewedTurn = reviewedTurns.nth(index);
@@ -339,14 +339,14 @@ test('a signed-in interview summary survives synced progress reload without dupl
 
   await page.goto(`/practice?project=${projectId}`);
   await expect(page.locator('.setup-project-summary strong')).toHaveText('Signed-in interview project');
-  await page.getByRole('radio', { name: /Interview Q&A/i }).check();
-  await page.getByRole('button', { name: 'Start Kato interview' }).click();
+  await page.getByRole('radio', { name: /Tanya jawab wawancara/i }).check();
+  await page.getByRole('button', { name: 'Mulai wawancara Kato' }).click();
   await page.getByLabel('Jawaban Anda').fill(
     'The measurable outcome is explicit rubric coverage, and the measurement is the saved criterion verdict.',
   );
   await page.getByRole('button', { name: 'Kirim wawancara untuk ditinjau' }).click();
-  await expect(page.getByRole('heading', { name: 'Your answer evidence, mapped across the whole rubric.' })).toBeVisible();
-  await page.getByRole('button', { name: 'Save interview review' }).click();
+  await expect(page.getByRole('heading', { name: 'Bukti jawaban Anda, dipetakan ke seluruh rubrik.' })).toBeVisible();
+  await page.getByRole('button', { name: 'Simpan tinjauan wawancara' }).click();
 
   await expect(page).toHaveURL(`/progress?project=${projectId}`);
   // An interview aggregate averages five answer-local verdicts; a presentation
@@ -718,10 +718,10 @@ test('each interview answer is coached against its own criterion, and never agai
   }
   await answerBox.fill(answers[4]!);
   await page.getByRole('button', { name: 'Kirim wawancara untuk ditinjau' }).click();
-  await expect(page.getByRole('heading', { name: 'Your answer evidence, mapped across the whole rubric.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bukti jawaban Anda, dipetakan ke seluruh rubrik.' })).toBeVisible();
 
   // The trigger has to exist at all — this is the gate that used to hide it.
-  const trigger = page.getByRole('button', { name: 'Break down each answer' });
+  const trigger = page.getByRole('button', { name: 'Uraikan setiap jawaban' });
   await expect(trigger).toBeVisible();
   await trigger.click();
   await expect(page.getByText(/All 5 answers were coached/)).toBeVisible();
