@@ -61,7 +61,7 @@ test('the entry gate reads in Indonesian by default and in English on request', 
   await page.goto('/enter');
   await expect(page.getByRole('heading', { name: 'Beri nama ruang kerja ini.' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Masuk ke ruang kerja/ })).toBeVisible();
-  await expect(page.getByLabel('Nama Anda')).toBeVisible();
+  await expect(page.getByLabel('Nama tampilan')).toBeVisible();
 
   await page.goto('/account');
   await page.locator('#interfaceLanguage').selectOption('en');
@@ -79,7 +79,7 @@ test('the guest-name validation message is translated, not only the static copy'
   // Scoped to the form's own alert: Next mounts a route announcer with the
   // same role, so a bare getByRole('alert') matches two elements.
   await expect(page.locator('.entry-error')).toHaveText(
-    'Ketik nama yang ingin Anda pakai di ruang kerja ini.',
+    'Ketik nama yang akan dipakai di ruang kerja ini.',
   );
 });
 

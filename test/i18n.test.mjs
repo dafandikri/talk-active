@@ -157,3 +157,22 @@ test('the landing namespace speaks casually and no other namespace does', () => 
       `${namespace} must keep the formal register; casual copy is landing-only`);
   }
 });
+
+// The register boundary above is right in the middle of the product and wrong
+// at the front door. /enter is the very next screen after the landing
+// headline, so switching from kamu to Anda between one click and the next
+// reads as the product going cold on the reader at the moment they commit.
+//
+// The fix is not to make the entry gate casual — it is a utility screen and
+// slang would be worse there — but to let it address nobody. Indonesian drops
+// the pronoun as ordinary idiom, so these sentences read as natural rather
+// than as evasion, which is what the same move would look like in English.
+// The absence of `kamu` here is already covered by the landing-only rule.
+test('the entry gate uses no second-person pronoun, so the register never switches', () => {
+  const entryGate = Object.values(catalogue('id').entryGate).join(' ');
+  assert.doesNotMatch(
+    entryGate,
+    /\bAnda\b/u,
+    'the entry gate must address nobody: the reader arrives here from a page that said kamu',
+  );
+});
