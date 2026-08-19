@@ -345,7 +345,20 @@ test('H-10 the limits of the analysis are documented in the product, not a manua
     'the public landing page must be reachable from every workspace page');
   everyLocaleTranslates('workspaceFrame', 'navLanding', 'the landing-page nav item must be labelled in every locale');
   assert.doesNotMatch(FRAME, /How it works/u, 'workspace navigation must not add a redundant help destination');
-  assert.doesNotMatch(LANDING, /How it works/u, 'the landing page must not restore the removed explanatory section');
+  // Replaces a prohibition that arrived inside an unrelated integration merge
+  // (d79ed24) with no recorded reasoning. The commit it appears to reference,
+  // 5a8cd66, explicitly KEPT this section — and its CSS was never removed from
+  // shell.css, only the markup. What that commit actually cared about was that
+  // the loop speak in the user's terms rather than ours, so that is asserted here.
+  assert.match(LANDING, /production-shell__loop/u,
+    'the landing page must explain the loop it is selling');
+  everyLocaleTranslates('landing', 'loopStep1Title', 'the loop must name what the user does');
+  everyLocaleTranslates('landing', 'loopStep4Title', 'the loop must end on the evidence');
+  assert.doesNotMatch(
+    LANDING,
+    /\b(stateless|deterministic|criterionEngines|semanticAvailable)\b/u,
+    'the landing loop must not name internal stages',
+  );
   assert.match(PRACTICE, /not confidence or speaking ability/u, 'the review must state what it is not');
   // INV-6: a number may describe one rehearsal, never the speaker, and it must
   // say so beside itself. Checked in every locale — a boundary that exists only

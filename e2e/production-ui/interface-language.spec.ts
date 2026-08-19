@@ -83,20 +83,38 @@ test('the guest-name validation message is translated, not only the static copy'
   );
 });
 
-test('the landing page follows the interface language, including its rich-text lede', async ({ page }) => {
+test('the landing page follows the interface language, and states its limit before its promise', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Latih klaim yang akan ditantang juri berikutnya.' })).toBeVisible();
-  // The lede carries emphasis around Kato as rich text rather than a split
-  // sentence, because word order differs between the locales. Both halves have
-  // to survive the substitution, in both languages.
-  await expect(page.locator('.production-shell__lede')).toContainText('Berlatih bersama Kato');
-  await expect(page.locator('.production-shell__lede b')).toHaveText('Kato');
+  await expect(page.getByRole('heading', { name: /Buktiin/ })).toBeVisible();
+  // The lede states what the tool is not before what it is. That negation is
+  // the cheapest INV-2 compliance on the page and the most interesting line on
+  // it, so it is pinned in both locales rather than merely present.
+  await expect(page.locator('.production-shell__lede')).toContainText('Bukan skor');
 
   await page.goto('/account');
   await page.locator('#interfaceLanguage').selectOption('en');
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: 'Rehearse the claim a judge will challenge next.' })).toBeVisible();
-  await expect(page.locator('.production-shell__lede')).toContainText('Practise with Kato');
-  await expect(page.locator('.production-shell__lede b')).toHaveText('Kato');
+  await expect(page.getByRole('heading', { name: /Prove/ })).toBeVisible();
+  await expect(page.locator('.production-shell__lede')).toContainText('No score');
+});
+
+test('the landing hero and loop hold together at 390px and keep the CTA reachable', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+
+  // Copy first when stacked: a visitor must read the sentence before the art.
+  await expect(page.getByRole('heading', { name: /Buktiin/ })).toBeVisible();
+  await expect(page.locator('.production-shell__loop li')).toHaveCount(4);
+
+  const overflow = await page.evaluate(() => (
+    document.documentElement.scrollWidth - document.documentElement.clientWidth
+  ));
+  expect(overflow).toBe(0);
+
+  await page.setViewportSize({ width: 1280, height: 720 });
+  const cta = page.locator('.production-shell__action').first();
+  const box = await cta.boundingBox();
+  expect(box, 'the call to action must have rendered bounds').not.toBeNull();
+  expect((box?.y ?? 720) + (box?.height ?? 0)).toBeLessThanOrEqual(720);
 });

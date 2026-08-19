@@ -43,6 +43,14 @@
    src: url("/fonts/outfit.woff2") format("woff2");
  }
 
+ @font-face {
+   font-family: "Newsreader";
+   font-style: normal;
+   font-weight: 200 800;
+   font-display: swap;
+   src: url("/fonts/newsreader.woff2") format("woff2");
+ }
+
  :root {
   /* Monochrome structure. Warm white keeps the interface from feeling like a
      hospital dashboard, while black gives the mascot palette room to sing. */
@@ -123,8 +131,19 @@
      `--font-ui` is the application speaking.
      `--font-heading` gives the product's headings their editorial voice.
      `--font-voice` is the USER speaking — it is applied only to transcript
-     quotes and evidence. It remains a separate semantic role even though all
-     roles currently share Outfit.
+     quotes and evidence.
+
+     The role pointed at Outfit for a while, which is not the same as never
+     having been filled: an earlier stylesheet used Georgia here and sprayed it
+     across stat numbers, avatars and icon circles until the signal died, so it
+     was pulled back to Outfit and the semantic role kept.
+
+     Refilled 19 August with Newsreader, deliberately narrow this time and
+     guarded by design-system.test.mjs, which fails the build if --font-voice
+     appears outside an evidence context. The reason is not variety. Blue marks
+     evidence but marks OUR criterion labels too, so colour cannot show who is
+     speaking. A different face can, and authorship is the whole claim: these
+     are your words, not ours. Latin subset, self-hosted, 57 KB.
 
      The primary fonts are self-hosted because CSP allows font requests only
      from this origin. The fallback stacks keep text readable if an asset is
@@ -132,7 +151,7 @@
   --font-ui: "Outfit", ui-sans-serif, system-ui, -apple-system,
              "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-heading: "Outfit", ui-sans-serif, system-ui, sans-serif;
-  --font-voice: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-voice: "Newsreader", ui-serif, Georgia, "Times New Roman", serif;
 
   /* -------------------------------------------------------------------------
      SPACING — 4px base. 9 steps. The previous stylesheet used 93 distinct

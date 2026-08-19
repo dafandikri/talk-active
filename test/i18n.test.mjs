@@ -139,3 +139,21 @@ test('every delivery metric has a complete catalogue entry in both locales', () 
     }
   }
 });
+
+// The register is the point of the landing redesign, and it is exactly the kind
+// of thing that silently reverts when someone edits one string. `Anda` is the
+// form you use with a stranger; the front door speaks as a peer, and nothing
+// behind the workspace frame does.
+test('the landing namespace speaks casually and no other namespace does', () => {
+  const id = catalogue('id');
+  const landingText = Object.values(id.landing).join(' ');
+  assert.match(landingText, /\bkamu\b/iu, 'the landing page must address the reader as kamu');
+  assert.doesNotMatch(landingText, /\bAnda\b/u, 'the landing page must not mix in the formal register');
+
+  for (const [namespace, entries] of Object.entries(id)) {
+    if (namespace === 'landing') continue;
+    const text = Object.values(entries).join(' ');
+    assert.doesNotMatch(text, /\bkamu\b/iu,
+      `${namespace} must keep the formal register; casual copy is landing-only`);
+  }
+});
