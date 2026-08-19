@@ -21,6 +21,35 @@ review, or progress screens changes.
   harder, two lines — plus weight and tracking. Said plainly so nobody implements a
   ratio that is already there and reports it as the redesign.
 
+## Status — 19 August 2026
+
+Implemented. The loop is restored, the copy is casual, the hero carries the
+editorial treatment, and the mascot has CSS depth. Gate green: 488 unit and
+invariant tests, 75 browser checks.
+
+**One decision exceeded this spec, with agreement.** D7 said the product stays
+unchanged, and filling `--font-voice` changes quoted evidence everywhere, not just
+the landing. It was widened deliberately rather than quietly, because the
+alternative was worse: a landing-only voice face would show a quote treatment the
+real product does not have, which is a visual overclaim of exactly the kind INV-2
+exists to stop.
+
+**What the design system taught, which this spec had wrong.** D3 argued the energy
+should come from type because blue is reserved. Correct, but the spec then proposed
+marking the hero's accent word — first in evidence blue, then in the voice face.
+Both were rejected, the second by `design-system.test.mjs`, whose comment records
+that an earlier stylesheet sprayed Georgia across stat numbers and icon circles
+until the signal died. `--font-voice` had not been left empty by oversight; it had
+been filled, abused, and deliberately neutralised. The accent word is colour only.
+
+**Still owed:** the depth-rendered artwork. `.production-shell__kato` is sized for a
+drop-in swap at 176×208; replacing `kato-macaw-reading.svg` with a real render needs
+no code change. Until then the CSS shadow does the work, which is what D5 bought and
+is not a placeholder.
+
+**Not done, deliberately:** `/enter` still says `Anda`, so a visitor shifts register
+in one click. D4 scoped the change to the `landing` namespace and this held to it.
+
 ---
 
 ## Decisions
