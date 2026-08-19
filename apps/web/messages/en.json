@@ -11,7 +11,7 @@
     "kicker": "Guest rehearsal",
     "title": "Put your name on this workspace.",
     "intro": "Start immediately without creating an account. Your display name and guest rehearsal history stay in this browser unless you deliberately use the synced account option.",
-    "nameLabel": "Your name",
+    "nameLabel": "Display name",
     "namePlaceholder": "Sari Wulandari",
     "submit": "Enter the workspace",
     "nameRequired": "Type the name you want on this workspace.",
