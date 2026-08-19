@@ -134,6 +134,12 @@ stay green long after the thing the string names is gone. Every `pnpm` command n
 - Pure domain logic lives in `apps/web/lib/`; DOM effects live in the components.
 - `apps/web/lib/contracts.ts` is the one boundary. Route handlers parse with its schemas and
   components consume its inferred types. A parallel interface declaration is a drift bug.
+- `src/tokens.css` is the source of truth for the visual system. `DESIGN.md` mirrors it in
+  the portable DESIGN.md format so design tooling can read what the colours MEAN — that blue
+  is reserved for cited evidence, that absence is grey and never red. The mirror is asserted
+  against the stylesheet in `design-system.test.mjs`, so edit the CSS and let the test tell
+  you what to restate. A doc that restates code and is not checked is a dead command waiting
+  to happen.
 
 ### Commands
 

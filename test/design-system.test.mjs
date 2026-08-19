@@ -707,3 +707,91 @@ test('no stylesheet transitions a property that forces layout', () => {
 
   assert.deepEqual(offenders, [], 'animate transform or opacity instead');
 });
+
+// DESIGN.md restates the token system for tools that read it — the Impeccable
+// detector loads it to understand what a project's colours MEAN, which is the
+// difference between flagging a semantic border and flagging a decorative one.
+//
+// A document that restates code is exactly the failure this repo keeps
+// rediscovering: the PR template kept naming `pnpm demo` for four days after
+// the command was deleted, with a test asserting the dead string. So the
+// mirror is enforced rather than trusted. src/tokens.css stays the source of
+// truth; if the two disagree, this fails and DESIGN.md is the one that is
+// wrong.
+const DESIGN_MD = read('DESIGN.md');
+
+const tokenValues = (() => {
+  // The booth surface and the print block redefine the same names for a dark
+  // stage and for paper. DESIGN.md documents the default light theme, so the
+  // scan stops at the first non-:root selector.
+  const lightOnly = TOKENS.slice(0, TOKENS.indexOf('[data-surface="booth"]'));
+  const declared = new Map();
+  for (const match of lightOnly.matchAll(/^\s*(--[a-z0-9-]+)\s*:\s*([^;]+);/gimu)) {
+    declared.set(match[1], match[2].replace(/\s+/gu, ' ').trim());
+  }
+  const resolve = (name, seen = new Set()) => {
+    const value = declared.get(name);
+    if (value === undefined || seen.has(name)) return value;
+    const reference = /^var\((--[a-z0-9-]+)\)$/iu.exec(value);
+    return reference ? resolve(reference[1], new Set([...seen, name])) : value;
+  };
+  return resolve;
+})();
+
+const frontmatterBlock = (heading) => {
+  const section = new RegExp(`^${heading}:\\n((?:[ ]{2}\\S[^\\n]*\\n)+)`, 'mu').exec(DESIGN_MD);
+  assert.ok(section, `DESIGN.md has no ${heading}: block`);
+  return Object.fromEntries(
+    [...section[1].matchAll(/^ {2}([a-z0-9-]+):\s*"?([^"\n]+)"?$/gimu)]
+      .map(([, key, value]) => [key, value.trim()]),
+  );
+};
+
+test('every colour in DESIGN.md resolves to the same value in src/tokens.css', () => {
+  const documented = frontmatterBlock('colors');
+  assert.ok(Object.keys(documented).length >= 20, 'the colour mirror looks truncated');
+
+  const drift = [];
+  for (const [name, claimed] of Object.entries(documented)) {
+    const actual = tokenValues(`--${name}`);
+    if (actual === undefined) drift.push(`--${name} is documented but does not exist`);
+    else if (actual.toLowerCase() !== claimed.toLowerCase()) {
+      drift.push(`--${name}: tokens.css says ${actual}, DESIGN.md says ${claimed}`);
+    }
+  }
+  assert.deepEqual(drift, [], 'DESIGN.md has drifted from src/tokens.css');
+});
+
+test('the radii and spacing in DESIGN.md match the scale they claim to mirror', () => {
+  const radii = frontmatterBlock('rounded');
+  for (const [key, claimed] of Object.entries(radii)) {
+    assert.equal(tokenValues(`--radius-${key}`), claimed, `rounded.${key}`);
+  }
+
+  const spacing = frontmatterBlock('spacing');
+  const scale = { xs: '--space-1', sm: '--space-2', md: '--space-4', lg: '--space-5', xl: '--space-6' };
+  for (const [key, claimed] of Object.entries(spacing)) {
+    assert.ok(scale[key], `DESIGN.md documents spacing.${key}, which maps to no step`);
+    assert.equal(tokenValues(scale[key]), claimed, `spacing.${key}`);
+  }
+});
+
+test('DESIGN.md names the same typefaces the tokens actually load', () => {
+  // Only the first family in each stack is compared: the fallbacks differ in
+  // wording between the two files without differing in meaning, and the
+  // identity of the face is what a tool reading DESIGN.md acts on.
+  const leadFamily = (stack) => stack.split(',')[0].replace(/["']/gu, '').trim();
+  const roles = { display: '--font-heading', body: '--font-ui', voice: '--font-voice' };
+
+  for (const [role, token] of Object.entries(roles)) {
+    const declared = new RegExp(`^ {2}${role}:\\n(?: {4}[^\\n]*\\n)*? {4}fontFamily:\\s*"([^"]+)"`, 'mu')
+      .exec(DESIGN_MD);
+    assert.ok(declared, `DESIGN.md has no fontFamily for typography.${role}`);
+    assert.equal(leadFamily(declared[1]), leadFamily(tokenValues(token)), `typography.${role}`);
+  }
+
+  // The voice face is the one that carries meaning rather than tone: a quoted
+  // span is recognisable as a quotation before it is read. If it ever equals
+  // the UI face, that signal is gone and DESIGN.md would still claim it.
+  assert.notEqual(leadFamily(tokenValues('--font-voice')), leadFamily(tokenValues('--font-ui')));
+});
