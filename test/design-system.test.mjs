@@ -666,3 +666,44 @@ test('the landing mascot gets its depth from CSS and reduces for motion sensitiv
     'the mascot must hold still when motion is reduced',
   );
 });
+
+// Animating width, height, or an inset forces the browser to re-run layout on
+// every frame of the transition. The live voice meter is the case that made
+// this worth a test: it is redrawn from the audio callback while the camera
+// preview and the pose detector are already running, so a layout pass per
+// audio frame competes with the work the rehearsal actually depends on.
+// `transform` and `opacity` are composited and cost no layout at all.
+//
+// Found by the Impeccable detector's `layout-transition` rule. The same run
+// flagged eight `border-left` accents as an AI-design tell; those were kept
+// deliberately and are documented at their definitions in shell.css, because
+// in this product the left border is the channel that distinguishes cited
+// evidence from an evidence gap. A pattern is only slop when it means nothing.
+const LAYOUT_ANIMATED_PROPERTIES = new Set([
+  'width', 'height', 'inline-size', 'block-size',
+  'top', 'right', 'bottom', 'left', 'inset',
+  'margin', 'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
+  'padding', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+  'all',
+]);
+
+test('no stylesheet transitions a property that forces layout', () => {
+  const sheets = [
+    ['src/styles.css', STYLES_CODE],
+    ['apps/web/app/shell.css', stripComments(NEXT_SHELL_STYLES)],
+  ];
+  const offenders = [];
+
+  for (const [label, css] of sheets) {
+    for (const declaration of css.matchAll(/transition(?:-property)?\s*:\s*([^;}]+)/gu)) {
+      for (const segment of declaration[1].split(',')) {
+        const property = segment.trim().split(/\s+/u)[0]?.toLowerCase();
+        if (property && LAYOUT_ANIMATED_PROPERTIES.has(property)) {
+          offenders.push(`${label}: transition: ${declaration[1].trim()}`);
+        }
+      }
+    }
+  }
+
+  assert.deepEqual(offenders, [], 'animate transform or opacity instead');
+});
