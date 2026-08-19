@@ -39,7 +39,7 @@ test.afterEach(async ({ page }) => {
 
 test('cold-start guest completes landing → attempt → evidence → defense → saved reload', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Latih klaim yang akan ditantang juri berikutnya.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Buktiin/ })).toBeVisible();
   await page.getByRole('link', { name: /^Mulai berlatih\b/i }).first().click();
   await expect(page).toHaveURL(/\/enter$/u);
   await page.getByRole('button', { name: 'Lanjut tanpa nama' }).click();

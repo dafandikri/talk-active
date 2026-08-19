@@ -21,14 +21,12 @@ export function ProductionShell({ project }: Readonly<{ project: Project }>) {
           <h1 className="production-shell__title" id="production-title">
             {t('titleLine1')}<br /><span className="production-shell__title-accent">{t('titleLine2')}</span>
           </h1>
-          {/* "rubric-grounded" twice in one sentence, and the second half only
-              restated the first. One naming of Kato, one claim, no repetition.
-              The emphasis on Kato is carried as rich text rather than by
-              splitting the sentence, because word order differs between the
-              two locales and a split sentence cannot survive that. */}
-          <p className="production-shell__lede">
-            {t.rich('lede', { b: (chunks) => <b>{chunks}</b> })}
-          </p>
+          {/* The lede states the limit before the promise: no score, no
+              speaking-ability rating, just your own sentences. It carried rich
+              text around "Kato" until the copy stopped naming him — keeping
+              t.rich for a string with no markup left in it would have been a
+              tag that renders nothing and a test that asserts nothing. */}
+          <p className="production-shell__lede">{t('lede')}</p>
           <div className="production-shell__actions">
             <Link className="production-shell__action" href="/enter">
               {t('start')} <span aria-hidden="true">→</span>
