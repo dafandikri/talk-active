@@ -1004,7 +1004,7 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         {captureCamera && <div className="studio-hud"><span><i className={frame?.tracked ? 'good' : ''} />{trackingLabel}</span><span>{effectiveMode === 'presentation' ? '33-point pose' : 'face landmarks'}</span></div>}
         <InputQualityNotice verdict={inputQuality} />
         <GuessedPassageNotice count={guessedPassages} />
-        {active && !answerCapturePaused && captureAcoustic && <div className="voice-meter" aria-label={t('liveVoiceLevel')}><span>{t('voiceLabel')}</span><i><b style={{ width: `${liveVoice}%` }} /></i><small>{audioSample?.pitchHz ? `${Math.round(audioSample.pitchHz)} Hz` : audioSample?.quiet ? 'pause' : 'listening'}</small><em>{speechDisruptionCount} possible cues</em></div>}
+        {active && !answerCapturePaused && captureAcoustic && <div className="voice-meter" aria-label={t('liveVoiceLevel')}><span>{t('voiceLabel')}</span><i><b style={{ transform: `scaleX(${liveVoice / 100})` }} /></i><small>{audioSample?.pitchHz ? `${Math.round(audioSample.pitchHz)} Hz` : audioSample?.quiet ? 'pause' : 'listening'}</small><em>{speechDisruptionCount} possible cues</em></div>}
       </div>
 
       <div className="studio-controls">

@@ -1,3 +1,20 @@
+/* Eight rules in this file carry `impeccable-disable-line side-tab`. The
+   Impeccable detector calls a coloured left border the most recognisable tell
+   of an AI-generated interface, and as a general rule it is right: the border
+   is usually there because it looked like something, not because it said
+   anything.
+
+   Here it says something. The left border is the channel that carries the one
+   distinction the whole product rests on (INV-3): --evidence means this claim
+   is backed by a span of the student's own words, --absence means it is not
+   yet, and --accent-sun means this is something they are still typing. Two of
+   these rules switch that colour from a data attribute rather than setting it
+   once, which is what a semantic channel looks like and what decoration never
+   does.
+
+   The waivers are per-line on purpose. A file-level disable would also cover
+   the next left border somebody adds for looks, and that one should still be
+   caught. */
 .production-shell { min-height: 100vh; overflow-x: clip; color: var(--text-primary); background-color: var(--canvas); background-image: var(--canvas-grain); }
 .skip-link { position: fixed; top: var(--space-2); left: var(--space-2); z-index: 1000; padding: var(--space-3) var(--space-4); color: var(--brand-contrast); background: var(--brand); border-radius: var(--radius-sm); transform: translateY(-160%); }
 .skip-link:focus { transform: translateY(0); }
@@ -39,7 +56,7 @@
 .production-shell__evidence-criterion { margin-block: var(--space-5) var(--space-3); color: var(--evidence-strong); font-size: var(--step-0); font-weight: var(--weight-heavy); letter-spacing: var(--tracking-wide); text-transform: uppercase; }
 .production-shell__demo blockquote { margin: 0; color: var(--text-primary); font-family: var(--font-voice); font-size: var(--step-3); line-height: var(--leading-snug); }
 .production-shell__citation { margin-block: var(--space-3) var(--space-5); color: var(--text-muted); font-size: var(--step-0); }
-.production-shell__gap { display: grid; gap: var(--space-1); padding: var(--space-3) var(--space-4); background: var(--absence-wash); border-left: 3px solid var(--absence); border-radius: var(--radius-sm); }
+.production-shell__gap { display: grid; gap: var(--space-1); padding: var(--space-3) var(--space-4); background: var(--absence-wash); border-left: 3px solid var(--absence); border-radius: var(--radius-sm); } /* impeccable-disable-line side-tab */
 .production-shell__gap span, .production-shell__question span { font-size: var(--step-0); font-weight: var(--weight-heavy); text-transform: uppercase; }
 .production-shell__gap strong { font-size: var(--step-0); }
 .production-shell__question { display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); align-items: start; margin-top: var(--space-4); padding: var(--space-4); color: var(--text-on-inverse); background: var(--surface-inverse); border-radius: var(--radius-md); }
@@ -189,7 +206,13 @@
 .studio-hud i.good { background: var(--accent-leaf-bright); }
 .voice-meter { position: absolute; z-index: 3; inset: auto var(--space-3) var(--space-3); gap: var(--space-3); padding: var(--space-2) var(--space-3); color: var(--text-on-inverse); background: var(--text-primary); border-radius: var(--radius-full); font-size: var(--step-0); font-weight: var(--weight-heavy); }
 .voice-meter > i { height: var(--space-2); flex: 1; background: var(--inverse-raised); border-radius: var(--radius-full); overflow: hidden; }
-.voice-meter > i b { height: 100%; display: block; background: var(--inverse-accent); border-radius: inherit; transition: width var(--duration-fast) var(--ease); }
+/* Driven from the audio callback, so this repaints far more often than
+   anything else on the screen. scaleX is composited; the width it replaced
+   forced a layout pass per audio frame while the camera and pose detector
+   were already competing for the same frame budget. The bar no longer
+   rounds its own leading edge: the track clips it to a pill anyway, and a
+   flat edge reads as a level rather than a blob. */
+.voice-meter > i b { width: 100%; height: 100%; display: block; background: var(--inverse-accent); transform: scaleX(0); transform-origin: left center; transition: transform var(--duration-fast) var(--ease); }
 .voice-meter small { min-width: 4.5rem; color: var(--text-on-inverse-muted); text-align: right; }
 .voice-meter em { color: var(--inverse-accent); font-size: var(--step-0); font-style: normal; white-space: nowrap; }
 
@@ -205,7 +228,7 @@
 .multimodal-review-heading h2 { max-width: 30ch; font-size: var(--step-3); }
 .multimodal-review-heading p:last-child { margin: var(--space-2) 0 0; color: var(--text-muted); font-size: var(--step-0); }
 .review-delivery-boundary { max-width: var(--measure); margin: var(--space-3) 0 0; color: var(--text-secondary); font-size: var(--step-0); }
-.review-retake-strip { display: grid; grid-template-columns: minmax(13rem, .55fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; margin-top: var(--space-5); padding: var(--space-4); background: var(--absence-wash); border-left: 4px solid var(--absence); border-radius: var(--radius-md); }
+.review-retake-strip { display: grid; grid-template-columns: minmax(13rem, .55fr) minmax(0, 1fr); gap: var(--space-5); align-items: start; margin-top: var(--space-5); padding: var(--space-4); background: var(--absence-wash); border-left: 4px solid var(--absence); border-radius: var(--radius-md); } /* impeccable-disable-line side-tab */
 .review-retake-strip ul { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
 .review-retake-strip li { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3); background: var(--surface); border-radius: var(--radius-sm); }
 .review-retake-strip li span { min-width: 0; font-size: var(--step-0); font-weight: var(--weight-bold); }
@@ -227,7 +250,7 @@
 .review-disclosure[open] > summary { border-bottom: 1px solid var(--border); }
 .review-disclosure-body { padding: var(--space-5); }
 .review-timeline-text { display: grid; gap: var(--space-2); margin: var(--space-3) 0 var(--space-5); padding: 0; list-style: none; }
-.review-timeline-text li { min-width: 0; display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: var(--space-3); padding: var(--space-3); background: var(--surface-sunken); border-left: 3px solid var(--accent-orange); border-radius: var(--radius-sm); }
+.review-timeline-text li { min-width: 0; display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: var(--space-3); padding: var(--space-3); background: var(--surface-sunken); border-left: 3px solid var(--accent-orange); border-radius: var(--radius-sm); } /* impeccable-disable-line side-tab */
 .review-timeline-text li[data-evidence="found"], .review-timeline-text li[data-evidence="reused"] { background: var(--evidence-wash); border-left-color: var(--evidence); }
 .review-timeline-text li[data-evidence="absent"] { border-left-color: var(--absence); }
 .review-timeline-text time { color: var(--text-muted); font-size: var(--step-0); font-weight: var(--weight-heavy); font-variant-numeric: tabular-nums; }
@@ -245,7 +268,7 @@
 .review-raw-summary > div, .review-audio-summary > div { padding: var(--space-3); background: var(--surface-sunken); border-radius: var(--radius-sm); }
 .review-raw-summary dt, .review-audio-summary dt { color: var(--text-muted); font-size: var(--step-0); }
 .review-raw-summary dd, .review-audio-summary dd { margin: var(--space-1) 0 0; font-size: var(--step-1); font-weight: var(--weight-heavy); font-variant-numeric: tabular-nums; }
-.review-limitations { margin-top: var(--space-5); padding: var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--text-secondary); border-radius: var(--radius-sm); }
+.review-limitations { margin-top: var(--space-5); padding: var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--text-secondary); border-radius: var(--radius-sm); } /* impeccable-disable-line side-tab */
 .review-limitations h3 { font-size: var(--step-1); }
 .review-limitations p { margin: var(--space-2) 0 0; color: var(--text-secondary); font-size: var(--step-0); }
 .review-limitations ul { display: grid; gap: var(--space-1); margin: var(--space-2) 0 0; padding-left: var(--space-5); color: var(--text-muted); font-size: var(--step-0); }
@@ -830,7 +853,7 @@
 .timeline-lane-note[data-evidence="absent"] { color: var(--text-secondary); font-weight: var(--weight-bold); }
 .timeline-cutline { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dashed var(--text-secondary); pointer-events: none; }
 .timeline-rubric-summary { margin: var(--space-3) 0 var(--space-4); color: var(--text-secondary); font-size: var(--step-0); }
-.timeline-bell-note { margin-top: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--step-0); }
+.timeline-bell-note { margin-top: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--text-secondary); border-radius: var(--radius-sm); font-size: var(--step-0); } /* impeccable-disable-line side-tab */
 
 /* The transcript with its cited spans marked in place. These are the student's
    own words rendered as text nodes; the marks only locate them. */
@@ -844,10 +867,10 @@
 /* Answering one criterion again, without another full take. */
 .criterion-retake { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--border); }
 .criterion-retake-list { display: grid; gap: var(--space-2); margin-top: var(--space-4); padding: 0; list-style: none; }
-.criterion-retake-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--absence); border-radius: var(--radius-sm); }
+.criterion-retake-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--absence); border-radius: var(--radius-sm); } /* impeccable-disable-line side-tab */
 /* An in-progress input, not a citation — so it borrows the attention accent
    rather than the reserved evidence hue. */
-.criterion-retake-panel { margin: var(--space-4) 0; padding: var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--accent-sun); border-radius: var(--radius-sm); }
+.criterion-retake-panel { margin: var(--space-4) 0; padding: var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--accent-sun); border-radius: var(--radius-sm); } /* impeccable-disable-line side-tab */
 .criterion-retake-panel textarea { width: 100%; margin: var(--space-3) 0; }
 
 /* The rubric shown as a target while the attempt is still running. */
@@ -874,7 +897,7 @@
    — so it takes the neutral absence tone, the same one an uncovered criterion
    uses everywhere else. Red here would reassert the grade we do not give. */
 .claim-citation-list { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
-.claim-citation-list li { padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--absence); border-radius: var(--radius-sm); }
+.claim-citation-list li { padding: var(--space-3) var(--space-4); background: var(--surface-sunken); border-left: 3px solid var(--absence); border-radius: var(--radius-sm); } /* impeccable-disable-line side-tab */
 .claim-citation-list li[data-supported="true"] { border-left-color: var(--evidence); }
 .claim-quote { display: block; color: var(--text-primary); font-family: var(--font-voice); font-size: var(--step-1); line-height: var(--leading-snug); }
 .claim-support, .claim-gap { margin-top: var(--space-2); font-size: var(--step-0); }
