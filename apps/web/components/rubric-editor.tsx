@@ -5,17 +5,19 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useRef, useState } from 'react';
 
 import { useToast } from '@/components/toast';
-import { DEFAULT_RUBRIC, parseRubric } from '@/lib/analyzer';
+import { defaultRubricFor, parseRubric } from '@/lib/analyzer';
 import { jsonRequest, requestContract } from '@/lib/api/client';
 import {
   ConfirmRubricResponseSchema,
   ProjectWorkspaceResponseSchema,
   RubricParseResponseSchema,
+  type ProjectLanguage,
   type ProjectSummary,
   type ProjectWorkspaceResponse,
   type RubricSource,
 } from '@/lib/contracts';
-import { RUBRIC_TEMPLATES, type RubricTemplate } from '@/lib/rubric-library';
+import { rubricTemplatesFor, type RubricTemplate } from '@/lib/rubric-library';
+import { readLocalProjectLanguage } from '@/lib/project-preferences';
 import { writeProjectToCurrentUrl } from '@/lib/project-route';
 import {
   parseEvidencePhrases,
@@ -49,8 +51,8 @@ type ProjectLoadState =
   | { status: 'ready'; projectId: string; workspace: ProjectWorkspace; error: null }
   | { status: 'error'; projectId: string; workspace: null; error: string };
 
-function defaultCriteria(): EditableCriterion[] {
-  return parseRubric(DEFAULT_RUBRIC).map((criterion) => ({
+function defaultCriteria(language: ProjectLanguage = 'id-ID'): EditableCriterion[] {
+  return parseRubric(defaultRubricFor(language)).map((criterion) => ({
     id: criterion.id,
     name: criterion.label,
     description: '',
@@ -127,6 +129,8 @@ export function RubricEditor() {
           sourceExcerpt: criterion.sourceExcerpt,
         })));
         setSourceType(readRubricSourceType(localStorage));
+      } else {
+        setCriteria(defaultCriteria(readLocalProjectLanguage(localStorage)));
       }
     } catch {
       showToast({
@@ -164,7 +168,7 @@ export function RubricEditor() {
 
     const fallback = projects[0]!.project;
     if (chosenProjectId) {
-      setSelectionNotice(`That project is not available. ${fallback.title} is shown instead.`);
+      setSelectionNotice(t('projectUnavailableFallback', { project: fallback.title }));
     }
     setChosenProjectId(fallback.id);
     writeProjectToUrl(fallback.id, 'replace');
@@ -172,6 +176,7 @@ export function RubricEditor() {
 
   const activeProject = projects.find((summary) => summary.project.id === chosenProjectId) ?? null;
   const activeProjectId = activeProject?.project.id ?? null;
+  const rubricTemplates = rubricTemplatesFor(activeProject?.project.language ?? 'id-ID');
   activeProjectIdRef.current = activeProjectId;
 
   useEffect(() => {
@@ -215,15 +220,15 @@ export function RubricEditor() {
         });
         setCriteria(response.workspace.criteria.length > 0
           ? editableCriteria(response.workspace.criteria)
-          : defaultCriteria());
+          : defaultCriteria(response.workspace.project.language));
         setSourceType(response.workspace.rubric?.sourceType ?? 'manual');
-      } catch (caught) {
+      } catch {
         if (abort.signal.aborted) return;
         setProjectState({
           status: 'error',
           projectId: activeProjectId,
           workspace: null,
-          error: caught instanceof Error ? caught.message : t('projectLoadFailed'),
+          error: t('projectLoadFailed'),
         });
       }
     })();
@@ -282,15 +287,18 @@ export function RubricEditor() {
       setDirty(true);
       showToast({
         variant: 'warning',
-        title: `${parsed.criteria.length} criteria structured in ${parsed.mode} mode`,
+        title: t('criteriaStructured', {
+          count: parsed.criteria.length,
+          mode: t(`modeLabel.${parsed.mode}`),
+        }),
         message: t('nothingSavedYet'),
       });
-    } catch (caught) {
+    } catch {
       if (abort.signal.aborted || activeProjectIdRef.current !== structuringProjectId) return;
       showToast({
         variant: 'negative',
         title: t('structureFailed'),
-        message: caught instanceof Error ? caught.message : t('structureFailedBody'),
+        message: t('structureFailedBody'),
       });
     } finally {
       if (structureRequestRef.current === abort) {
@@ -362,7 +370,7 @@ export function RubricEditor() {
         showToast({
           variant: 'positive',
           title: t('saved'),
-          message: `${saved.length} confirmed criteria saved in this browser.`,
+          message: t('confirmedSavedInBrowser', { count: saved.length }),
         });
       } catch {
         showToast({
@@ -427,13 +435,14 @@ export function RubricEditor() {
       showToast({
         variant: 'positive',
         title: t('saved'),
-        message: `${savedCriteria.length} confirmed criteria saved to ${savingProjectTitle}.`,
+        message: t('confirmedSavedToProject', { count: savedCriteria.length, project: savingProjectTitle }),
       });
     } catch (caught) {
       if (activeProjectIdRef.current !== savingProjectId) return;
-      const message = caught instanceof Error ? caught.message : t('projectSaveFailed');
+      const detail = caught instanceof Error ? caught.message : '';
+      const message = t('projectSaveFailed');
       setSaveError(message);
-      if (/cannot be replaced after practice attempts/iu.test(message)) {
+      if (/cannot be replaced after practice attempts/iu.test(detail)) {
         setServerLockedProjectId(savingProjectId);
       }
       showToast({ variant: 'negative', title: t('notSaved'), message });
@@ -469,13 +478,13 @@ export function RubricEditor() {
       <section className="surface" role="status" aria-live="polite" aria-busy="true">
         <p className="empty-list">{selectionResolving
           ? t('checkingOwner')
-          : `Loading ${projectTitle(activeProject, t)}’s saved rubric…`}</p>
+          : t('loadingProjectRubric', { project: projectTitle(activeProject, t) })}</p>
       </section>
     )}
 
     {!selectionResolving && activeProjectId && projectDetailStatus === 'error' && projectState.status === 'error' && (
       <section className="surface" role="alert">
-        <h2>{projectTitle(activeProject, t)} could not be loaded</h2>
+        <h2>{t('projectCouldNotLoad', { project: projectTitle(activeProject, t) })}</h2>
         <p>{projectState.error}</p>
         <button className="button button-secondary" type="button" onClick={() => setProjectRequestVersion((version) => version + 1)}>{t('tryAgain')}</button>
       </section>
@@ -485,10 +494,10 @@ export function RubricEditor() {
       <section className="surface rubric-editor-card" aria-busy={saving}>
         <h2>{projectTitle(activeProject, t)}</h2>
         {activeProjectId && locked && <div className="empty-list" id="rubricLockedNotice" role="status">
-          <strong>{t('locked')}</strong> To keep earlier evidence traceable, this project&rsquo;s rubric cannot be replaced after an attempt is saved.
+          <strong>{t('locked')}</strong> {t('lockedBoundary')}
         </div>}
         {activeProjectId && !locked && selectedWorkspace?.rubric?.confirmedAt && (
-          <p className="rubric-library-lede">{selectedWorkspace.criteria.length} confirmed {selectedWorkspace.criteria.length === 1 ? 'criterion is' : 'criteria are'} loaded from this project.</p>
+          <p className="rubric-library-lede">{t('confirmedLoaded', { count: selectedWorkspace.criteria.length })}</p>
         )}
         {activeProjectId && !locked && selectedWorkspace?.rubric && !selectedWorkspace.rubric.confirmedAt && (
           <p className="rubric-library-lede">{t('notConfirmed')}</p>
@@ -501,7 +510,7 @@ export function RubricEditor() {
           {/* A starter is not the evaluator's rubric, and a student who mistakes
               one for the other rehearses against the wrong thing. */}
           <p className="rubric-library-lede">{t('startingPoints')}</p>
-          <div className="rubric-template-list">{RUBRIC_TEMPLATES.map((template) => <button
+          <div className="rubric-template-list">{rubricTemplates.map((template) => <button
             aria-pressed={selectedTemplate === template.id}
             className={selectedTemplate === template.id ? 'is-selected' : ''}
             disabled={editorDisabled}
@@ -519,12 +528,12 @@ export function RubricEditor() {
           }} />
           <button type="button" disabled={editorDisabled || structuring || !source.trim()} onClick={() => void structureSource()}>{structuring ? t('structuring') : t('structure')}</button>
         </details>
-        <p className="rubric-list-lede">Add up to {MAX_CRITERIA_ROWS} criteria, each with observable evidence cues.</p>
+        <p className="rubric-list-lede">{t('addUpToCriteria', { max: MAX_CRITERIA_ROWS })}</p>
         <div className="rubric-list">{criteria.map((criterion) => <div className="rubric-row" key={criterion.id}>
-          <div className="rubric-field"><label htmlFor={`criterion-${criterion.id}`}>{t('criterion')}</label><input id={`criterion-${criterion.id}`} disabled={editorDisabled} placeholder="e.g. Achievement evidence" value={criterion.name} onChange={(event) => updateCriterion(criterion.id, { name: event.target.value })} /></div>
-          <div className="rubric-field"><label htmlFor={`evidence-${criterion.id}`}>{t('evidenceCues')}</label><input id={`evidence-${criterion.id}`} disabled={editorDisabled} placeholder="e.g. metrics, dates, named source" value={criterion.evidence} onChange={(event) => updateCriterion(criterion.id, { evidence: event.target.value })} /></div>
-          {criterion.sourceExcerpt && <p className="production-source-quote">Source: “{criterion.sourceExcerpt}”</p>}
-          <button className="remove-criterion" type="button" disabled={editorDisabled} aria-label={`Remove ${criterion.name || 'empty criterion'}`} onClick={() => {
+          <div className="rubric-field"><label htmlFor={`criterion-${criterion.id}`}>{t('criterion')}</label><input id={`criterion-${criterion.id}`} disabled={editorDisabled} placeholder={t('criterionPlaceholder')} value={criterion.name} onChange={(event) => updateCriterion(criterion.id, { name: event.target.value })} /></div>
+          <div className="rubric-field"><label htmlFor={`evidence-${criterion.id}`}>{t('evidenceCues')}</label><input id={`evidence-${criterion.id}`} disabled={editorDisabled} placeholder={t('evidencePlaceholder')} value={criterion.evidence} onChange={(event) => updateCriterion(criterion.id, { evidence: event.target.value })} /></div>
+          {criterion.sourceExcerpt && <p className="production-source-quote">{t('sourceExcerpt', { excerpt: criterion.sourceExcerpt })}</p>}
+          <button className="remove-criterion" type="button" disabled={editorDisabled} aria-label={t('removeCriterion', { criterion: criterion.name || t('emptyCriterion') })} onClick={() => {
             setDirty(true);
             setCriteria((current) => current.filter((item) => item.id !== criterion.id));
           }}>
@@ -534,7 +543,7 @@ export function RubricEditor() {
         <button className="add-criterion" type="button" disabled={editorDisabled || criteria.length >= MAX_CRITERIA_ROWS} onClick={() => {
           setDirty(true);
           setCriteria((current) => [...current, { id: crypto.randomUUID(), name: '', description: '', evidence: '', sourceExcerpt: null }]);
-        }}><span>+</span> Add criterion</button>
+        }}><span>+</span> {t('addCriterion')}</button>
         {saveError && <p className="empty-list" role="alert">{saveError}</p>}
         <div className="rubric-actions"><button
           className="button button-primary"

@@ -1024,6 +1024,7 @@ export const ClaimCoachResponseSchema = z.object({
 export const StatelessDefenseRequestSchema = z.object({
   answerText: z.string().trim().min(1).max(12_000),
   criterion: CriterionSchema,
+  language: ProjectLanguageSchema.default('id-ID'),
 });
 
 export const StatelessDefenseResponseSchema = z.object({

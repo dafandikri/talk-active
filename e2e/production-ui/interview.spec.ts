@@ -36,7 +36,7 @@ async function seedFiveCriterionRubric(page: Page) {
 async function chooseInterview(page: Page, expectedCriterionCount?: number) {
   await page.goto('/practice');
   if (expectedCriterionCount !== undefined) {
-    await expect(page.locator('.setup-rubric h3')).toHaveText(`${expectedCriterionCount} criteria`);
+    await expect(page.locator('.setup-rubric h3')).toHaveText(`${expectedCriterionCount} kriteria`);
   }
   await page.getByRole('radio', { name: /Tanya jawab wawancara/i }).check();
   await page.getByLabel('Bahasa proyek').selectOption('en-US');
@@ -156,7 +156,7 @@ test('Kato asks five fixed rubric questions and sends one answer-local final bat
     const nextQuestion = page.locator('.kato-question-copy blockquote');
     await expect(nextQuestion).toContainText(INTERVIEW_CRITERIA[index + 1]!.name);
     await expect(nextQuestion).toHaveAccessibleName(
-      new RegExp(`^Question ${index + 2} of ${INTERVIEW_CRITERIA.length}:`),
+      new RegExp(`^Pertanyaan ${index + 2} dari ${INTERVIEW_CRITERIA.length}:`),
     );
     await expect(nextQuestion).toBeFocused();
     expect(requests, `question ${index + 1} must not trigger final analysis`).toHaveLength(0);
@@ -196,7 +196,7 @@ test('Kato asks five fixed rubric questions and sends one answer-local final bat
 
   await expect(page.getByRole('heading', { name: 'Bukti jawaban Anda, dipetakan ke seluruh rubrik.' })).toBeVisible();
   const turnDisclosure = page.locator('.interview-turn-summary');
-  await expect(turnDisclosure.locator('summary')).toContainText('5 answers');
+  await expect(turnDisclosure.locator('summary')).toContainText('5 jawaban');
   await turnDisclosure.locator('summary').click();
   const reviewedTurns = turnDisclosure.locator('ol[aria-label="Jawaban wawancara"] > li');
   await expect(reviewedTurns).toHaveCount(5);
@@ -204,10 +204,10 @@ test('Kato asks five fixed rubric questions and sends one answer-local final bat
     const reviewedTurn = reviewedTurns.nth(index);
     await expect(reviewedTurn).toContainText(INTERVIEW_CRITERIA[index]!.name);
     await expect(reviewedTurn).toContainText(answers[index]!);
-    await expect(reviewedTurn.locator('small').filter({ hasText: 'Answer window:' })).toBeVisible();
+    await expect(reviewedTurn.locator('small').filter({ hasText: 'Jendela jawaban:' })).toBeVisible();
   }
-  await expect(reviewedTurns.first()).toContainText(/Answer window: 0s.+45s on the single interview timeline\./u);
-  await expect(reviewedTurns.last()).toContainText(/Answer window: 180s.+225s on the single interview timeline\./u);
+  await expect(reviewedTurns.first()).toContainText(/Jendela jawaban: 0.+45 detik pada satu lini masa wawancara\./u);
+  await expect(reviewedTurns.last()).toContainText(/Jendela jawaban: 180.+225 detik pada satu lini masa wawancara\./u);
 });
 
 test('a signed-in interview summary survives synced progress reload without duplicating a presentation', async ({ page }) => {
@@ -358,7 +358,7 @@ test('a signed-in interview summary survives synced progress reload without dupl
   await expect(page.locator('.full-session-list .session-row')).toHaveCount(2);
   await expect(page.locator('.browser-only-session')).toHaveCount(1);
   await expect(page.locator('.browser-only-session')).toContainText('Gabungan jawaban wawancara');
-  await expect(page.locator('.browser-only-session .session-status')).toHaveText('browser only');
+  await expect(page.locator('.browser-only-session .session-status')).toHaveText('khusus browser');
   await expect(page.locator('.progress-stats article').filter({ hasText: 'Sesi' }).locator('strong')).toHaveText('2');
   await expect(page.locator('.attempt-diff-card')).toContainText('Simpan dua percobaan yang sudah ditinjau');
   await expect(page.locator('.recurring-card .session-status')).toHaveText('Riwayat SQL tersinkron');
@@ -544,7 +544,7 @@ test('one continuous interview capture stays paused for narration and resumes ac
 
   await page.getByRole('button', { name: 'Mulai perekaman wawancara berkelanjutan' }).click();
   await expect(captureStatus).toContainText(/dijeda sampai jawaban pertama dimulai/i);
-  await expect(replayStatus).toContainText(/replay recording is active/i);
+  await expect(replayStatus).toContainText(/Perekaman tayangan ulang kamera dan mikrofon sedang aktif\./i);
   await expect(beginAnswer).toBeEnabled();
   await expect(answerBox).toBeDisabled();
   const initialProbe = await captureProbe();
@@ -569,7 +569,7 @@ test('one continuous interview capture stays paused for narration and resumes ac
   await expect(question).toContainText(INTERVIEW_CRITERIA[1].name);
   await expect(question).toBeFocused();
   await expect(captureStatus).toContainText(/dijeda; pelacakan kamera dan rekaman opsional berlanjut/i);
-  await expect(replayStatus).toContainText(/replay recording is active/i);
+  await expect(replayStatus).toContainText(/Perekaman tayangan ulang kamera dan mikrofon sedang aktif\./i);
   await expect(answerBox).toBeDisabled();
   const betweenQuestionsProbe = await captureProbe();
   expect(betweenQuestionsProbe).toEqual({
@@ -589,7 +589,7 @@ test('one continuous interview capture stays paused for narration and resumes ac
   const narrationClock = await clockSeconds();
   expect(narrationClock).toBeGreaterThan(firstAnswerClock);
   expect(await captureProbe()).toEqual(betweenQuestionsProbe);
-  await expect(replayStatus).toContainText(/replay recording is active/i);
+  await expect(replayStatus).toContainText(/Perekaman tayangan ulang kamera dan mikrofon sedang aktif\./i);
 
   await page.getByRole('button', { name: 'Lewati narasi' }).click();
   await expect(beginAnswer).toBeEnabled();
@@ -612,7 +612,7 @@ test('one continuous interview capture stays paused for narration and resumes ac
     recognitionStarts: 2,
     recognitionStops: 2,
   });
-  await expect(replayStatus).toContainText(/replay recording is active/i);
+  await expect(replayStatus).toContainText(/Perekaman tayangan ulang kamera dan mikrofon sedang aktif\./i);
 
   const remainingAnswers = [
     'A generic competitor cannot keep every verdict traceable to the exact answer.',
@@ -638,9 +638,9 @@ test('one continuous interview capture stays paused for narration and resumes ac
   const timeline = page.locator('.review-unified-timeline');
   await expect(timeline.locator('.timeline-lane.is-rubric')).toHaveCount(INTERVIEW_CRITERIA.length);
   await expect(timeline.locator('.timeline-mark.is-evidence')).toHaveCount(INTERVIEW_CRITERIA.length);
-  await expect(timeline.locator('.timeline-rubric-summary')).toContainText('5 of 5 criteria cite a span');
+  await expect(timeline.locator('.timeline-rubric-summary')).toContainText('5 dari 5 kriteria mengutip satu potongan.');
   await expect(timeline.locator('.timeline-rubric-summary')).toContainText('5 memakai jendela jawabannya pada jam wawancara');
-  await expect(timeline.locator('.timeline-duration')).not.toContainText('limit');
+  await expect(timeline.locator('.timeline-duration')).not.toContainText('batas');
   for (const criterion of INTERVIEW_CRITERIA) {
     await expect(timeline.locator('.timeline-lane-label', { hasText: criterion.name })).toHaveCount(1);
   }
@@ -758,7 +758,7 @@ test('each interview answer is coached against its own criterion, and never agai
   const trigger = page.getByRole('button', { name: 'Uraikan setiap jawaban' });
   await expect(trigger).toBeVisible();
   await trigger.click();
-  await expect(page.getByText(/All 5 answers were coached/)).toBeVisible();
+  await expect(page.getByText(/Semua 5 jawaban dilatih/)).toBeVisible();
 
   expect(coachRequests).toHaveLength(5);
   for (const [index, request] of coachRequests.entries()) {

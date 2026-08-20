@@ -223,7 +223,8 @@ test('deep link, project switch, browser Back, and Save keep one owner-scoped ru
   });
 
   await page.goto(`/rubric?project=${THESIS_PROJECT_ID}`);
-  await expect(page.locator('.surface[role="status"]')).toContainText('Loading Sidang skripsi Indonesia');
+  await expect(page.locator('.surface[role="status"]'))
+    .toContainText('Memuat rubrik tersimpan milik Sidang skripsi Indonesia…');
   await expect(page.getByText('Browser-global trap')).toHaveCount(0);
   releaseThesis();
 
@@ -251,7 +252,7 @@ test('deep link, project switch, browser Back, and Save keep one owner-scoped ru
   await page.getByLabel('Kriteria').first().fill('Research method fit and trade-offs');
   await page.getByRole('button', { name: 'Simpan rubrik' }).click();
   await expect(page.locator('[data-toast-variant="positive"]')).toContainText(
-    '2 confirmed criteria saved to Sidang skripsi Indonesia',
+    '2 kriteria terkonfirmasi disimpan ke Sidang skripsi Indonesia.',
   );
   expect(rubricPuts).toHaveLength(1);
   expect(rubricPuts[0]).toMatchObject({
@@ -305,7 +306,7 @@ test('a project-load error is visible and retry never exposes the browser-global
 
   await page.goto(`/rubric?project=${THESIS_PROJECT_ID}`);
   const alert = page.locator('section.surface[role="alert"]');
-  await expect(alert).toContainText(/Invalid input|could not be loaded/iu);
+  await expect(alert).toContainText('Proyek yang dipilih tidak dapat dimuat.');
   await expect(page.getByText('Browser-global trap')).toHaveCount(0);
   await alert.getByRole('button', { name: 'Coba lagi' }).click();
   await expect(page.getByRole('heading', { name: 'Sidang skripsi Indonesia', exact: true })).toBeVisible();
@@ -321,7 +322,9 @@ test('a project with saved practice explains the lock and exposes no editable sa
 
   await page.goto(`/rubric?project=${PITCH_PROJECT_ID}`);
   await expect(page.getByText('Rubrik terkunci setelah latihan tersimpan.')).toBeVisible();
-  await expect(page.getByText(/keep earlier evidence traceable/iu)).toBeVisible();
+  await expect(page.locator('#rubricLockedNotice')).toContainText(
+    'Agar bukti sebelumnya tetap dapat dilacak, rubrik proyek ini tidak dapat diganti setelah satu latihan tersimpan.',
+  );
   await expect(page.getByRole('button', { name: 'Simpan rubrik' })).toBeDisabled();
   await expect(page.getByLabel('Kriteria').first()).toBeDisabled();
   await expect(page.getByRole('button', { name: /Hackathon pitch/i })).toBeDisabled();

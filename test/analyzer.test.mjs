@@ -4,19 +4,35 @@ import assert from 'node:assert/strict';
 import {
   AnalysisError,
   DEFAULT_RUBRIC,
+  DEFAULT_RUBRIC_ID,
   MAX_CRITERIA,
   MAX_RUBRIC_CHARS,
   MAX_TRANSCRIPT_CHARS,
   STARTER_DRAFT,
+  STARTER_DRAFT_ID,
   analyzeSpeech,
   compareResults,
+  defaultRubricFor,
   evaluateDefense,
   makeDrill,
   makeJudgeQuestion,
   parseRubric,
   splitSentences,
+  starterDraftFor,
   tokenize,
 } from '../apps/web/lib/analyzer.ts';
+
+test('starter rehearsal content follows the project language', () => {
+  assert.equal(defaultRubricFor('en-US'), DEFAULT_RUBRIC);
+  assert.equal(starterDraftFor('en-US'), STARTER_DRAFT);
+  assert.equal(defaultRubricFor('id-ID'), DEFAULT_RUBRIC_ID);
+  assert.equal(starterDraftFor('id-ID'), STARTER_DRAFT_ID);
+
+  assert.match(DEFAULT_RUBRIC_ID, /Kejelasan masalah/u);
+  assert.doesNotMatch(DEFAULT_RUBRIC_ID, /Problem clarity/u);
+  assert.match(STARTER_DRAFT_ID, /Banyak mahasiswa Indonesia/u);
+  assert.doesNotMatch(STARTER_DRAFT_ID, /Many Indonesian students/u);
+});
 
 test('parseRubric converts discussion syntax into evidence criteria', () => {
   const rubric = parseRubric('Problem clarity | students, evidence, urgency\nFeasibility | prototype, privacy');

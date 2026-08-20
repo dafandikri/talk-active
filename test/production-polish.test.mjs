@@ -33,14 +33,18 @@ test('F-8 public routes declare canonical URLs and a same-origin social card', a
 // The static 404.html and robots.txt belonged to the vanilla build and went
 // with it. Next owns both surfaces now, so only one runtime is left to check.
 test('F-8 the Next runtime exposes robots and a branded not-found surface', async () => {
-  const [layout, nextNotFound, nextRobots] = await Promise.all([
+  const [layout, nextNotFound, nextRobots, idMessages, enMessages] = await Promise.all([
     readFile('apps/web/app/layout.tsx', 'utf8'),
     readFile('apps/web/app/not-found.tsx', 'utf8'),
     readFile('apps/web/app/robots.ts', 'utf8'),
+    readFile('apps/web/messages/id.json', 'utf8'),
+    readFile('apps/web/messages/en.json', 'utf8'),
   ]);
   assert.match(layout, /metadataBase: new URL\('https:\/\/talk-active-id\.vercel\.app'\)/u);
   assert.match(layout, /openGraph:/u);
   assert.match(layout, /twitter:/u);
-  assert.match(nextNotFound, /This route is not part of the rehearsal workspace/u);
+  assert.match(nextNotFound, /t\('heading'\)/u);
+  assert.match(JSON.parse(idMessages).notFound.heading, /bukan bagian dari ruang kerja latihan/u);
+  assert.match(JSON.parse(enMessages).notFound.heading, /not part of the rehearsal workspace/u);
   assert.match(nextRobots, /userAgent: '\*', allow: '\/'/u);
 });

@@ -43,7 +43,7 @@ export async function rejudgeStatelessEvidence(
     input.transcript,
     input.criterion,
     input.rejected,
-    options.evidence,
+    { ...options.evidence, language: input.language ?? 'id-ID' },
   );
   const question = await generateJudgeQuestion(
     input.transcript,
@@ -68,7 +68,10 @@ export async function evaluateStatelessDefense(
   input: StatelessDefenseRequest,
   options: EvidenceJudgeOptions = {},
 ): Promise<StatelessDefenseResponse> {
-  const judgment = await judgeDefense(input.answerText, input.criterion, options);
+  const judgment = await judgeDefense(input.answerText, input.criterion, {
+    ...options,
+    language: input.language ?? 'id-ID',
+  });
   return StatelessDefenseResponseSchema.parse({
     contractVersion: CONTRACT_VERSION,
     judgment: exposedJudgment(judgment),

@@ -77,6 +77,21 @@ Feasibility and trust | prototype, architecture, privacy, limitations`;
 
 export const STARTER_DRAFT = `Many Indonesian students prepare important presentations alone and only receive feedback after the result is final. Talk-Active lets a student use the actual evaluation rubric while practicing a pitch. It maps each claim in the transcript to a criterion, points out what is still unsupported, and asks a judge-style follow-up question about the weakest claim. The student then retries one focused section and sees whether the evidence improved. The current implementation uses local transcript analysis, so no recording is stored.`;
 
+export const DEFAULT_RUBRIC_ID = `Kejelasan masalah | masalah, mahasiswa, bukti, urgensi
+Kesesuaian solusi | rubrik, umpan balik, coba lagi, perbaikan
+Diferensiasi | pesaing, logika unik, dapat ditelusuri
+Kelayakan dan kepercayaan | prototipe, arsitektur, privasi, keterbatasan`;
+
+export const STARTER_DRAFT_ID = `Banyak mahasiswa Indonesia menyiapkan presentasi penting sendirian dan baru menerima umpan balik setelah hasilnya final. Talk-Active memungkinkan mahasiswa menggunakan rubrik penilaian yang sebenarnya saat berlatih presentasi. Aplikasi ini memetakan setiap klaim dalam transkrip ke satu kriteria, menunjukkan bagian yang masih belum didukung, dan mengajukan pertanyaan lanjutan ala juri tentang klaim terlemah. Mahasiswa kemudian mencoba lagi satu bagian yang terfokus dan melihat apakah buktinya membaik. Implementasi saat ini menggunakan analisis transkrip lokal, sehingga tidak ada rekaman yang disimpan.`;
+
+export function defaultRubricFor(language: AnalysisLanguage): string {
+  return language === 'en-US' ? DEFAULT_RUBRIC : DEFAULT_RUBRIC_ID;
+}
+
+export function starterDraftFor(language: AnalysisLanguage): string {
+  return language === 'en-US' ? STARTER_DRAFT : STARTER_DRAFT_ID;
+}
+
 export const MAX_TRANSCRIPT_CHARS = 12_000;
 export const MAX_RUBRIC_CHARS = 8_000;
 export const MAX_CRITERIA = 20;

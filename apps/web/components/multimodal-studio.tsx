@@ -840,7 +840,7 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
             timestampMs: Math.max(0, nextFrame.timestampMs + visionOffsetRef.current),
           }),
           onPhaseChange: setVisionPhase,
-          onError: (error) => setStatus(`${error.message} Voice and transcript capture can continue.`),
+          onError: () => setStatus(t('visionFailedContinue')),
         }) : null;
         visionRef.current = vision;
 
@@ -867,7 +867,7 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
             }
             setInputQuality(assessInputQuality(qualityWindowRef.current));
           },
-          onError: (failure) => setStatus(`${failure.message} The transcript and camera can continue.`),
+          onError: () => setStatus(t('audioFailedContinue')),
         }) : null;
         audioRef.current = audio;
 
@@ -894,7 +894,7 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
             transcriptRef.current = next;
             onTranscriptChange(next);
           },
-          onError: (failure) => setStatus(`${failure.message} You can keep rehearsing and edit the transcript manually.`),
+          onError: () => setStatus(t('dictationFailedContinue')),
         }) : null;
         speechRef.current = speech;
         // Only dictation replaces the draft. Without it, whatever the student
@@ -917,7 +917,7 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
                 if (next === 'recording') setRecordingState('recording');
                 if (next === 'error' || next === 'unsupported') setRecordingState('failed');
               },
-              onError: (failure) => setStatus(`${failure.message} Camera observations and transcript capture can continue.`),
+              onError: () => setStatus(t('recordingFailedContinue')),
             });
             recordingRef.current = recording;
             recording.start();
@@ -939,13 +939,13 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
           setStatus(t('sessionPaused'));
         }
         return true;
-      } catch (error) {
+      } catch {
         await releaseMedia();
         updateActive(false);
         updateAnswerCapturePaused(false);
         answerPausedAtElapsedMsRef.current = null;
         startedAtRef.current = 0;
-        setStatus(error instanceof Error ? error.message : t('startFailed'));
+        setStatus(t('startFailed'));
         return false;
       } finally {
         updateLoading(false);
@@ -954,8 +954,8 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
 
     const liveVoice = audioSample ? Math.min(100, Math.max(4, audioSample.rms * 650)) : 4;
     const trackingLabel = frame?.tracked
-      ? (frame.calibrated ? 'tracking locked' : 'calibrating')
-      : visionPhase === 'loading' ? 'loading model' : 'find the camera frame';
+      ? (frame.calibrated ? t('trackingLocked') : t('calibratingShort'))
+      : visionPhase === 'loading' ? t('loadingModel') : t('findCameraFrame');
     // With a limit set, the chip shows what is left rather than what is spent:
     // a presenter needs to know how much room remains, not how long they have
     // been talking. The last thirty seconds are called out because that is
@@ -973,22 +973,22 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         <div><p className="overline">{t('title')}</p><h3 id="studioTitle">{title}</h3><p>{description}</p></div>
         <span className={`studio-live${active ? ' is-live' : ''}${active && closingSoon ? ' is-closing' : ''}`}>
           <i />
-          {active ? liveClock : 'ready'}
-          {active && limitMs !== null && <small>{closingSoon ? 'left — start closing' : 'left'}</small>}
+          {active ? liveClock : t('ready')}
+          {active && limitMs !== null && <small>{closingSoon ? t('startClosing') : t('timeLeft')}</small>}
         </span>
       </div>
       {active && limitMs !== null && <p className="studio-limit-note" role="status">
-        Capture stops itself at {formatTime(limitMs)}, the way an evaluator stops a pitch on time. Finish earlier whenever you are done.
+        {t('captureLimitNote', { limit: formatTime(limitMs) })}
       </p>}
 
       {!active && <fieldset className="studio-consent" disabled={loading}>
-        <legend>{t('chooseObserve')}<small>every signal starts off</small></legend>
+        <legend>{t('chooseObserve')}<small>{t('everySignalStartsOff')}</small></legend>
         {/* These concise, just-in-time choices are still four independent
             consents. Replay never inherits camera or microphone consent. */}
         <div className="studio-permission-strip">
           <label className="studio-permission-chip" title={t('localLandmarks')}><input type="checkbox" checked={captureCamera} onChange={(event) => setCaptureCamera(event.target.checked)} /><span><strong>{t('camera')}</strong><small>{t('cameraChip')}</small></span></label>
           <label className="studio-permission-chip" title={t('localPauses')}><input type="checkbox" checked={captureAcoustic} onChange={(event) => setCaptureAcoustic(event.target.checked)} /><span><strong>{t('voice')}</strong><small>{t('voiceChip')}</small></span></label>
-          <label className="studio-permission-chip" title={speechRecognitionIsSupported() ? `Your browser vendor may process ${language === 'id-ID' ? t('indonesian') : t('english')} speech.` : t('dictationUnavailable')}><input type="checkbox" checked={captureDictation} disabled={!speechRecognitionIsSupported()} onChange={(event) => setCaptureDictation(event.target.checked)} /><span><strong>{t('liveTranscript')}</strong><small>{language === 'id-ID' ? t('indonesian') : t('english')}</small></span></label>
+          <label className="studio-permission-chip" title={speechRecognitionIsSupported() ? t('vendorMayProcess', { language: language === 'id-ID' ? t('indonesian') : t('english') }) : t('dictationUnavailable')}><input type="checkbox" checked={captureDictation} disabled={!speechRecognitionIsSupported()} onChange={(event) => setCaptureDictation(event.target.checked)} /><span><strong>{t('liveTranscript')}</strong><small>{language === 'id-ID' ? t('indonesian') : t('english')}</small></span></label>
           {allowReplay && <label className="studio-recording-consent studio-permission-chip" title={durableRecordingAvailable ? t('uploadsPrivately') : t('keptInPage')}>
             <input type="checkbox" checked={saveReplay} onChange={(event) => setSaveReplay(event.target.checked)} />
             <span><strong>{t('saveReplay')}</strong><small>{t('replayChip')}</small></span>
@@ -1001,22 +1001,22 @@ export const MultimodalStudio = forwardRef<MultimodalStudioHandle, MultimodalStu
         <video ref={videoRef} aria-label={t('liveCamera')} muted playsInline />
         <canvas ref={canvasRef} width="640" height="360" aria-hidden="true" />
         {!active && <div className="studio-camera-empty"><span aria-hidden="true">◉</span><strong>{t('noMediaBeforeStart')}</strong><small>{allowReplay ? t('localBoundary') : t('interviewBoundary')}</small></div>}
-        {captureCamera && <div className="studio-hud"><span><i className={frame?.tracked ? 'good' : ''} />{trackingLabel}</span><span>{effectiveMode === 'presentation' ? '33-point pose' : 'face landmarks'}</span></div>}
+        {captureCamera && <div className="studio-hud"><span><i className={frame?.tracked ? 'good' : ''} />{trackingLabel}</span><span>{effectiveMode === 'presentation' ? t('poseLandmarks') : t('faceLandmarks')}</span></div>}
         <InputQualityNotice verdict={inputQuality} />
         <GuessedPassageNotice count={guessedPassages} />
-        {active && !answerCapturePaused && captureAcoustic && <div className="voice-meter" aria-label={t('liveVoiceLevel')}><span>{t('voiceLabel')}</span><i><b style={{ transform: `scaleX(${liveVoice / 100})` }} /></i><small>{audioSample?.pitchHz ? `${Math.round(audioSample.pitchHz)} Hz` : audioSample?.quiet ? 'pause' : 'listening'}</small><em>{speechDisruptionCount} possible cues</em></div>}
+        {active && !answerCapturePaused && captureAcoustic && <div className="voice-meter" aria-label={t('liveVoiceLevel')}><span>{t('voiceLabel')}</span><i><b style={{ transform: `scaleX(${liveVoice / 100})` }} /></i><small>{audioSample?.pitchHz ? t('hertzValue', { value: Math.round(audioSample.pitchHz) }) : audioSample?.quiet ? t('pause') : t('listening')}</small><em>{t('possibleCueCount', { count: speechDisruptionCount })}</em></div>}
       </div>
 
       <div className="studio-controls">
-        <span className="save-state">Project language: {language === 'id-ID' ? 'Bahasa Indonesia' : t('english')}</span>
+        <span className="save-state">{t('projectLanguageValue', { language: language === 'id-ID' ? t('indonesian') : t('english') })}</span>
         {!active
           ? <button className="button button-primary studio-record" type="button" disabled={startDisabled || loading || (!captureCamera && !captureAcoustic && !captureDictation && !saveReplay)} onClick={() => void startSession({ answerCapturePaused: startWithAnswerCapturePaused })}><span aria-hidden="true">●</span>{startDisabled ? startDisabledReason : loading ? t('loadingModels') : startLabel}</button>
           : hideStopControl
             ? <span className="studio-live"><i />{t('captureContinues')}</span>
-            : <button className="button button-primary studio-stop" type="button" disabled={loading} onClick={() => void stopSession()}><span aria-hidden="true">■</span>{stopLabel === 'Finish & assemble review' ? <>{t('finishAssemble')}</> : stopLabel}</button>}
+            : <button className="button button-primary studio-stop" type="button" disabled={loading} onClick={() => void stopSession()}><span aria-hidden="true">■</span>{stopLabel}</button>}
       </div>
-      {active && saveReplay && <p className="recording-sync-status"><span aria-hidden="true">●</span>{recordingState === 'recording' ? ' Camera and microphone replay recording is active.' : ' Replay recording was unavailable; analysis is continuing.'}</p>}
-      <p className="studio-status" aria-live="polite">{status} {active && !answerCapturePaused && captureDictation && speechRecognitionIsSupported() ? t('dictationStatus', { state: speechState }) : ''}</p>
+      {active && saveReplay && <p className="recording-sync-status"><span aria-hidden="true">●</span>{recordingState === 'recording' ? t('replayRecordingActive') : t('replayUnavailableContinue')}</p>}
+      <p className="studio-status" aria-live="polite">{status} {active && !answerCapturePaused && captureDictation && speechRecognitionIsSupported() ? t('dictationStatus', { state: t(`dictationState.${speechState}`) }) : ''}</p>
     </section>;
   },
 );

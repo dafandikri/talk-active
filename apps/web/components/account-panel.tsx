@@ -82,13 +82,16 @@ export function AccountPanel() {
       const result = mode === 'sign-up'
         ? await authClient.signUp.email({ name: name.trim(), email: email.trim(), password })
         : await authClient.signIn.email({ email: email.trim(), password });
-      if (result.error) throw new Error(result.error.message ?? t('statusRequestFailed'));
+      if (result.error) {
+        setStatus(t('statusRequestFailed'));
+        return;
+      }
       const user = result.data?.user;
       if (user) setSessionUser({ name: user.name, email: user.email });
       setPassword('');
       setStatus(mode === 'sign-up' ? t('statusCreated') : t('statusSignedIn'));
-    } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : t('statusRequestFailed'));
+    } catch {
+      setStatus(t('statusRequestFailed'));
     } finally {
       setBusy(false);
     }
@@ -99,7 +102,7 @@ export function AccountPanel() {
     const result = await authClient.signOut();
     setBusy(false);
     if (result.error) {
-      setStatus(result.error.message ?? t('statusSignOutFailed'));
+      setStatus(t('statusSignOutFailed'));
       return;
     }
     setSessionUser(null);
@@ -135,8 +138,8 @@ export function AccountPanel() {
         projects: imported.importedProjects,
         sessions: imported.importedSessions,
       }));
-    } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : t('statusImportFailed'));
+    } catch {
+      setStatus(t('statusImportFailed'));
     } finally {
       setBusy(false);
     }
@@ -151,8 +154,8 @@ export function AccountPanel() {
       setSessionUser(null);
       setDeleteConfirmation('');
       setStatus(t('statusDeleted'));
-    } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : t('statusDeleteFailed'));
+    } catch {
+      setStatus(t('statusDeleteFailed'));
     } finally {
       setBusy(false);
     }

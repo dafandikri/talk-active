@@ -3,7 +3,7 @@
 import { useTranslations } from 'next-intl';
 
 import type { DeliveryMetricId, DeliveryMetricResult } from '@/lib/delivery-metrics';
-import type { ReadingComponent, RehearsalReading } from '@/lib/rehearsal-reading';
+import type { ReadingComponent, ReadingComponentId, RehearsalReading } from '@/lib/rehearsal-reading';
 
 /**
  * Two charts, and a rule they both follow.
@@ -116,7 +116,10 @@ export function MetricBand({ metric }: Readonly<{ metric: DeliveryMetricResult }
   );
 }
 
-function ReadingSegment({ component }: Readonly<{ component: ReadingComponent }>) {
+function ReadingSegment({
+  component,
+  label,
+}: Readonly<{ component: ReadingComponent; label: string }>) {
   const score = component.score ?? 0;
   // The class names carry the channel, not just the part, because the reserved
   // evidence hue is enforced by matching the selector (test/design-system).
@@ -136,7 +139,7 @@ function ReadingSegment({ component }: Readonly<{ component: ReadingComponent }>
       </span>
       <span className="reading-segment-label">
         <b>{Math.round(score)}</b>
-        <small>{Math.round(component.weight * 100)}% {component.label}</small>
+        <small>{Math.round(component.weight * 100)}% {label}</small>
       </span>
     </div>
   );
@@ -154,25 +157,40 @@ export function ReadingComposition({
   reading,
   headingId,
 }: Readonly<{ reading: RehearsalReading; headingId: string }>) {
+  const t = useTranslations('deliveryMetrics');
   const included = reading.components.filter((component) => component.weight > 0);
+  const labels: Record<ReadingComponentId, string> = {
+    substance: t('substanceLabel'),
+    vocal: t('vocalLabel'),
+    visual: t('visualLabel'),
+  };
   const summary = included
-    .map((component) => `${Math.round(component.weight * 100)} percent ${component.label} scoring ${Math.round(component.score ?? 0)}`)
+    .map((component) => t('compositionSegment', { weight: Math.round(component.weight * 100), label: labels[component.id], score: Math.round(component.score ?? 0) }))
     .join('; ');
+  const weighting = included
+    .map((component) => t('weightingSegment', {
+      weight: Math.round(component.weight * 100),
+      label: labels[component.id],
+    }))
+    .join(' · ');
+  const unmeasured = reading.components.filter(
+    (component): component is ReadingComponent & { excluded: string } => component.excluded !== null,
+  );
 
   return (
     <div className="reading-composition">
       <div className="reading-total">
         <strong>{reading.total}</strong>
         <span>/ 100</span>
-        <small id={headingId}>this attempt</small>
+        <small id={headingId}>{t('thisAttempt')}</small>
       </div>
       <div className="reading-bar-wrap">
         <div
           className="reading-bar"
           role="img"
-          aria-label={`Composition of the ${reading.total} out of 100 reading: ${summary}.`}
+          aria-label={t('compositionLabel', { total: reading.total, summary })}
         >
-          {included.map((component) => <ReadingSegment component={component} key={component.id} />)}
+          {included.map((component) => <ReadingSegment component={component} label={labels[component.id]} key={component.id} />)}
           {/* Where the composite lands against the blocks it came from. The
               filled area of the bar IS the reading — each block is as wide as
               its weight and as full as its score — so this line is the level
@@ -183,15 +201,18 @@ export function ReadingComposition({
             style={{ top: `calc(var(--reading-track-height) * ${(100 - reading.total) / 100})` }}
           />
         </div>
-        <p className="reading-weighting">{reading.weighting}</p>
+        <p className="reading-weighting">{weighting}</p>
         {/* An unlabelled reference line is a puzzle. Naming it in place beats
             making the reader infer it (Nielsen: recognition, not recall). */}
         <p className="reading-legend">
           <span className="reading-legend-rule" aria-hidden="true" />
-          The dashed line marks {reading.total}, where these blocks average out.
+          {t('averageLegend', { total: reading.total })}
         </p>
-        {reading.unmeasured.length > 0 && <ul className="reading-unmeasured">
-          {reading.unmeasured.map((entry) => <li key={entry}>Not measured — {entry}</li>)}
+        {unmeasured.length > 0 && <ul className="reading-unmeasured">
+          {unmeasured.map((component) => <li key={component.id}>{t('notMeasuredEntry', {
+            label: labels[component.id],
+            reason: component.excluded,
+          })}</li>)}
         </ul>}
       </div>
     </div>

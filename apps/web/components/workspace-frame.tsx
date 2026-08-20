@@ -92,6 +92,7 @@ function ProjectNavigationLink({ id, title, attemptCount, activeRoute, defaultPr
   activeRoute: boolean;
   defaultProjectId: string | null;
 }>) {
+  const t = useTranslations('workspaceFrame');
   const searchProjectId = useSearchParams().get('project');
   const [selectedProjectId, setSelectedProjectId] = useState(searchProjectId ?? defaultProjectId);
   useEffect(() => setSelectedProjectId(searchProjectId ?? defaultProjectId), [defaultProjectId, searchProjectId]);
@@ -116,7 +117,7 @@ function ProjectNavigationLink({ id, title, attemptCount, activeRoute, defaultPr
       aria-current={active ? 'true' : undefined}
       className={`sidebar-project${active ? ' is-active' : ''}`}
       href={`/practice?project=${encodeURIComponent(id)}`}
-      title={`Practise ${title} · ${attemptCount} saved ${attemptCount === 1 ? 'attempt' : 'attempts'}`}
+      title={t('practiceProjectTitle', { title, count: attemptCount })}
     >
       <i /><span>{title}</span>
     </Link>

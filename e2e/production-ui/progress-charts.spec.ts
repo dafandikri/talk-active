@@ -85,6 +85,7 @@ test('the coverage trend draws one point per saved attempt, in order', async ({ 
   expect(Math.abs(boxes[boxes.length - 1].x - ((plot?.x ?? 0) + (plot?.width ?? 0)))).toBeLessThan(2);
 
   await expect(trend.locator('.coverage-trend-latest')).toContainText('85%');
+  await expect(page.locator('.full-session-list .session-date').first()).toContainText('Agu');
 });
 
 test('a single attempt plots a point but never implies a trend', async ({ page }) => {
@@ -102,6 +103,7 @@ test('a recurring gap shows its direction, not just its count', async ({ page })
 
   const recurring = page.locator('.recurring-item').first();
   await expect(recurring).toContainText('Feasibility');
+  await expect(recurring.locator('.recurring-evidence')).toContainText('Agu');
 
   const spark = recurring.locator('.criterion-spark');
   await expect(spark).toBeVisible();
@@ -134,6 +136,7 @@ test('the latest diff shows what moved and only names what held', async ({ page 
   // did not change is what made this card the longest thing on the page.
   await expect(diff.locator('.attempt-diff-item')).toHaveCount(1);
   await expect(diff.locator('.attempt-diff-item')).toContainText('Feasibility');
+  await expect(diff.locator('.session-status')).toContainText('Agu');
   await expect(diff.locator('.attempt-diff-held')).toContainText('Problem clarity');
   await expect(diff.locator('.attempt-diff-item')).not.toContainText('Problem clarity');
 });

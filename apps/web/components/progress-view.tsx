@@ -1,11 +1,12 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 
 import logo from '../../../src/assets/brand/talk-active-logo.svg';
+import { HTML_LANG, interfaceLocaleFrom } from '@/i18n/locales';
 import { requestContract } from '@/lib/api/client';
 import {
   ProgressResponseSchema,
@@ -63,7 +64,10 @@ function trendHistoryLabel(
   return historyLabel(state, t);
 }
 
-function WeaknessEvidence({ weakness }: Readonly<{ weakness: RecurringWeakness }>) {
+function WeaknessEvidence({ weakness, locale }: Readonly<{
+  weakness: RecurringWeakness;
+  locale: string;
+}>) {
   const t = useTranslations('progressView');
   if (weakness.summaryOnly) {
     return <p className="recurring-boundary">{t('historicalOnly')}</p>;
@@ -71,19 +75,21 @@ function WeaknessEvidence({ weakness }: Readonly<{ weakness: RecurringWeakness }
   return <div className="recurring-evidence">
     {weakness.latestCitedSpan && <blockquote>{weakness.latestCitedSpan}</blockquote>}
     {weakness.latestMissingEvidence.length > 0 && <p><strong>{t('latestExplicitGaps')}</strong> {weakness.latestMissingEvidence.slice(0, 4).join(', ')}.</p>}
-    <small>Latest saved evidence · {new Date(weakness.latestAt).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}</small>
+    <small>{t('latestSavedEvidence', { date: new Date(weakness.latestAt).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }) })}</small>
   </div>;
 }
 
-function attemptDate(value: string): string {
-  return new Date(value).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' });
+function attemptDate(value: string, locale: string): string {
+  return new Date(value).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function movementLabel(comparison: CriterionAttemptComparison): string {
-  if (comparison.direction === 'added') return 'criterion added';
-  if (comparison.direction === 'removed') return 'criterion removed';
-  if (comparison.direction === 'unchanged') return 'explicit coverage unchanged';
-  return `explicit coverage ${comparison.direction}`;
+function movementLabel(comparison: CriterionAttemptComparison, t: Translate): string {
+  if (comparison.direction === 'added') return t('criterionAdded');
+  if (comparison.direction === 'removed') return t('criterionRemoved');
+  if (comparison.direction === 'unchanged') return t('explicitCoverageUnchanged');
+  return comparison.direction === 'improved'
+    ? t('explicitCoverageImproved')
+    : t('explicitCoverageDeclined');
 }
 
 function ComparisonEvidence({
@@ -99,7 +105,7 @@ function ComparisonEvidence({
     {!criterion
       ? <p className="attempt-diff-absent">{t('criterionAbsent')}</p>
       : <>
-        <strong>{Math.round(criterion.coverage * 100)}% explicit coverage</strong>
+        <strong>{t('explicitCoverageValue', { percentage: Math.round(criterion.coverage * 100) })}</strong>
         {criterion.citedSpan
           ? <blockquote>{criterion.citedSpan}</blockquote>
           : <p className="attempt-diff-absent">{t('noCitedEvidence')}</p>}
@@ -108,7 +114,10 @@ function ComparisonEvidence({
   </section>;
 }
 
-function AttemptDiff({ comparison }: Readonly<{ comparison: AttemptComparison }>) {
+function AttemptDiff({ comparison, locale }: Readonly<{
+  comparison: AttemptComparison;
+  locale: string;
+}>) {
   const t = useTranslations('progressView');
   // Only criteria that actually moved get the full two-column evidence. The
   // rest used to render both sides of an identical quote, so a rubric where
@@ -119,20 +128,21 @@ function AttemptDiff({ comparison }: Readonly<{ comparison: AttemptComparison }>
   const held = comparison.criteria.filter((criterion) => criterion.direction === 'unchanged');
 
   return <section className="surface attempt-diff-card" aria-labelledby="attemptDiffTitle">
-    <div className="section-title-row"><div><p className="overline">{t('latestEvidenceChange')}</p><h2 id="attemptDiffTitle">{t('changedLastTwo')}</h2></div><span className="session-status">{attemptDate(comparison.previousCreatedAt)} → {attemptDate(comparison.currentCreatedAt)}</span></div>
+    <div className="section-title-row"><div><p className="overline">{t('latestEvidenceChange')}</p><h2 id="attemptDiffTitle">{t('changedLastTwo')}</h2></div><span className="session-status">{attemptDate(comparison.previousCreatedAt, locale)} → {attemptDate(comparison.currentCreatedAt, locale)}</span></div>
     <p className="attempt-diff-intro">{t('movementBoundary')}</p>
     {moved.length === 0
       ? <p className="empty-list">{t('steadyCoverage')}</p>
       : <div className="attempt-diff-list">{moved.map((criterion) => <article className="attempt-diff-item" key={criterion.criterionId} data-direction={criterion.direction}>
-        <div className="attempt-diff-heading"><h3>{criterion.criterionName}</h3><span>{movementLabel(criterion)}{criterion.direction === 'added' || criterion.direction === 'removed' ? '' : ` · ${criterion.coverageDelta >= 0 ? '+' : ''}${Math.round(criterion.coverageDelta * 100)} points`}</span></div>
+        <div className="attempt-diff-heading"><h3>{criterion.criterionName}</h3><span>{movementLabel(criterion, t)}{criterion.direction === 'added' || criterion.direction === 'removed' ? '' : t('pointDelta', { value: `${criterion.coverageDelta >= 0 ? '+' : ''}${Math.round(criterion.coverageDelta * 100)}` })}</span></div>
         <div className="attempt-diff-evidence"><ComparisonEvidence label={t('previousAttempt')} criterion={criterion.previous} /><ComparisonEvidence label={t('currentAttempt')} criterion={criterion.current} /></div>
       </article>)}</div>}
-    {held.length > 0 && <p className="attempt-diff-held"><strong>Unchanged:</strong> {held.map((criterion) => criterion.criterionName).join(', ')}. Their retained evidence is on each saved attempt.</p>}
+    {held.length > 0 && <p className="attempt-diff-held"><strong>{t('unchangedLabel')}</strong> {t('unchangedCriteria', { names: held.map((criterion) => criterion.criterionName).join(', ') })}</p>}
   </section>;
 }
 
 export function ProgressView() {
   const t = useTranslations('progressView');
+  const dateLocale = HTML_LANG[interfaceLocaleFrom(useLocale())];
   const [sessions, setSessions] = useState<SavedSession[]>([]);
   const [synced, setSynced] = useState<ProgressResponse | null>(null);
   const [syncState, setSyncState] = useState<SyncState>('local');
@@ -172,7 +182,7 @@ export function ProgressView() {
     if (projects.length === 0) {
       if (chosenProjectId) {
         setChosenProjectId(null);
-        setSelectionNotice('That synced project is not available in this session. Local history is shown instead.');
+        setSelectionNotice(t('syncedProjectUnavailable'));
         writeProjectToUrl(null, 'replace');
       }
       return;
@@ -183,7 +193,7 @@ export function ProgressView() {
     const fallback = projects.find((summary) => summary.project.id === savedProjectId)
       ?? projects[0]!;
     if (chosenProjectId) {
-      setSelectionNotice(`That project is not available. ${fallback.project.title} is shown instead.`);
+      setSelectionNotice(t('projectUnavailableFallback', { project: fallback.project.title }));
     }
     setChosenProjectId(fallback.project.id);
     writeProjectToUrl(fallback.project.id, 'replace');
@@ -285,22 +295,22 @@ export function ProgressView() {
         const active = projects.find((summary) => summary.project.id === progressProjectId);
         if (!active) return t('showingLocal');
         if (browserOnlyCount > 0) {
-          return `${active.attemptCount} synced ${active.attemptCount === 1 ? 'attempt' : 'attempts'} · ${browserOnlyCount} browser-only ${browserOnlyCount === 1 ? 'summary' : 'summaries'}`;
+          return t('syncedAndBrowserCounts', { attempts: active.attemptCount, summaries: browserOnlyCount });
         }
         if (active.attemptCount === 0) return t('emptyProject');
-        return `${active.attemptCount} saved ${active.attemptCount === 1 ? 'attempt' : 'attempts'} · last on ${attemptDate(active.lastAttemptAt ?? active.project.updatedAt)}`;
+        return t('savedAttemptCountLast', { count: active.attemptCount, date: attemptDate(active.lastAttemptAt ?? active.project.updatedAt, dateLocale) });
       })()}</span>
     </div>}
     {selectionNotice && <p className="empty-list" role="status">{selectionNotice}</p>}
 
     <div className="progress-stats">
-      <article className="surface"><span>{t('sessions')}</span><strong>{historyEntries.length}</strong><small>{syncState === 'synced' ? browserOnlyCount > 0 ? 'synced attempts + browser-only summaries' : 'saved to this project' : 'saved in this browser'}</small></article>
-      <article className="surface"><span>{t('latestCoverage')}</span><strong>{latest ? `${latest.evidenceScore}%` : '—'}</strong><small>{delta === null ? t('noComparisonYet') : `${delta >= 0 ? '+' : ''}${delta} points from prior attempt`}</small></article>
-      <article className="surface"><span>{t('mostRecurringGap')}</span><strong className="stat-word">{primaryWeakness?.criterionName ?? '—'}</strong><small>{primaryWeakness ? `${primaryWeakness.gapCount} incomplete ${primaryWeakness.gapCount === 1 ? 'attempt' : 'attempts'}` : t('noRepeatedGap')}</small></article>
+      <article className="surface"><span>{t('sessions')}</span><strong>{historyEntries.length}</strong><small>{syncState === 'synced' ? browserOnlyCount > 0 ? t('syncedPlusBrowser') : t('savedToProject') : t('savedInBrowser')}</small></article>
+      <article className="surface"><span>{t('latestCoverage')}</span><strong>{latest ? `${latest.evidenceScore}%` : '—'}</strong><small>{delta === null ? t('noComparisonYet') : t('pointsFromPrior', { value: `${delta >= 0 ? '+' : ''}${delta}` })}</small></article>
+      <article className="surface"><span>{t('mostRecurringGap')}</span><strong className="stat-word">{primaryWeakness?.criterionName ?? '—'}</strong><small>{primaryWeakness ? t('incompleteAttemptCount', { count: primaryWeakness.gapCount }) : t('noRepeatedGap')}</small></article>
     </div>
 
     {latestComparison
-      ? <AttemptDiff comparison={latestComparison} />
+      ? <AttemptDiff comparison={latestComparison} locale={dateLocale} />
       : <section className="surface attempt-diff-card"><div className="section-title-row"><div><p className="overline">{t('latestEvidenceChange')}</p><h2>{t('changedBetween')}</h2></div></div><p className="empty-list">{t('needTwoAttempts')}</p></section>}
 
     <section className="surface recurring-card" aria-labelledby="recurringTitle">
@@ -312,8 +322,8 @@ export function ProgressView() {
           <div className="recurring-rank" aria-hidden="true">{index + 1}</div>
           <div className="recurring-copy">
             <div className="recurring-heading"><h3>{weakness.criterionName}</h3><span>{weakness.summaryOnly
-              ? `${weakness.gapCount} saved ${weakness.gapCount === 1 ? 'session' : 'sessions'}`
-              : `${weakness.gapCount} of ${weakness.attemptCount} attempts`}{weakness.averageCoverage !== null ? ` · ${Math.round(weakness.averageCoverage * 100)}% average coverage` : ''}</span></div>
+              ? t('savedSessionCount', { count: weakness.gapCount })
+              : t('gapAttemptCount', { gaps: weakness.gapCount, attempts: weakness.attemptCount })}{weakness.averageCoverage !== null ? t('averageCoverage', { percentage: Math.round(weakness.averageCoverage * 100) }) : ''}</span></div>
             {/* The count says a criterion is a problem. The line says whether it
                 is becoming less of one — the part that decides whether to change
                 tactics or keep going. */}
@@ -321,7 +331,7 @@ export function ProgressView() {
               const trail = trails.get(weakness.criterionId);
               return trail ? <CriterionSparkline trail={trail} /> : null;
             })()}
-            <WeaknessEvidence weakness={weakness} />
+            <WeaknessEvidence weakness={weakness} locale={dateLocale} />
           </div>
         </article>)}</div>}
     </section>
@@ -337,24 +347,24 @@ export function ProgressView() {
           if (entry.source === 'browser') {
             const session = entry.session;
             return <article className="session-row browser-only-session" key={entry.id}>
-              <span className="session-date">{date.getDate()}<br />{date.toLocaleString('en', { month: 'short' })}</span>
-              <span><strong>{activeProjectTitle}</strong><small>{session.rehearsalFormat === 'interview' ? t('interviewAggregate') : syncState === 'synced' ? t('browserOnlyPresentation') : t('presentation')} · Focus: {session.weakest}</small></span>
+              <span className="session-date">{date.getDate()}<br />{date.toLocaleString(dateLocale, { month: 'short' })}</span>
+              <span><strong>{activeProjectTitle}</strong><small>{t('archiveFocus', { format: session.rehearsalFormat === 'interview' ? t('interviewAggregate') : syncState === 'synced' ? t('browserOnlyPresentation') : t('presentation'), focus: session.weakest })}</small></span>
               <span className="session-score"><span className="score-track"><i style={{ width: `${entry.evidenceScore}%` }} /></span>{entry.evidenceScore}%</span>
-              <span className="session-status">{syncState === 'synced' ? 'browser only' : session.defenseStatus ?? 'review only'}</span>
+              <span className="session-status">{syncState === 'synced' ? t('browserOnly') : session.defenseStatus ? t(`defenseStatus.${session.defenseStatus}`) : t('reviewOnly')}</span>
               <span aria-hidden="true">·</span>
             </article>;
           }
           const attempt = entry.attempt;
           const reviewable = attempt.hasDeliveryReview || attempt.recordingStatus !== null;
           const row = <>
-            <span className="session-date">{date.getDate()}<br />{date.toLocaleString('en', { month: 'short' })}</span>
+            <span className="session-date">{date.getDate()}<br />{date.toLocaleString(dateLocale, { month: 'short' })}</span>
             <span><strong>{activeProjectTitle}</strong><small>{attempt.hasDeliveryReview ? t('deliveryAndEvidenceSaved') : t('rubricEvidenceSaved')}</small></span>
             <span className="session-score"><span className="score-track"><i style={{ width: `${entry.evidenceScore}%` }} /></span>{entry.evidenceScore}%</span>
-            <span className="session-status">{attempt.recordingStatus ? `replay ${attempt.recordingStatus}` : attempt.hasDeliveryReview ? 'review saved' : 'rubric only'}</span>
+            <span className="session-status">{attempt.recordingStatus ? t(`recordingStatus.${attempt.recordingStatus}`) : attempt.hasDeliveryReview ? t('reviewSaved') : t('rubricOnly')}</span>
             <span aria-hidden="true">{reviewable ? '→' : '·'}</span>
           </>;
           return reviewable
-            ? <Link className="session-row saved-attempt-link" href={`/attempts/${encodeURIComponent(attempt.attemptId)}${progressProjectId ? `?project=${encodeURIComponent(progressProjectId)}` : ''}`} key={entry.id} aria-label={`Review saved attempt from ${attemptDate(attempt.createdAt)}`}>{row}</Link>
+            ? <Link className="session-row saved-attempt-link" href={`/attempts/${encodeURIComponent(attempt.attemptId)}${progressProjectId ? `?project=${encodeURIComponent(progressProjectId)}` : ''}`} key={entry.id} aria-label={t('reviewSavedAttemptFrom', { date: attemptDate(attempt.createdAt, dateLocale) })}>{row}</Link>
             : <article className="session-row" key={entry.id}>{row}</article>;
         })}</div>
     </section>
