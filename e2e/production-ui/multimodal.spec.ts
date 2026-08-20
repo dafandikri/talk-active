@@ -1,5 +1,62 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import type {
+  CapabilitiesResponse,
+  StatelessRejudgeRequest,
+  StatelessRejudgeResponse,
+} from '../../apps/web/lib/contracts.ts';
+import type { StoredRubricCriterion } from '../../apps/web/lib/rubric-storage.ts';
+
+const RETAKE_RUBRIC = [
+  {
+    id: 'problem-clarity',
+    name: 'Problem clarity',
+    description: 'Identify who is affected.',
+    requiredEvidence: ['problem', 'students'],
+    sourceExcerpt: null,
+    displayOrder: 0,
+  },
+  {
+    id: 'impact-proof',
+    name: 'Impact proof',
+    description: 'Provide pilot evidence and measured improvement.',
+    requiredEvidence: ['pilot evidence', 'measured improvement'],
+    sourceExcerpt: null,
+    displayOrder: 1,
+  },
+] satisfies StoredRubricCriterion[];
+
+const STALE_QUESTION_RUBRIC = [
+  ...RETAKE_RUBRIC,
+  {
+    id: 'feasibility-proof',
+    name: 'Feasibility proof',
+    description: 'Explain the architecture and privacy boundary.',
+    requiredEvidence: ['architecture', 'privacy'],
+    sourceExcerpt: null,
+    displayOrder: 2,
+  },
+] satisfies StoredRubricCriterion[];
+
+const LOCAL_DETERMINISTIC_CAPABILITIES = {
+  contractVersion: 2,
+  persistence: 'local',
+  accounts: false,
+  sourceDocuments: false,
+  recordings: false,
+  semantic: {
+    rubric: false,
+    evidence: false,
+    question: false,
+    defense: false,
+    coach: false,
+  },
+} satisfies CapabilitiesResponse;
+
+const RETAKE_ORIGINAL = 'The problem affects students.';
+const RETAKE_ADDITION = 'Our pilot evidence compares one cohort before and after the rehearsal.';
+const RETAKE_MARKED = `${RETAKE_ORIGINAL}\n\n[Tambahan · Impact proof] ${RETAKE_ADDITION}`;
+
 type ObservedPage = Page & {
   consoleErrors?: string[];
   externalRequests?: string[];
@@ -86,6 +143,40 @@ async function openMultimodalAttempt(page: Page) {
   await expect(page.getByRole('heading', { name: 'Latih keseluruhan penampilan.' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Rekam langsung' }).click();
   await expect(page.getByRole('heading', { name: 'Latih keseluruhan penampilan.' })).toBeVisible();
+}
+
+async function seedRetakeRubric(
+  page: Page,
+  criteria: readonly StoredRubricCriterion[] = RETAKE_RUBRIC,
+) {
+  await page.addInitScript(([key, storedCriteria]) => localStorage.setItem(
+    key as string,
+    JSON.stringify({ version: 2, criteria: storedCriteria }),
+  ), ['talkactive.production.rubric.v2', criteria] as const);
+}
+
+async function mockLocalCapabilities(page: Page) {
+  await page.route('**/api/capabilities', async (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(LOCAL_DETERMINISTIC_CAPABILITIES),
+  }));
+}
+
+async function finishAudioCaptureReview(page: Page, transcript: string) {
+  await openMultimodalAttempt(page);
+  await page.getByLabel('Transkrip latihan').fill(transcript);
+  await page.getByRole('checkbox', { name: /Suara isyarat lokal/i }).check();
+  await page.getByRole('button', { name: 'Mulai latihan' }).click();
+  const finishCapture = page.getByRole('button', {
+    name: 'Selesai & rakit tinjauan',
+    exact: true,
+  });
+  await expect(finishCapture).toBeVisible();
+  await finishCapture.click();
+  await expect(page.locator('.studio-status')).toContainText('Latihan terekam');
+  await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
+  await expect(page.locator('[data-practice-stage="review"]')).toHaveCount(1);
 }
 
 async function enterPracticeThroughClientNavigation(page: Page) {
@@ -256,9 +347,9 @@ test('Mansiz presentation auto-stops once at the configured bell and carries the
   });
   await expect(finishCapture).toBeVisible();
   await expect(page.getByRole('status')).toContainText(
-    'Capture stops itself at 01:00, the way an evaluator stops a pitch on time.',
+    'Perekaman berhenti otomatis pada 01:00, seperti penilai menghentikan presentasi tepat waktu. Selesaikan lebih awal kapan pun sudah selesai.',
   );
-  await expect(page.locator('.studio-live')).toContainText('left');
+  await expect(page.locator('.studio-live')).toContainText('tersisa');
   expect(await observedMediaRequests(page)).toEqual([{ audio: true, video: false }]);
 
   await page.clock.fastForward('01:00');
@@ -280,10 +371,192 @@ test('Mansiz presentation auto-stops once at the configured bell and carries the
   await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
   const review = page.locator('.multimodal-review');
   await expect(review).toBeVisible();
-  await expect(review.locator('.timeline-duration')).toContainText('01:00 total · 01:00 limit');
-  await expect(review.getByRole('note')).toContainText(/00:00.*01:00 limit/iu);
+  await expect(review.locator('.timeline-duration')).toContainText('total 01:00 · batas 01:00');
+  await expect(review.getByRole('note')).toContainText(/00:00.*batas 01:00/iu);
   await expect(page.locator('[data-practice-stage="review"]')).toHaveCount(1);
   expect(await observedMediaTrackStops(page)).toBe(1);
+});
+
+test('one missing presentation criterion accepts a marked addition without changing settled evidence', async ({ page }) => {
+  await seedRetakeRubric(page);
+  await mockLocalCapabilities(page);
+  const rejudgeRequests: StatelessRejudgeRequest[] = [];
+  const response = {
+    contractVersion: 2,
+    judgment: {
+      criterionId: 'impact-proof',
+      verdict: 'partial',
+      coverageScore: 0.5,
+      citedSpan: RETAKE_ADDITION,
+      missingEvidence: ['measured improvement'],
+      engine: 'semantic',
+      degradedReason: null,
+    },
+    questionTargetCriterionId: 'impact-proof',
+    questionText: 'Berapa peningkatan terukur yang dihasilkan bukti pilot tersebut?',
+    questionEngine: 'semantic',
+    mode: 'semantic',
+  } satisfies StatelessRejudgeResponse;
+  await page.route('**/api/rejudge', async (route) => {
+    rejudgeRequests.push(route.request().postDataJSON() as StatelessRejudgeRequest);
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(response),
+    });
+  });
+
+  await finishAudioCaptureReview(page, RETAKE_ORIGINAL);
+
+  const problem = page.locator('#evidence-problem-clarity');
+  const impact = page.locator('#evidence-impact-proof');
+  await expect(page.locator('.coverage-gauge strong')).toHaveText('50%');
+  await expect(problem).toHaveAttribute('data-evidence', 'found');
+  await expect(problem.locator('.evidence-quote-text')).toHaveText(RETAKE_ORIGINAL);
+  await expect(impact).toHaveAttribute('data-evidence', 'absent');
+
+  const target = page.locator('.review-retake-strip li').filter({ hasText: 'Impact proof' });
+  await expect(target).toHaveCount(1);
+  await target.getByRole('button', { name: 'Rekam tambahan' }).click();
+
+  await expect(page.locator('[data-practice-stage="attempt"]')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Tulis atau tempel' }))
+    .toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('Transkrip latihan')).toHaveValue(RETAKE_ORIGINAL);
+  const addition = page.locator('#retakeDraft');
+  await expect(addition).toHaveValue('');
+  await addition.fill(RETAKE_ADDITION);
+  await page.getByRole('button', { name: 'Tambahkan dan nilai ulang kriteria ini' }).click();
+
+  await expect(page.locator('[data-practice-stage="review"]')).toHaveCount(1);
+  await expect(page.locator('.coverage-gauge strong')).toHaveText('75%');
+  await expect(problem).toHaveAttribute('data-evidence', 'found');
+  await expect(problem.locator('.evidence-quote-text')).toHaveText(RETAKE_ORIGINAL);
+  await expect(impact).toHaveAttribute('data-evidence', 'found');
+  await expect(impact.locator('.evidence-quote-text')).toHaveText(RETAKE_ADDITION);
+  await expect(page.locator('.weakness-card h3')).toHaveText('Impact proof');
+  await expect(page.locator('.judge-preview blockquote')).toHaveText(response.questionText);
+  // The sensor summary described the original take, not the amended transcript.
+  await expect(page.locator('.multimodal-review')).toHaveCount(0);
+
+  expect(rejudgeRequests).toEqual([{
+    transcript: RETAKE_MARKED,
+    criterion: {
+      id: 'impact-proof',
+      rubricId: 'stateless-analysis',
+      name: 'Impact proof',
+      description: 'Provide pilot evidence and measured improvement.',
+      requiredEvidence: ['pilot evidence', 'measured improvement'],
+      displayOrder: 1,
+    },
+    rejected: {
+      verdict: 'unsupported',
+      coverageScore: 0,
+      citedSpan: null,
+      missingEvidence: ['pilot evidence', 'measured improvement'],
+      engine: 'deterministic',
+    },
+    language: 'id-ID',
+  }]);
+
+  await page.getByRole('button', { name: 'Perbaiki transkrip' }).click();
+  await expect(page.getByLabel('Transkrip latihan')).toHaveValue(RETAKE_MARKED);
+});
+
+test('an addition beyond the transcript limit preserves the draft and original capture', async ({ page }) => {
+  await seedRetakeRubric(page);
+  await mockLocalCapabilities(page);
+  const original = RETAKE_ORIGINAL.padEnd(11_980, 'x');
+  let rejudgeRequests = 0;
+  await page.route('**/api/rejudge', async (route) => {
+    rejudgeRequests += 1;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        contractVersion: 2,
+        judgment: {
+          criterionId: 'impact-proof',
+          verdict: 'partial',
+          coverageScore: 0.5,
+          citedSpan: RETAKE_ADDITION,
+          missingEvidence: ['measured improvement'],
+          engine: 'semantic',
+          degradedReason: null,
+        },
+        questionTargetCriterionId: 'impact-proof',
+        questionText: 'Berapa peningkatan terukur yang dihasilkan bukti pilot tersebut?',
+        questionEngine: 'semantic',
+        mode: 'semantic',
+      } satisfies StatelessRejudgeResponse),
+    });
+  });
+
+  await finishAudioCaptureReview(page, original);
+  const target = page.locator('.review-retake-strip li').filter({ hasText: 'Impact proof' });
+  await target.getByRole('button', { name: 'Rekam tambahan' }).click();
+  const addition = page.locator('#retakeDraft');
+  await addition.fill(RETAKE_ADDITION);
+  await page.getByRole('button', { name: 'Tambahkan dan nilai ulang kriteria ini' }).click();
+
+  await expect(page.locator('.criterion-retake-panel').getByRole('alert'))
+    .toContainText(/12[.]?000/u);
+  await expect(page.locator('[data-practice-stage="attempt"]')).toHaveCount(1);
+  await expect(page.getByLabel('Transkrip latihan')).toHaveValue(original);
+  await expect(addition).toHaveValue(RETAKE_ADDITION);
+  expect(rejudgeRequests).toBe(0);
+
+  await page.getByRole('button', { name: 'Batalkan tambahan ini' }).click();
+  await page.goForward();
+  await expect(page.locator('[data-practice-stage="review"]')).toHaveCount(1);
+  await expect(page.locator('.multimodal-review')).toBeVisible();
+});
+
+test('repairing the weakest criterion retargets the judge question to the new weakest gap', async ({ page }) => {
+  await seedRetakeRubric(page, STALE_QUESTION_RUBRIC);
+  await mockLocalCapabilities(page);
+  const original = 'The problem affects students. Our architecture is documented.';
+  const addition = 'Our pilot evidence measured improvement for 24 students.';
+  const staleQuestion = 'How many students did the impact pilot improve?';
+  await page.route('**/api/rejudge', async (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      contractVersion: 2,
+      judgment: {
+        criterionId: 'impact-proof',
+        verdict: 'supported',
+        coverageScore: 1,
+        citedSpan: addition,
+        missingEvidence: [],
+        engine: 'semantic',
+        degradedReason: null,
+      },
+      questionTargetCriterionId: 'impact-proof',
+      questionText: staleQuestion,
+      questionEngine: 'semantic',
+      mode: 'semantic',
+    } satisfies StatelessRejudgeResponse),
+  }));
+
+  await finishAudioCaptureReview(page, original);
+  await expect(page.locator('.weakness-card h3')).toHaveText('Impact proof');
+  const target = page.locator('.review-retake-strip li').filter({ hasText: 'Impact proof' });
+  await target.getByRole('button', { name: 'Rekam tambahan' }).click();
+  await page.locator('#retakeDraft').fill(addition);
+  await page.getByRole('button', { name: 'Tambahkan dan nilai ulang kriteria ini' }).click();
+
+  await expect(page.locator('[data-practice-stage="review"]')).toHaveCount(1);
+  await expect(page.locator('.coverage-gauge strong')).toHaveText('83%');
+  await expect(page.locator('.weakness-card h3')).toHaveText('Feasibility proof');
+  await expect(page.locator('.weakness-card')).toContainText('privacy');
+  const judgeQuestion = page.locator('.judge-preview blockquote');
+  await expect(judgeQuestion).toContainText('Feasibility proof');
+  await expect(judgeQuestion).toContainText('privacy');
+  await expect(judgeQuestion).not.toHaveText(staleQuestion);
+  await expect(page.locator('.evidence-analysis-mode')).toContainText(
+    'Karena kriteria terlemah berubah setelah penilaian ulang, pertanyaan juri dan latihan fokusnya dibuat ulang dengan pencocokan isyarat deterministik.',
+  );
 });
 
 test('camera-only capture renders concise observations with fully disclosed detail at 390px', async ({ page }) => {
@@ -311,7 +584,7 @@ test('camera-only capture renders concise observations with fully disclosed deta
 
   await finishCapture.click();
   await expect(page.locator('.studio-status')).toContainText('Latihan terekam');
-  await expect(page.locator('.studio-hud')).toContainText(/find the camera frame/i);
+  await expect(page.locator('.studio-hud')).toContainText(/cari bingkai kamera/i);
 
   // Canvas pixels are deliberately not asserted here. drawOverlay clears the
   // whole canvas on every frame before it draws, and Chrome's synthetic camera
@@ -332,7 +605,7 @@ test('camera-only capture renders concise observations with fully disclosed deta
   await expect(review).toBeVisible();
   await expect(review.getByRole('heading', { name: 'Periksa momen-momen yang mungkin perlu dilihat lagi.' })).toBeVisible();
   await expect(review.getByRole('heading', { name: 'Rubrik, suara, dan kamera dalam satu jam yang sama' })).toBeVisible();
-  await expect(review.getByText(/do not measure confidence.*health.*hiring suitability/i)).toBeVisible();
+  await expect(review.getByText(/tidak mengukur rasa percaya diri.*kesehatan.*kelayakan kerja/i)).toBeVisible();
 
   // Dense readings are still present, but no longer compete with rubric proof
   // and the one synchronized timeline before the user asks to inspect them.
@@ -345,9 +618,9 @@ test('camera-only capture renders concise observations with fully disclosed deta
   // clause below is one of the conditions AD-9 puts on showing the number at all.
   const summary = review.locator('.reading-total');
   await expect(summary).toHaveCount(1);
-  await expect(summary.getByText('this attempt', { exact: true })).toBeVisible();
+  await expect(summary.getByText('latihan ini', { exact: true })).toBeVisible();
   await expect(review.getByText(/menggambarkan satu percobaan latihan, bukan kemampuan Anda/i)).toBeVisible();
-  await expect(review.getByText(/excluded from the mean rather than counted as zero/i)).toBeVisible();
+  await expect(review.getByText(/dikeluarkan dari rata-rata, bukan dihitung nol/i)).toBeVisible();
 
   // This assertion used to pin the literal sentence
   // "50% rubric substance · 25% vocal signals · 25% visual signals" — and it

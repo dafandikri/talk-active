@@ -6,6 +6,7 @@ import { parseRubric } from '../apps/web/lib/analyzer.ts';
 import {
   RUBRIC_TEMPLATES,
   RubricTemplateSchema,
+  rubricTemplatesFor,
   templateRubricText,
 } from '../apps/web/lib/rubric-library.ts';
 import {
@@ -37,6 +38,15 @@ test('F-9 ships five distinct, structurally valid starter contexts', () => {
       assert.ok(criterion.requiredEvidence.length >= 2);
     }
   }
+});
+
+test('F-9 rubric starters follow the project language without changing stable ids', () => {
+  const id = rubricTemplatesFor('id-ID');
+  const en = rubricTemplatesFor('en-US');
+  assert.deepEqual(id.map((template) => template.id), en.map((template) => template.id));
+  assert.equal(id[0].name, 'Presentasi hackathon');
+  assert.equal(en[0].name, 'Hackathon pitch');
+  assert.notEqual(id[0].criteria[0].name, en[0].criteria[0].name);
 });
 
 test('F-9 starter text remains compatible with the production rubric parser', () => {

@@ -525,7 +525,7 @@ export async function evaluateAttemptEvidence(
     .where(eq(attempts.id, attemptId))
     .limit(1);
   if (!attempt) notFound('Attempt');
-  await assertProjectAccess(db, attempt.projectId, userId);
+  const project = await assertProjectAccess(db, attempt.projectId, userId);
 
   const rubricRows = await db.select({ criterion: criteria })
     .from(rubrics)
@@ -539,7 +539,10 @@ export async function evaluateAttemptEvidence(
 
   await db.update(attempts).set({ status: 'analysing' }).where(eq(attempts.id, attemptId));
   try {
-    const judgments = await judgeEvidence(attempt.transcript, criterionRows, options);
+    const judgments = await judgeEvidence(attempt.transcript, criterionRows, {
+      ...options,
+      language: project.language,
+    });
     const reusedCitations = detectReusedCitations(judgments);
     const saved = await db.transaction(async (tx) => {
       await tx.delete(evidenceVerdicts).where(and(
@@ -599,7 +602,7 @@ export async function confirmAttemptEvidence(
     ))
     .limit(1);
   if (!context) notFound('Initial evidence verdict');
-  await assertProjectAccess(db, context.attempt.projectId, userId);
+  const project = await assertProjectAccess(db, context.attempt.projectId, userId);
 
   const [existing] = await db.select({ id: evidenceConfirmations.id })
     .from(evidenceConfirmations)
@@ -670,7 +673,7 @@ export async function confirmAttemptEvidence(
       missingEvidence: context.verdict.missingEvidence,
       engine: context.verdict.engine,
     },
-    options,
+    { ...options, language: project.language },
   );
   const rejudgedAt = now();
   const result = await db.transaction(async (tx) => {
@@ -712,7 +715,7 @@ export async function createAttemptQuestion(
   const [attemptOwner] = await db.select({ projectId: attempts.projectId }).from(attempts)
     .where(eq(attempts.id, attemptId)).limit(1);
   if (!attemptOwner) notFound('Attempt');
-  await assertProjectAccess(db, attemptOwner.projectId, userId);
+  const project = await assertProjectAccess(db, attemptOwner.projectId, userId);
   const candidates = await db.select({
     attempt: attempts,
     criterion: criteria,
@@ -755,7 +758,7 @@ export async function createAttemptQuestion(
     weakest.attempt.transcript,
     weakest.criterion,
     judgment,
-    { ...options, sourceDocuments: sourceMaterials },
+    { ...options, sourceDocuments: sourceMaterials, language: project.language },
   );
   const [question] = await db.insert(questions).values({
     attemptId,
@@ -800,7 +803,7 @@ export async function evaluateAttemptDefense(
   const [attemptOwner] = await db.select({ projectId: attempts.projectId }).from(attempts)
     .where(eq(attempts.id, attemptId)).limit(1);
   if (!attemptOwner) notFound('Attempt');
-  await assertProjectAccess(db, attemptOwner.projectId, userId);
+  const project = await assertProjectAccess(db, attemptOwner.projectId, userId);
   const [context] = await db.select({ question: questions, criterion: criteria })
     .from(questions)
     .innerJoin(criteria, eq(criteria.id, questions.targetCriterionId))
@@ -808,7 +811,10 @@ export async function evaluateAttemptDefense(
     .limit(1);
   if (!context) notFound('Judge question');
 
-  const judgment = await judgeDefense(input.answerText, context.criterion, options);
+  const judgment = await judgeDefense(input.answerText, context.criterion, {
+    ...options,
+    language: project.language,
+  });
   const result = await db.transaction(async (tx) => {
     const [answer] = await tx.insert(defenseAnswers).values({
       questionId: context.question.id,

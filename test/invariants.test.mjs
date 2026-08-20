@@ -342,12 +342,28 @@ test('INV-3 the weakest criterion always drives the judge question', () => {
 test('INV-4 the product states what its analysis is not', () => {
   const markup = read('apps/web/components/practice-room.tsx');
   if (!markup) return;
+  // The sentence moved into the catalogues, so structure is asserted on the
+  // component and wording in every locale — stricter than the English
+  // substring this replaces. A boundary that exists only in English does not
+  // bound anything for an Indonesian reader, and Indonesian is the base case.
   assertContains(
     markup,
-    /not\s+confidence\s+or\s+speaking\s+ability/iu,
-    'INV-4: the review screen must state that evidence coverage is not a confidence '
-    + 'or ability score. That sentence is why no judge accused us of overclaiming.',
+    /t\('resultMeasuresEvidence'/u,
+    'INV-4: the review screen must render the sentence stating that evidence '
+    + 'coverage is not a confidence or ability score.',
   );
+  const boundaryWording = {
+    id: /bukan rasa percaya diri atau kemampuan berbicara/iu,
+    en: /not confidence or speaking ability/iu,
+  };
+  for (const locale of ['id', 'en']) {
+    assertContains(
+      JSON.parse(read(`apps/web/messages/${locale}.json`)).practice.resultMeasuresEvidence,
+      boundaryWording[locale],
+      `INV-4: the ${locale} review screen must state that evidence coverage is not a `
+      + 'confidence or ability score. That sentence is why no judge accused us of overclaiming.',
+    );
+  }
 });
 
 test('INV-4 the proposal states its honest boundary', () => {

@@ -72,7 +72,8 @@ test('the saved review leads with traceable evidence and a predictable way back'
     .toHaveAttribute('href', '/progress?project=019ff7f4-e54b-7aaa-baba-00000000000c');
   await expect(page.locator('.main-nav a[href="/progress"]')).toHaveAttribute('aria-current', 'page');
   await expect(page.getByText('RISTEK Finals Pitch · Bahasa Indonesia', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '1 of 2 criteria cite your exact words' })).toBeVisible();
+  await expect(page.locator('.saved-review-date')).toContainText('Agu');
+  await expect(page.getByRole('heading', { name: '1 dari 2 kriteria mengutip kata-kata persis Anda' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Measured impact' }).first()).toBeVisible();
   await expect(page.getByText('measured outcome', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('We map every claim back to a criterion in the evaluator rubric.', { exact: false }).first()).toBeVisible();
@@ -89,7 +90,7 @@ test('the saved review leads with traceable evidence and a predictable way back'
 
   await page.reload();
   await expect(page.getByText('RISTEK Finals Pitch · Bahasa Indonesia', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '1 of 2 criteria cite your exact words' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '1 dari 2 kriteria mengutip kata-kata persis Anda' })).toBeVisible();
   await expect(page.getByText('We map every claim back to a criterion in the evaluator rubric.', { exact: false }).first()).toBeVisible();
 });
 
@@ -99,7 +100,10 @@ test('the saved review plots every cue in its labelled lane on one accessible cl
 
   const timeline = page.locator('.saved-attempt-timeline');
   await expect(timeline).toBeVisible();
-  await expect(timeline).toHaveAttribute('aria-label', /timeline lasting 2:00 with rubric, voice, and camera lanes/i);
+  await expect(timeline).toHaveAttribute(
+    'aria-label',
+    'Lini masa berdurasi 2:00 dengan lajur rubrik, suara, dan kamera',
+  );
 
   // One shared clock, one lane per rubric criterion, plus independently
   // labelled voice and camera lanes. The criteria are named individually
@@ -108,15 +112,15 @@ test('the saved review plots every cue in its labelled lane on one accessible cl
   await expect(timeline.locator('.timeline-lane')).toHaveCount(4);
   await expect(timeline.getByText('Rubric grounding', { exact: true })).toBeVisible();
   await expect(timeline.getByText('Measured impact', { exact: true })).toBeVisible();
-  await expect(timeline.getByText('Voice', { exact: true })).toBeVisible();
-  await expect(timeline.getByText('Camera', { exact: true })).toBeVisible();
+  await expect(timeline.getByText('Suara', { exact: true })).toBeVisible();
+  await expect(timeline.getByText('Kamera', { exact: true })).toBeVisible();
 
   // The criterion with nothing cited keeps its own lane and says so. Folded
   // into an aggregate count it vanished, which is the one reading a student
   // has to carry into the next rehearsal.
   const uncited = timeline.locator('.timeline-lane').nth(1);
   await expect(uncited.locator('.timeline-track')).toHaveAttribute('data-evidence', 'absent');
-  await expect(uncited).toContainText('no evidence cited');
+  await expect(uncited).toContainText('tidak ada bukti yang dikutip');
   await expect(timeline.locator('.timeline-lane').nth(0).locator('.timeline-track'))
     .toHaveAttribute('data-evidence', 'found');
 
@@ -149,7 +153,10 @@ test('the saved review plots every cue in its labelled lane on one accessible cl
 
   // Readable without seeing it.
   await expect(timeline.locator('.timeline-mark').first())
-    .toHaveAttribute('aria-label', /0:08, possible hesitation/);
+    .toHaveAttribute(
+      'aria-label',
+      '0:08, Kemungkinan kata pengisi “tidak diketahui”. Putar rekaman dari dua detik sebelum titik ini.',
+    );
 });
 
 test('without a replay the cues still plot, but cannot be played', async ({ page }) => {

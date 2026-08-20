@@ -1,12 +1,16 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 
 import { EntryGate } from '@/components/entry-gate';
 
-export const metadata: Metadata = {
-  title: 'Enter your workspace — Talk-Active',
-  description: 'Name this workspace and start rehearsing against a real evaluation rubric.',
-  alternates: { canonical: '/enter' },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const metadata = await getTranslations('metadata');
+  return {
+    title: metadata('enterTitle'),
+    description: metadata('enterDescription'),
+    alternates: { canonical: '/enter' },
+  };
+}
 
 export default function EnterPage() {
   return <EntryGate />;

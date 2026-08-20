@@ -1,21 +1,24 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 
 import { SavedAttemptReview } from '@/components/saved-attempt-review';
 import { WorkspaceFrame } from '@/components/workspace-frame';
 
-export const metadata: Metadata = {
-  title: 'Saved attempt review',
-  description: 'Review a saved rehearsal against its delivery observations and rubric evidence.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const metadata = await getTranslations('metadata');
+  return {
+    title: metadata('savedTitle'),
+    description: metadata('savedDescription'),
+  };
+}
 
 async function SavedAttemptContent({
   params,
 }: Readonly<{
   params: Promise<{ id: string }>;
 }>) {
-  const t = useTranslations('savedReview');
   const { id } = await params;
 
   return (

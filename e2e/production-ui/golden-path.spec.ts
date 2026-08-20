@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { STARTER_DRAFT_ID } from '../../apps/web/lib/analyzer.ts';
+
 async function expectVisibleControlsHitTest(page: import('@playwright/test').Page) {
   const controls = page.locator('a[href], button:not([disabled]), input:not([type="hidden"]), textarea, select, summary');
   for (let index = 0; index < await controls.count(); index += 1) {
@@ -61,9 +63,9 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   await expect(page.locator('.evidence-item')).toHaveCount(4);
   await expect(page.locator('.evidence-provenance')).toHaveCount(4);
   await expect(page.locator('.production-confirm')).toHaveCount(4);
-  await expect(page.getByText(/not confidence or speaking ability/i)).toBeVisible();
-  await expect(page.getByText(/Equal mean of 4 criterion readings/i)).toBeVisible();
-  await expect(page.getByText(/Each criterion has the same weight/i)).toBeVisible();
+  await expect(page.getByText(/bukan rasa percaya diri atau kemampuan berbicara/i)).toBeVisible();
+  await expect(page.getByText(/Rata-rata setara dari 4 pembacaan kriteria/i)).toBeVisible();
+  await expect(page.getByText(/Tiap kriteria berbobot sama/i)).toBeVisible();
   await expectVisibleControlsHitTest(page);
 
   // Practice is one URL but several real screens. Browser Back/Forward must
@@ -80,9 +82,9 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   // "Yes"/"No", so the accessible name has to name the criterion AND what
   // agreeing to it means — wording that should stay free to improve. What must
   // not change is that the name identifies its criterion unambiguously.
-  await page.getByRole('button', { name: /^Confirm\b.*\bProblem clarity$/ }).click();
-  await expect(page.getByText(/Saved in this browser as a human evaluation label; the original deterministic provenance is preserved\./u)).toBeVisible();
-  await page.getByRole('button', { name: /^Reject\b.*\bSolution fit$/ }).click();
+  await page.getByRole('button', { name: /^Konfirmasi\b.*\bKejelasan masalah$/ }).click();
+  await expect(page.getByText(/Tersimpan di browser ini sebagai label evaluasi manusia; asal deterministik yang semula tetap dipertahankan\./u)).toBeVisible();
+  await page.getByRole('button', { name: /^Tolak\b.*\bKesesuaian solusi$/ }).click();
   await expect(page.getByText(/diperiksa ulang sekali dengan kalimat yang ditolak dikecualikan/i)).toBeVisible();
   await expect.poll(() => page.evaluate(() => {
     const raw = localStorage.getItem('talkactive.production.evidence-confirmations.v1');
@@ -95,10 +97,10 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   await page.goForward();
   await expect(page.getByRole('heading', { name: 'Pertahankan klaim terlemah' })).toBeFocused();
   await page.getByLabel('Jawaban Anda').fill(
-    'Compared with competitors, our unique logic keeps every verdict traceable to the evaluator rubric.',
+    'Dibandingkan dengan pesaing, logika unik kami membuat setiap putusan dapat ditelusuri ke rubrik penilai.',
   );
   await page.getByRole('button', { name: /Periksa jawaban ini/i }).click();
-  await expect(page.getByRole('heading', { name: 'defensible' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'dapat dipertahankan' })).toBeVisible();
   await expectVisibleControlsHitTest(page);
   await page.getByRole('button', { name: /Simpan sesi ini/i }).click();
 
@@ -110,7 +112,7 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   // why the "Attempt 1" assertion that stood here is gone rather than kept.
   await expect(page.locator('.coverage-trend-dot')).toHaveCount(1);
   await expect(page.locator('.coverage-trend-latest')).toBeVisible();
-  await expect(page.locator('.full-session-list .session-status').getByText('defensible', { exact: true })).toBeVisible();
+  await expect(page.locator('.full-session-list .session-status').getByText('dapat dipertahankan', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Kriteria yang terus muncul kembali' })).toBeVisible();
   await expect(page.getByText(/sebelum Talk-Active menyebut sebuah celah berulang/i)).toBeVisible();
   await expectVisibleControlsHitTest(page);
@@ -120,7 +122,7 @@ test('cold-start guest completes landing → attempt → evidence → defense �
   // blank card, console error, or invented placeholder value.
   await page.reload();
   await expect(page.locator('.coverage-trend-dot')).toHaveCount(1);
-  await expect(page.locator('.full-session-list .session-status').getByText('defensible', { exact: true })).toBeVisible();
+  await expect(page.locator('.full-session-list .session-status').getByText('dapat dipertahankan', { exact: true })).toBeVisible();
   await expect(page.getByText(/sebelum Talk-Active menyebut sebuah celah berulang/i)).toBeVisible();
 });
 
@@ -156,8 +158,8 @@ test('production metadata and unknown routes remain branded and same-origin', as
   const notFound = await request.get('/route-that-does-not-exist');
   expect(notFound.status()).toBe(404);
   const notFoundHtml = await notFound.text();
-  expect(notFoundHtml).toContain('This route is not part of the rehearsal workspace.');
-  expect(notFoundHtml).toContain('Return to Talk-Active');
+  expect(notFoundHtml).toContain('Rute ini bukan bagian dari ruang kerja latihan.');
+  expect(notFoundHtml).toContain('Kembali ke Talk-Active');
   await expectVisibleControlsHitTest(page);
 });
 
@@ -182,7 +184,7 @@ test('review visibly flags one citation reused across criteria', async ({ page }
   // same state to screen readers for each cell, which is correct for an index
   // but makes a page-wide text count ambiguous about where the verdict lives.
   await expect(page.locator('.evidence-item .evidence-state')
-    .filter({ hasText: /^citation reused$/ })).toHaveCount(2);
+    .filter({ hasText: /^kutipan dipakai ulang$/ })).toHaveCount(2);
   await expect(page.locator('.evidence-map a[data-evidence="reused"]')).toHaveCount(2);
   await expect(reused.first().locator('.citation-reuse-note')).toContainText('Evaluation fit');
   await expect(reused.last().locator('.citation-reuse-note')).toContainText('Grounding');
@@ -191,35 +193,35 @@ test('review visibly flags one citation reused across criteria', async ({ page }
 });
 
 test('local guest workspace uses stateless semantic review when the capability is available', async ({ page }) => {
-  const transcript = 'Many Indonesian students prepare important presentations alone and only receive feedback after the result is final. Talk-Active lets a student use the actual evaluation rubric while practicing a pitch. It maps each claim in the transcript to a criterion, points out what is still unsupported, and asks a judge-style follow-up question about the weakest claim. The student then retries one focused section and sees whether the evidence improved. The current implementation uses local transcript analysis, so no recording is stored.';
+  const transcript = STARTER_DRAFT_ID;
   const rows = [
     {
-      id: 'problem-clarity', label: 'Problem clarity',
-      requirementText: 'problem, students, evidence, urgency',
-      signals: ['problem', 'students', 'evidence', 'urgency'],
-      excerpt: 'Many Indonesian students prepare important presentations alone and only receive feedback after the result is final.',
-      missingSignals: ['urgency'],
+      id: 'kejelasan-masalah', label: 'Kejelasan masalah',
+      requirementText: 'masalah, mahasiswa, bukti, urgensi',
+      signals: ['masalah', 'mahasiswa', 'bukti', 'urgensi'],
+      excerpt: 'Banyak mahasiswa Indonesia menyiapkan presentasi penting sendirian dan baru menerima umpan balik setelah hasilnya final.',
+      missingSignals: ['urgensi'],
     },
     {
-      id: 'solution-fit', label: 'Solution fit',
-      requirementText: 'rubric, feedback, retry, improvement',
-      signals: ['rubric', 'feedback', 'retry', 'improvement'],
-      excerpt: 'Talk-Active lets a student use the actual evaluation rubric while practicing a pitch.',
-      missingSignals: ['measured improvement'],
+      id: 'kesesuaian-solusi', label: 'Kesesuaian solusi',
+      requirementText: 'rubrik, umpan balik, coba lagi, perbaikan',
+      signals: ['rubrik', 'umpan balik', 'coba lagi', 'perbaikan'],
+      excerpt: 'Talk-Active memungkinkan mahasiswa menggunakan rubrik penilaian yang sebenarnya saat berlatih presentasi.',
+      missingSignals: ['perbaikan terukur'],
     },
     {
-      id: 'differentiation', label: 'Differentiation',
-      requirementText: 'competitors, unique logic, traceable',
-      signals: ['competitors', 'unique', 'logic', 'traceable'],
-      excerpt: 'It maps each claim in the transcript to a criterion, points out what is still unsupported, and asks a judge-style follow-up question about the weakest claim.',
-      missingSignals: ['competitor comparison'],
+      id: 'diferensiasi', label: 'Diferensiasi',
+      requirementText: 'pesaing, logika unik, dapat ditelusuri',
+      signals: ['pesaing', 'logika unik', 'dapat ditelusuri'],
+      excerpt: 'Aplikasi ini memetakan setiap klaim dalam transkrip ke satu kriteria, menunjukkan bagian yang masih belum didukung, dan mengajukan pertanyaan lanjutan ala juri tentang klaim terlemah.',
+      missingSignals: ['perbandingan pesaing'],
     },
     {
-      id: 'feasibility-and-trust', label: 'Feasibility and trust',
-      requirementText: 'prototype, architecture, privacy, limitations',
-      signals: ['prototype', 'architecture', 'privacy', 'limitations'],
-      excerpt: 'The current implementation uses local transcript analysis, so no recording is stored.',
-      missingSignals: ['architecture'],
+      id: 'kelayakan-dan-kepercayaan', label: 'Kelayakan dan kepercayaan',
+      requirementText: 'prototipe, arsitektur, privasi, keterbatasan',
+      signals: ['prototipe', 'arsitektur', 'privasi', 'keterbatasan'],
+      excerpt: 'Implementasi saat ini menggunakan analisis transkrip lokal, sehingga tidak ada rekaman yang disimpan.',
+      missingSignals: ['arsitektur'],
     },
   ].map((row) => ({
     ...row,
@@ -249,11 +251,12 @@ test('local guest workspace uses stateless semantic review when the capability i
       analyzeCalls += 1;
       const input = request.postDataJSON();
       expect(input.transcript).toBe(transcript);
+      expect(input.language).toBe('id-ID');
       expect(input.rubricText).toBeUndefined();
       expect(input.criteria).toEqual(expect.arrayContaining([
         expect.objectContaining({
-          id: 'problem-clarity',
-          name: 'Problem clarity',
+          id: 'kejelasan-masalah',
+          name: 'Kejelasan masalah',
           description: expect.any(String),
           requiredEvidence: expect.any(Array),
           displayOrder: 0,
@@ -267,10 +270,10 @@ test('local guest workspace uses stateless semantic review when the capability i
           criterionCount: 4,
           criteria: rows,
           weakest: rows[0],
-          judgeQuestion: 'What direct evidence proves this student problem is urgent now?',
-          drill: 'Retry only “Problem clarity” in 30 seconds. Use claim → evidence → why it matters.',
+          judgeQuestion: 'Bukti langsung apa yang menunjukkan masalah mahasiswa ini mendesak sekarang?',
+          drill: 'Ulangi hanya “Kejelasan masalah” dalam 30 detik. Gunakan klaim → bukti → mengapa itu penting.',
           delivery: {
-            wordCount: 76, durationSeconds: 90, wordsPerMinute: 51, pace: 'deliberate',
+            wordCount: 78, durationSeconds: 90, wordsPerMinute: 52, pace: 'deliberate',
             fillerCount: 0, fillers: [],
           },
         },
@@ -288,8 +291,8 @@ test('local guest workspace uses stateless semantic review when the capability i
   await page.getByRole('button', { name: /Mulai percobaan ini/i }).click();
   await expect(page.getByText(/Tinjauan semantik mengirim transkrip ini dan kriteria rubrik/u)).toBeVisible();
   await page.getByRole('button', { name: /Tinjau percobaan ini/i }).click();
-  await expect(page.getByText(/4 of 4 criteria used semantic mapping/u)).toBeVisible();
-  await expect(page.getByText(/judge question used semantic generation/u)).toBeVisible();
+  await expect(page.getByText(/4 dari 4 kriteria memakai pemetaan semantik/u)).toBeVisible();
+  await expect(page.getByText(/Pertanyaan penilai memakai pembuatan semantik/u)).toBeVisible();
   await expect(page.locator('.evidence-provenance')).toHaveCount(4);
   // Provenance is now a chip on the criterion's topline rather than a sentence
   // on its own line. It has to stay VISIBLE text — it is a boundary disclosure
@@ -297,8 +300,8 @@ test('local guest workspace uses stateless semantic review when the capability i
   // this asserts both the wording and that it is actually rendered.
   const provenance = page.locator('.evidence-provenance').first();
   await expect(provenance).toBeVisible();
-  await expect(provenance).toContainText('semantic');
-  await expect(provenance).toContainText('checked against your transcript');
+  await expect(provenance).toContainText('semantik');
+  await expect(provenance).toContainText('diperiksa terhadap transkrip Anda');
   expect(analyzeCalls).toBe(1);
 });
 
@@ -392,14 +395,18 @@ test('private source upload grounds the saved judge question with visible proven
       expect(request.headers()['content-type']).toContain('multipart/form-data');
       return respond({ contractVersion: 2, sourceDocument });
     }
-    if (url.pathname === '/api/attempts' && request.method() === 'POST') return respond({
-      contractVersion: 2,
-      attempt: {
-        id: attemptId, projectId, mode: 'typed', status: 'draft',
-        transcript: 'Talk-Active starts from the evaluator rubric and maps each verdict to evidence.',
-        transcriptSource: 'typed', durationSeconds: 90, createdAt, completedAt: null,
-      },
-    });
+    if (url.pathname === '/api/attempts' && request.method() === 'POST') {
+      const input = request.postDataJSON();
+      expect(input.transcript).toBe(STARTER_DRAFT_ID);
+      return respond({
+        contractVersion: 2,
+        attempt: {
+          id: attemptId, projectId, mode: 'typed', status: 'draft',
+          transcript: input.transcript,
+          transcriptSource: 'typed', durationSeconds: 90, createdAt, completedAt: null,
+        },
+      });
+    }
     if (url.pathname === `/api/attempts/${attemptId}/evidence` && request.method() === 'POST') {
       return respond({
         contractVersion: 2,
@@ -452,7 +459,7 @@ test('private source upload grounds the saved judge question with visible proven
     buffer: Buffer.from('# Research\nStudents receive rubric feedback only after final submission.'),
   });
   await page.getByRole('button', { name: 'Lampirkan secara privat' }).click();
-  await expect(page.getByRole('status')).toContainText('proposal.md attached privately');
+  await expect(page.getByRole('status')).toContainText('proposal.md dilampirkan secara privat ke proyek ini.');
   await expect(page.locator('.production-source-list')).toContainText('proposal.md');
   expect(uploadCalls).toBe(1);
 
@@ -485,7 +492,7 @@ test('progress names a weakness only after it recurs and retains its evidence', 
   await page.goto('/progress');
   await expect(page.getByRole('heading', { name: 'Apa yang berubah antara dua percobaan tertinjau terakhir' })).toBeVisible();
   const feasibilityDiff = page.locator('.attempt-diff-item').filter({ hasText: 'Feasibility' });
-  await expect(feasibilityDiff).toContainText('explicit coverage improved · +50 points');
+  await expect(feasibilityDiff).toContainText('cakupan eksplisit meningkat · +50 poin');
   await expect(feasibilityDiff.getByText('Tidak ada kutipan bukti dari transkrip.')).toBeVisible();
   await expect(feasibilityDiff.locator('blockquote')).toHaveText('The deterministic fallback keeps the demo usable.');
   await expect(feasibilityDiff).toContainText('Masih kurang: measured cost.');
@@ -493,8 +500,8 @@ test('progress names a weakness only after it recurs and retains its evidence', 
   // The sentence became a stat line so the criterion's trajectory could take
   // its place. Both facts it carried — how often, and how far below — are still
   // on screen, and the direction is now there too.
-  await expect(page.locator('.recurring-item')).toContainText('2 of 2 attempts');
-  await expect(page.locator('.recurring-item')).toContainText('25% average coverage');
+  await expect(page.locator('.recurring-item')).toContainText('2 dari 2 latihan');
+  await expect(page.locator('.recurring-item')).toContainText('cakupan rata-rata 25%');
   await expect(page.locator('.recurring-item .criterion-spark')).toHaveAttribute('data-direction', 'rising');
   await expect(page.locator('.recurring-evidence blockquote')).toHaveText('The deterministic fallback keeps the demo usable.');
   await expect(page.getByText(/Celah eksplisit terbaru: measured cost/i)).toBeVisible();
@@ -518,7 +525,7 @@ test('rubric import stays traceable and requires human confirmation', async ({ p
 
   // Structured, and explicitly not saved yet.
   await expect(page.locator('[data-toast-variant="warning"]'))
-    .toContainText('2 criteria structured in deterministic mode');
+    .toContainText('2 kriteria distrukturkan dalam mode deterministik');
   await expect(page.getByRole('button', { name: 'Simpan rubrik' })).toBeVisible();
 
   // Each imported row still says which sentence it came from. Without this the
@@ -530,7 +537,7 @@ test('rubric import stays traceable and requires human confirmation', async ({ p
 test('rubric editor caps the criteria list and keeps Save at the end', async ({ page }) => {
   await page.goto('/rubric');
   await expectVisibleControlsHitTest(page);
-  const addCriterion = page.getByRole('button', { name: 'Add criterion' });
+  const addCriterion = page.getByRole('button', { name: 'Tambah kriteria' });
   await expect(page.locator('.rubric-row')).toHaveCount(4);
   await addCriterion.click();
   await expect(page.locator('.rubric-row')).toHaveCount(5);
@@ -542,14 +549,14 @@ test('rubric editor caps the criteria list and keeps Save at the end', async ({ 
 
 test('rubric library remains editable, explicitly saved, and source-labelled', async ({ page }) => {
   await page.goto('/rubric');
-  await page.getByRole('button', { name: /Skripsi defense/i }).click();
+  await page.getByRole('button', { name: /Sidang skripsi/i }).click();
   await expect(page.locator('[data-toast-variant="warning"]')).toContainText(/Rubrik awal dimuat tetapi belum tersimpan/iu);
   await expect(page.locator('.rubric-row')).toHaveCount(5);
 
   const firstCriterion = page.getByLabel('Kriteria').first();
   await firstCriterion.fill('Research gap and urgency');
   await page.getByRole('button', { name: 'Simpan rubrik' }).click();
-  await expect(page.locator('[data-toast-variant="positive"]')).toContainText('5 confirmed criteria saved');
+  await expect(page.locator('[data-toast-variant="positive"]')).toContainText('5 kriteria terkonfirmasi disimpan di browser ini.');
   await expect.poll(() => page.evaluate(() => localStorage.getItem(
     'talkactive.production.rubric-source.v1',
   ))).toBe('library');

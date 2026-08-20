@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  CLAIM_COACH_SYSTEM_PROMPT,
   ClaimCoachUnavailableError,
   coachCriteria,
   coachCriterion,
@@ -183,11 +184,15 @@ test('C-8 fabricatedNumbers ignores grouping separators and finds only new digit
 // The stronger form is a script the student reads back out loud. An Indonesian
 // speaker handed an English one cannot use it, which makes the language a
 // correctness property of this unit rather than a presentation detail.
-test('the coach is told which language to draft the stronger form in', () => {
+test('the coach is told which language to draft every generated coaching line in', () => {
   const indonesian = buildClaimCoachPrompt(TRANSCRIPT, CRITERION, null, 'id-ID');
   const english = buildClaimCoachPrompt(TRANSCRIPT, CRITERION, null, 'en-US');
-  assert.match(indonesian, /Write strongerForm and every blanks entry in Indonesian/u);
-  assert.match(english, /Write strongerForm and every blanks entry in English/u);
+  assert.match(indonesian, /Write invitedQuestion, strongerForm, and every blanks entry in Indonesian/u);
+  assert.match(english, /Write invitedQuestion, strongerForm, and every blanks entry in English/u);
+  assert.match(
+    CLAIM_COACH_SYSTEM_PROMPT,
+    /Write invitedQuestion, strongerForm, and every blanks entry in the language named by the LANGUAGE POLICY/u,
+  );
   // Quoted spans are exempt on both branches: translating one would break the
   // exact-span check that findGroundedSpan enforces afterwards.
   for (const prompt of [indonesian, english]) {
@@ -198,7 +203,7 @@ test('the coach is told which language to draft the stronger form in', () => {
 test('an unset coach language defaults to Indonesian, like the project contract', () => {
   assert.match(
     buildClaimCoachPrompt(TRANSCRIPT, CRITERION, null),
-    /Write strongerForm and every blanks entry in Indonesian/u,
+    /Write invitedQuestion, strongerForm, and every blanks entry in Indonesian/u,
   );
   assert.equal(
     ClaimCoachRequestSchema.parse({

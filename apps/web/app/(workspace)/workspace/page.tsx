@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 import katoAlert from '../../../../../src/assets/mascot/kato-macaw-alert.svg';
 import katoQuestioning from '../../../../../src/assets/mascot/kato-macaw-questioning.svg';
 import katoReading from '../../../../../src/assets/mascot/kato-macaw-reading.svg';
-import { DEFAULT_RUBRIC, parseRubric } from '@/lib/analyzer';
+import { defaultRubricFor, parseRubric } from '@/lib/analyzer';
 import { requestContract } from '@/lib/api/client';
 import {
   ProjectWorkspaceResponseSchema,
@@ -17,9 +17,11 @@ import {
   type SavedSession,
 } from '@/lib/contracts';
 import { parseSavedSessions, PRODUCTION_SESSIONS_KEY, summarizeRecurringWeaknesses } from '@/lib/progress';
+import { readLocalProjectLanguage } from '@/lib/project-preferences';
 import { writeProjectToCurrentUrl } from '@/lib/project-route';
 import { readStoredRubricCriteria } from '@/lib/rubric-storage';
 import { useOwnedProjects } from '@/components/use-owned-projects';
+import { HTML_LANG, interfaceLocaleFrom } from '@/i18n/locales';
 
 interface DashboardCriterion {
   id: string;
@@ -38,13 +40,15 @@ type SelectedProjectState =
   | { status: 'ready'; projectId: string; workspace: ProjectWorkspaceResponse['workspace']; error: null }
   | { status: 'error'; projectId: string; workspace: null; error: string };
 
-const starterCriteria = parseRubric(DEFAULT_RUBRIC).map((criterion) => ({
-  id: criterion.id,
-  name: criterion.label,
-}));
+function starterCriteriaFor(language: ProjectLanguage): DashboardCriterion[] {
+  return parseRubric(defaultRubricFor(language)).map((criterion) => ({
+    id: criterion.id,
+    name: criterion.label,
+  }));
+}
 
 const initialDashboard: DashboardState = {
-  criteria: starterCriteria,
+  criteria: starterCriteriaFor('id-ID'),
   hasSavedRubric: false,
   sessions: [],
 };
@@ -56,12 +60,12 @@ const initialSelectedProject: SelectedProjectState = {
   error: null,
 };
 
-function sessionDate(value: string): { day: number; month: string; label: string } {
+function sessionDate(value: string, locale: string): { day: number; month: string; label: string } {
   const date = new Date(value);
   return {
     day: date.getDate(),
-    month: date.toLocaleString('en', { month: 'short' }),
-    label: date.toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' }),
+    month: date.toLocaleString(locale, { month: 'short' }),
+    label: date.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' }),
   };
 }
 
@@ -86,9 +90,7 @@ function projectLoadErrorMessage(caught: unknown, t: Translate): string {
   // Resolved here rather than at module scope: a constant evaluated at import
   // is fixed to whichever locale happened to load first, which is how a
   // translated string quietly stops following the reader.
-  if (message === t('wrongProject') || /not found|took too long/iu.test(message)) {
-    return message;
-  }
+  if (message === t('wrongProject')) return message;
   return t('verifyFailed');
 }
 
@@ -121,6 +123,7 @@ function coverageTrajectory(sessions: readonly SavedSession[]) {
 
 export default function WorkspaceHomePage() {
   const t = useTranslations('workspace');
+  const dateLocale = HTML_LANG[interfaceLocaleFrom(useLocale())];
   const [dashboard, setDashboard] = useState<DashboardState>(initialDashboard);
   const [chosenProjectId, setChosenProjectId] = useState<string | null>(null);
   const [selectionHydrated, setSelectionHydrated] = useState(false);
@@ -138,7 +141,7 @@ export default function WorkspaceHomePage() {
       .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt)
         || right.id.localeCompare(left.id));
     setDashboard({
-      criteria: (savedCriteria ?? starterCriteria).map((criterion) => ({
+      criteria: (savedCriteria ?? starterCriteriaFor(readLocalProjectLanguage(localStorage))).map((criterion) => ({
         id: criterion.id,
         name: criterion.name,
       })),
@@ -181,7 +184,7 @@ export default function WorkspaceHomePage() {
 
     const fallbackProject = projects[0]!.project;
     if (chosenProjectId) {
-      setSelectionNotice(`That project is not available. ${fallbackProject.title} is shown instead.`);
+      setSelectionNotice(t('projectUnavailableFallback', { project: fallbackProject.title }));
     }
     setChosenProjectId(fallbackProject.id);
     writeProjectToUrl(fallbackProject.id, 'replace');
@@ -266,18 +269,18 @@ export default function WorkspaceHomePage() {
   const latestIsComplete = latestCoverage === 100;
   const focusTitle = !latestSession
     ? savedSessionCount > 0
-      ? `Continue this project with ${savedSessionCount} saved ${savedSessionCount === 1 ? 'attempt' : 'attempts'}.`
+      ? t('continueWithSavedAttempts', { count: savedSessionCount })
       : t('startWithAttempt')
     : latestIsComplete
       ? t('completeCoverage')
-      : `Pick up from your latest saved focus: ${latestSession.weakest}.`;
+      : t('pickUpLatestFocus', { focus: latestSession.weakest });
   const focusDescription = !latestSession
     ? savedSessionCount > 0
       ? t('openProgressHint')
       : t('saveOneAttempt')
     : latestIsComplete
       ? t('oneTranscriptBoundary')
-      : `The latest saved transcript recorded ${coverageLabel(latestSession.evidenceScore)} explicit rubric coverage. Open Progress to inspect its retained quote or missing cues before rehearsing again.`;
+      : t('latestTranscriptCoverage', { coverage: coverageLabel(latestSession.evidenceScore) });
 
   // Both come from attempts already saved in this browser. Neither invents a
   // reading: a gap is only called recurring once it has survived more than one
@@ -295,7 +298,7 @@ export default function WorkspaceHomePage() {
     ? { art: katoQuestioning, state: 'waiting', bubble: t('readyForHard') }
     : latestIsComplete
       ? { art: katoReading, state: 'supported', bubble: t('everySupported') }
-      : { art: katoAlert, state: 'gap', bubble: `One gap is still open: ${latestSession.weakest}.` };
+      : { art: katoAlert, state: 'gap', bubble: t('oneGapStillOpen', { focus: latestSession.weakest }) };
   const selectionResolving = activeProject === null
     && (chosenProjectId !== null || projects.length > 0);
 
@@ -336,7 +339,7 @@ export default function WorkspaceHomePage() {
 
       <section className="focus-card" aria-labelledby="focusTitle">
         <div className="focus-main">
-          <div className="project-kicker"><span className="project-avatar">{projectInitials(activeProjectTitle)}</span><span><small>Current project · {projectLanguageLabel(activeProjectLanguage)}</small><strong>{activeProjectTitle}</strong></span></div>
+          <div className="project-kicker"><span className="project-avatar">{projectInitials(activeProjectTitle)}</span><span><small>{t('currentProjectLanguage', { language: projectLanguageLabel(activeProjectLanguage) })}</small><strong>{activeProjectTitle}</strong></span></div>
           <h2 id="focusTitle">{focusTitle}</h2>
           <p>{focusDescription}</p>
           <div className="focus-actions">
@@ -349,7 +352,7 @@ export default function WorkspaceHomePage() {
           <p className="coach-bubble">{coach.bubble}</p>
         </aside>
         <div className="focus-stats">
-          <div className="focus-stat"><span>{t('lastCoverage')}</span><strong>{latestCoverage === null ? '—' : coverageLabel(latestCoverage)}</strong><small>{latestSession ? `Saved ${sessionDate(latestSession.createdAt).label}` : t('noReviewedAttempt')}</small></div>
+          <div className="focus-stat"><span>{t('lastCoverage')}</span><strong>{latestCoverage === null ? '—' : coverageLabel(latestCoverage)}</strong><small>{latestSession ? t('savedOnDate', { date: sessionDate(latestSession.createdAt, dateLocale).label }) : t('noReviewedAttempt')}</small></div>
           <div className="focus-stat"><span>{t('latestFocus')}</span><strong className="stat-word">{latestSession ? latestIsComplete ? t('noSavedGap') : latestSession.weakest : '—'}</strong><small>{latestSession ? t('recordedInLatest') : t('appearsAfterReview')}</small></div>
           <div className="focus-stat"><span>{t('savedSessions')}</span><strong>{savedSessionCount}</strong><small>{activeProject ? t('syncedPlusBrowser') : t('validRetained')}</small></div>
         </div>
@@ -365,7 +368,7 @@ export default function WorkspaceHomePage() {
             <p className="overline">{t('recurringGap')}</p>
             <strong className="insight-headline">{recurringGap.criterionName}</strong>
             <p className="insight-detail">
-              Unsupported in {recurringGap.gapCount} of {recurringGap.attemptCount} saved {recurringGap.attemptCount === 1 ? 'attempt' : 'attempts'}.
+              {t('unsupportedAttemptCount', { gaps: recurringGap.gapCount, attempts: recurringGap.attemptCount })}
             </p>
             {recurringGap.latestMissingEvidence.length > 0 && <p className="insight-cues">
               <span>{t('stillMissing')}</span>
@@ -385,7 +388,7 @@ export default function WorkspaceHomePage() {
               className="insight-spark"
               viewBox={`0 0 ${trajectory.points.length * 12} 32`}
               role="img"
-              aria-label={`Evidence coverage across the last ${trajectory.points.length} saved attempts: ${trajectory.points.map((point) => coverageLabel(point)).join(', ')}.`}
+              aria-label={t('coverageTrajectoryLabel', { count: trajectory.points.length, points: trajectory.points.map((point) => coverageLabel(point)).join(', ') })}
               preserveAspectRatio="none"
             >
               {trajectory.points.map((point, index) => (
@@ -401,7 +404,10 @@ export default function WorkspaceHomePage() {
             </svg>
             <p className="insight-detail">
               {trajectory.describable
-                ? `${trajectory.delta === 0 ? 'Level' : trajectory.delta > 0 ? `Up ${trajectory.delta} points` : `Down ${Math.abs(trajectory.delta)} points`} across the last ${trajectory.points.length} saved attempts.`
+                ? t('trajectoryChange', {
+                  change: trajectory.delta === 0 ? t('level') : trajectory.delta > 0 ? t('upPoints', { points: trajectory.delta }) : t('downPoints', { points: Math.abs(trajectory.delta) }),
+                  count: trajectory.points.length,
+                })
                 : t('pairNotTrend')}
             </p>
             <p className="insight-boundary">{t('coverageBoundary')}</p>
@@ -411,7 +417,7 @@ export default function WorkspaceHomePage() {
 
       <div className="dashboard-grid">
         <section className="surface next-session" aria-labelledby="nextSessionTitle">
-          <div className="section-title-row"><div><p className="overline">{t('recommended')}</p><h2 id="nextSessionTitle">{t('nextDrill')}</h2></div><span className="time-pill">3 steps</span></div>
+          <div className="section-title-row"><div><p className="overline">{t('recommended')}</p><h2 id="nextSessionTitle">{t('nextDrill')}</h2></div><span className="time-pill">{t('threeSteps')}</span></div>
           <ol className="session-plan">
             <li><span>1</span><div><strong>{t('deliverPitch')}</strong><small>{t('pasteAttempt')}</small></div></li>
             <li><span>2</span><div><strong>{t('inspectClaim')}</strong><small>{t('traceToRubric')}</small></div></li>
@@ -425,29 +431,29 @@ export default function WorkspaceHomePage() {
         >
           <div className="section-title-row">
             <div><p className="overline">{t('preparation')}</p><h2 id="rubricHealthTitle">{t('activeRubric')}</h2></div>
-            <span className="health-ring" aria-label={projectDetailStatus === 'loading' ? t('loadingCriteria') : `${rubricCount} active criteria`}>
+            <span className="health-ring" aria-label={projectDetailStatus === 'loading' ? t('loadingCriteria') : t('activeCriteriaCount', { count: rubricCount })}>
               {projectDetailStatus === 'loading' ? '…' : rubricCount}
             </span>
           </div>
           {activeProjectId && projectDetailStatus === 'loading' && (
-            <p role="status" aria-live="polite">Loading {activeProjectTitle}&rsquo;s confirmed rubric…</p>
+            <p role="status" aria-live="polite">{t('loadingConfirmedRubric', { project: activeProjectTitle })}</p>
           )}
           {activeProjectId && projectDetailStatus === 'error' && selectedProject.status === 'error' && (
             <div role="alert">
-              <p>{activeProjectTitle}&rsquo;s rubric could not be loaded. {selectedProject.error}</p>
+              <p>{t('rubricCouldNotLoad', { project: activeProjectTitle })} {selectedProject.error}</p>
               <button className="button button-secondary" type="button" onClick={() => setProjectRequestVersion((version) => version + 1)}>{t('tryAgain')}</button>
             </div>
           )}
           {activeProjectId && projectDetailStatus === 'ready' && syncedRubricConfirmed && (
-            <p>{rubricCount} confirmed {rubricCount === 1 ? 'criterion belongs' : 'criteria belong'} to {activeProjectTitle}.</p>
+            <p>{t('confirmedCriteriaBelong', { count: rubricCount, project: activeProjectTitle })}</p>
           )}
           {activeProjectId && projectDetailStatus === 'ready' && !syncedRubricConfirmed && (
-            <p>No confirmed rubric belongs to {activeProjectTitle} yet. Confirm its evaluator criteria before relying on a rehearsal review.</p>
+            <p>{t('noConfirmedRubric', { project: activeProjectTitle })}</p>
           )}
           {!activeProjectId && (
             <p>{dashboard.hasSavedRubric
-              ? `${dashboard.criteria.length} confirmed criteria are saved in this browser.`
-              : `${dashboard.criteria.length} starter criteria are active until you save your evaluator rubric.`}</p>
+              ? t('confirmedCriteriaInBrowser', { count: dashboard.criteria.length })
+              : t('starterCriteriaActive', { count: dashboard.criteria.length })}</p>
           )}
           {rubricCount > 0 && <div className="mini-criteria">{activeCriteria.map((criterion) => <div className="mini-criterion" key={criterion.id}><i /><span>{criterion.name}</span></div>)}</div>}
           <Link className="text-button" href={rubricHref}>{syncedRubricConfirmed || !activeProjectId ? t('editCriteria') : t('setupCriteria')} <span aria-hidden="true">→</span></Link>
@@ -458,12 +464,12 @@ export default function WorkspaceHomePage() {
         {projectSessions.length === 0
           ? <p className="empty-list">{t('noRehearsals')}</p>
           : <div className="session-list">{projectSessions.slice(0, 3).map((session) => {
-            const date = sessionDate(session.createdAt);
+            const date = sessionDate(session.createdAt, dateLocale);
             return <article className="session-row" key={session.id}>
               <span className="session-date" aria-label={date.label}>{date.day}<br />{date.month}</span>
-              <span><strong>{activeProjectTitle}</strong><small>Saved focus: {session.weakest}</small></span>
+              <span><strong>{activeProjectTitle}</strong><small>{t('savedFocus', { focus: session.weakest })}</small></span>
               <span className="session-score"><span className="score-track"><i style={{ width: coverageLabel(session.evidenceScore) }} /></span>{coverageLabel(session.evidenceScore)}</span>
-              <span className="session-status">{session.defenseStatus ?? 'review only'}</span>
+              <span className="session-status">{session.defenseStatus ? t(`defenseStatus.${session.defenseStatus}`) : t('reviewOnly')}</span>
               <span aria-hidden="true">→</span>
             </article>;
           })}</div>}

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense, type ReactNode } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 
 import socialImage from '../../../src/assets/LOGO & TAGLINE.png';
 import { DEFAULT_INTERFACE_LOCALE, HTML_LANG } from '@/i18n/locales';
@@ -14,27 +15,32 @@ import '../../../src/styles.css';
 import '../../../src/landing.css';
 import './shell.css';
 
-export const metadata: Metadata = {
-  metadataBase: new URL('https://talk-active-id.vercel.app'),
-  title: {
-    default: 'Talk-Active',
-    template: '%s · Talk-Active',
-  },
-  description: 'Rehearse against the rubric, then defend the evidence behind your claims.',
-  openGraph: {
-    title: 'Talk-Active — Rubric-grounded rehearsal',
-    description: 'Rehearse against the real rubric, inspect exact evidence, and practise the hardest grounded question.',
-    images: [socialImage.src],
-    type: 'website',
-    url: '/',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Talk-Active — Rubric-grounded rehearsal',
-    description: 'Rehearse against the real rubric, inspect exact evidence, and practise the hardest grounded question.',
-    images: [socialImage.src],
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const metadata = await getTranslations('metadata');
+  const socialTitle = metadata('socialTitle');
+  const socialDescription = metadata('socialDescription');
+  return {
+    metadataBase: new URL('https://talk-active-id.vercel.app'),
+    title: {
+      default: 'Talk-Active',
+      template: metadata('titleTemplate'),
+    },
+    description: metadata('defaultDescription'),
+    openGraph: {
+      title: socialTitle,
+      description: socialDescription,
+      images: [socialImage.src],
+      type: 'website',
+      url: '/',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: socialTitle,
+      description: socialDescription,
+      images: [socialImage.src],
+    },
+  };
+}
 
 /**
  * Resolving the locale reads a cookie, and under Cache Components any uncached

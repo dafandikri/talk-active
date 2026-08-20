@@ -124,7 +124,7 @@ test('selected project owns the rubric, language, direct studio, and browser his
   await page.getByRole('button', { name: 'Rekam langsung' }).click();
   await expect(page.getByRole('heading', { name: 'Latih keseluruhan penampilan.' })).toBeVisible();
   await expect(page.getByRole('group', { name: /Pilih apa yang boleh diamati latihan ini/i })).toBeVisible();
-  await expect(page.getByText('Project language: Bahasa Indonesia', { exact: true })).toBeVisible();
+  await expect(page.getByText('Bahasa proyek: Bahasa Indonesia', { exact: true })).toBeVisible();
   await expect(page.getByRole('checkbox', { name: /Kamera landmark lokal/i })).not.toBeChecked();
   await expect(page.getByRole('checkbox', { name: /Suara isyarat lokal/i })).not.toBeChecked();
   await expect(page.getByRole('checkbox', { name: /Transkrip langsung Bahasa Indonesia/i })).not.toBeChecked();
@@ -140,14 +140,14 @@ test('selected project owns the rubric, language, direct studio, and browser his
   await expect(page.locator('.capture-header h2')).toBeFocused();
   await expect(page.getByLabel('Transkrip latihan')).toHaveValue(preservedDraft);
 
-  await page.getByRole('link', { name: 'Back to workspace' }).click();
+  await page.getByRole('link', { name: 'Kembali ke ruang kerja' }).click();
   await expect(page).toHaveURL(`/workspace?project=${ENGLISH_PROJECT_ID}`);
   await page.goBack();
   await expect(page).toHaveURL(`/practice?project=${ENGLISH_PROJECT_ID}`);
   await expect(page.locator('.capture-header h2')).toHaveText('English product pitch');
   await expect(page.getByLabel('Transkrip latihan')).toHaveValue(preservedDraft);
 
-  await page.getByRole('button', { name: 'Back to project setup' }).click();
+  await page.getByRole('button', { name: 'Kembali ke penyiapan proyek' }).click();
   await expect(page.getByRole('heading', { name: 'Anda sedang bersiap untuk apa?' })).toBeFocused();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await expect(page.getByRole('link', { name: 'Ubah' }))

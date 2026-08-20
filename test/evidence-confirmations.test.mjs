@@ -71,3 +71,26 @@ test('A-5 local rejection re-checks once without returning the rejected sentence
   assert.equal(result.criterion.excerpt, 'A second rubric workflow is also traceable.');
   assert.notEqual(result.criterion.excerpt, criterion.excerpt);
 });
+
+test('project language governs local re-judge coaching, with Indonesian as the default', () => {
+  const criterion = {
+    id: 'differentiation',
+    label: 'Differentiation',
+    requirementText: 'rubric, traceable',
+    signals: ['rubric', 'traceable'],
+    score: 100,
+    status: 'covered',
+    matchedSignals: ['rubric', 'traceable'],
+    missingSignals: [],
+    excerpt: 'Our rubric creates traceable evidence.',
+  };
+  const transcript = 'Our rubric creates traceable evidence. A second rubric workflow is also traceable.';
+
+  const english = rejudgeLocalEvidence(transcript, criterion, 60, 'en-US');
+  const indonesian = rejudgeLocalEvidence(transcript, criterion, 60);
+
+  assert.match(english.judgeQuestion, /^What /u);
+  assert.match(english.drill, /^Retry only/u);
+  assert.match(indonesian.judgeQuestion, /^Bukti apa/u);
+  assert.match(indonesian.drill, /^Ulangi hanya/u);
+});

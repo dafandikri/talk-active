@@ -56,9 +56,10 @@ test('dashboard hydrates saved rubric and session progress without placeholder m
   await page.goto('/workspace');
 
   await expect(page.getByRole('heading', {
-    name: 'Pick up from your latest saved focus: Execution proof.',
+    name: 'Lanjutkan dari fokus tersimpan terakhir: Execution proof.',
   })).toBeVisible();
   await expect(page.locator('.focus-stat').filter({ hasText: 'Cakupan bukti terakhir' })).toContainText('75%');
+  await expect(page.locator('.focus-stat').filter({ hasText: 'Cakupan bukti terakhir' })).toContainText('Agu');
   await expect(page.locator('.focus-stat').filter({ hasText: 'Fokus terbaru' })).toContainText('Execution proof');
   await expect(page.locator('.focus-stat').filter({ hasText: 'Sesi tersimpan' })).toContainText('2');
 
@@ -72,8 +73,9 @@ test('dashboard hydrates saved rubric and session progress without placeholder m
 
   const recentSessions = page.locator('.recent-section .session-row');
   await expect(recentSessions).toHaveCount(2);
-  await expect(recentSessions.nth(0)).toContainText('Saved focus: Execution proof');
+  await expect(recentSessions.nth(0)).toContainText('Fokus tersimpan: Execution proof');
+  await expect(recentSessions.nth(0).locator('.session-date')).toContainText('Agu');
   await expect(recentSessions.nth(0)).toContainText('75%');
-  await expect(recentSessions.nth(1)).toContainText('Saved focus: Problem framing');
+  await expect(recentSessions.nth(1)).toContainText('Fokus tersimpan: Problem framing');
   await expect(page.getByText('5 min', { exact: true })).toHaveCount(0);
 });

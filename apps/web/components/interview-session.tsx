@@ -240,8 +240,8 @@ export function InterviewSession({
       const checkpoint = await studioRef.current.resumeAnswerCapture({ resetTranscript: true });
       setAnswer('');
       setAnswerStartMs(checkpoint.elapsedMs);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t('captureFailed'));
+    } catch {
+      setError(t('captureFailed'));
     }
   }
 
@@ -295,8 +295,8 @@ export function InterviewSession({
         return;
       }
       await finishInterview(completedDrafts);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t('answerNotSaved'));
+    } catch {
+      setError(t('answerNotSaved'));
     }
   }
 
@@ -354,8 +354,8 @@ export function InterviewSession({
         hardestQuestion: response.hardestQuestion,
         mode: response.mode,
       });
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t('reviewFailed'));
+    } catch {
+      setError(t('reviewFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -366,8 +366,8 @@ export function InterviewSession({
 
   return <section className="interview-session" aria-labelledby="interviewQuestionTitle">
     <div className="interview-session-head">
-      <div><p className="overline">{t('format')}</p><h2 data-stage-heading tabIndex={-1}>{t('heading')}</h2><p>Each answer is saved locally and the next question appears immediately. One final submit reviews all {plan.length} answers without mixing their evidence.</p></div>
-      <span>{drafts.length} of {plan.length} saved</span>
+      <div><p className="overline">{t('format')}</p><h2 data-stage-heading tabIndex={-1}>{t('heading')}</h2><p>{t('answersSavedLocally', { count: plan.length })}</p></div>
+      <span>{t('savedProgress', { saved: drafts.length, total: plan.length })}</span>
     </div>
 
     <ol className="interview-progress" aria-label={t('progress')}>
@@ -381,13 +381,13 @@ export function InterviewSession({
       <section className="surface kato-question-card">
         <img src={katoQuestioning.src} alt="" />
         <div className="kato-question-copy">
-          <p className="overline">Question {currentQuestion.primaryIndex + 1} · rubric area {currentQuestion.primaryIndex + 1} of {plan.length}</p>
+          <p className="overline">{t('questionPosition', { current: currentQuestion.primaryIndex + 1, total: plan.length })}</p>
           <h3 id="interviewQuestionTitle">{t('katoAsks')}</h3>
           <blockquote
             ref={questionRef}
             tabIndex={-1}
             lang={language}
-            aria-label={`Question ${currentQuestion.primaryIndex + 1} of ${plan.length}: ${currentQuestion.text}`}
+            aria-label={t('questionLabel', { current: currentQuestion.primaryIndex + 1, total: plan.length, question: currentQuestion.text })}
           >{currentQuestion.text}</blockquote>
           <div className="kato-speech-controls">
             {narrationAvailable ? narrating
@@ -401,12 +401,12 @@ export function InterviewSession({
       <section className="surface interview-answer-panel">
         <div className="interview-capture-state">
           <strong>{session.active ? t('oneContinuous') : t('manualAnswers')}</strong>
-          <span>{session.active ? `${formatTimeline(session.elapsedMs)} · ${answerActive ? 'answer window active' : 'between answers'}` : t('startOrType')}</span>
+          <span>{session.active ? t('capturePosition', { time: formatTimeline(session.elapsedMs), state: answerActive ? t('answerWindowActive') : t('betweenAnswers') }) : t('startOrType')}</span>
         </div>
         {session.active && !answerActive && <button className="button button-secondary button-full" type="button" disabled={narrating || session.transitionBusy} onClick={() => void beginAnswer()}>{t('beginAnswer')}</button>}
         <label htmlFor="interviewAnswer">{t('yourAnswer')}</label>
         <textarea id="interviewAnswer" rows={8} maxLength={12_000} value={answer} disabled={session.active && !answerActive} onChange={(event) => setAnswer(event.target.value)} placeholder={session.active && !answerActive ? t('waitPlaceholder') : t('answerPlaceholder')} />
-        {!session.active && <div className="interview-answer-meta"><label htmlFor="interviewAnswerDuration">{t('answerDuration')}</label><input id="interviewAnswerDuration" type="number" min="1" max="600" value={answerDuration} onChange={(event) => setAnswerDuration(Number(event.target.value))} /><span>seconds</span></div>}
+        {!session.active && <div className="interview-answer-meta"><label htmlFor="interviewAnswerDuration">{t('answerDuration')}</label><input id="interviewAnswerDuration" type="number" min="1" max="600" value={answerDuration} onChange={(event) => setAnswerDuration(Number(event.target.value))} /><span>{t('seconds')}</span></div>}
         <section className="interview-observation-panel" aria-label={t('optionalCapture')}>
           <MultimodalStudio
             ref={studioRef}
@@ -436,6 +436,6 @@ export function InterviewSession({
         {!semanticAvailable && <p className="interview-live-boundary">{t('semanticUnavailable')}</p>}
       </section>
     </div>
-    <span className="sr-only">The interview is capped at {MAX_INTERVIEW_TURNS} fixed questions.</span>
+    <span className="sr-only">{t('cappedAtFixedQuestions', { max: MAX_INTERVIEW_TURNS })}</span>
   </section>;
 }

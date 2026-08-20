@@ -166,11 +166,12 @@ test('deep-linking and switching keep project title, language, practice URL, and
   const rubric = page.locator('.rubric-health');
   await expect(page.locator('.project-kicker')).toContainText('Sidang skripsi Indonesia');
   await expect(page.locator('.project-kicker')).toContainText('Bahasa Indonesia');
-  await expect(rubric.getByRole('status')).toContainText('Loading Sidang skripsi Indonesia');
+  await expect(rubric.getByRole('status'))
+    .toContainText('Memuat rubrik terkonfirmasi milik Sidang skripsi Indonesia…');
   await expect(rubric).not.toContainText('Browser-global trap');
 
   releaseThesis();
-  await expect(rubric).toContainText('No confirmed rubric belongs to Sidang skripsi Indonesia yet.');
+  await expect(rubric).toContainText('Belum ada rubrik terkonfirmasi untuk Sidang skripsi Indonesia.');
   await expect(rubric.locator('.health-ring')).toHaveText('0');
   await expect(rubric).not.toContainText('Draft research method');
   await expect(page.getByRole('link', { name: 'Lanjutkan latihan' }))
@@ -184,7 +185,7 @@ test('deep-linking and switching keep project title, language, practice URL, and
   await expect(page).toHaveURL(`/workspace?project=${PITCH_PROJECT_ID}`);
   await expect(page.locator('.project-kicker')).toContainText('English product pitch');
   await expect(page.locator('.project-kicker')).toContainText('English');
-  await expect(rubric).toContainText('2 confirmed criteria belong to English product pitch.');
+  await expect(rubric).toContainText('2 kriteria terkonfirmasi dimiliki English product pitch.');
   await expect(rubric.locator('.mini-criterion')).toHaveText([
     'Verified customer impact',
     'Working demo path',
@@ -198,7 +199,7 @@ test('deep-linking and switching keep project title, language, practice URL, and
   await page.goBack();
   await expect(page).toHaveURL(`/workspace?project=${THESIS_PROJECT_ID}`);
   await expect(page.locator('.project-kicker')).toContainText('Sidang skripsi Indonesia');
-  await expect(rubric).toContainText('No confirmed rubric belongs to Sidang skripsi Indonesia yet.');
+  await expect(rubric).toContainText('Belum ada rubrik terkonfirmasi untuk Sidang skripsi Indonesia.');
   await expect(rubric).not.toContainText('Verified customer impact');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1)).toBe(true);
 });
@@ -234,7 +235,8 @@ test('an unavailable deep link falls back to an owned project and repairs the UR
 
   await page.goto('/workspace?project=project-that-is-not-owned');
   await expect(page).toHaveURL(`/workspace?project=${PITCH_PROJECT_ID}`);
-  await expect(page.getByRole('status')).toContainText('That project is not available. English product pitch is shown instead.');
+  await expect(page.getByRole('status'))
+    .toContainText('Proyek itu tidak tersedia. English product pitch ditampilkan sebagai gantinya.');
   await expect(page.locator('.project-kicker')).toContainText('English product pitch');
   await expect(page.locator('.rubric-health .mini-criterion')).toHaveText([
     'Verified customer impact',

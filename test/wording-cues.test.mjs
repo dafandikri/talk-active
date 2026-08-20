@@ -38,3 +38,14 @@ test('W-2 a transcript with real numbers produces no cues', () => {
     [],
   );
 });
+
+test('W-3 invited questions follow the project language, not the cue token', () => {
+  assert.equal(
+    summarizeWordingCues('Many students joined.', 'id-ID')[0].invites,
+    'Berapa tepatnya?',
+  );
+  assert.equal(
+    summarizeWordingCues('Banyak mahasiswa bergabung.', 'en-US')[0].invites,
+    'How many exactly?',
+  );
+});

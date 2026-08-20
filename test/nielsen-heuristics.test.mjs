@@ -108,7 +108,9 @@ test('H-3 every stage of the practice flow has a marked exit', () => {
   }
   assert.match(PRACTICE, /t\('reviseTranscript'\)/u, 'review must be able to return to the attempt');
   everyLocaleTranslates('practice', 'reviseTranscript', 'the way back to the attempt must be labelled everywhere');
-  assert.match(PRACTICE, /Back to attempt review/u, 'the Q&A drill must be able to go back');
+  assert.match(PRACTICE, /t\('backToAttemptReview'\)/u, 'the Q&A drill must be able to go back');
+  everyLocaleTranslates('practice', 'backToAttemptReview',
+    'the way back from the drill must be labelled in every locale');
   assert.match(STUDIO, /t\('finishAssemble'\)/u, 'a running capture must be stoppable by the user');
   everyLocaleTranslates('studio', 'finishAssemble', 'the stop control must be labelled in every locale');
   // The link itself is still asserted in the component; only its words moved.
@@ -158,9 +160,13 @@ test('H-3 the attempt step opens on writing, and capture is a choice the user ma
   everyLocaleTranslates('studio', 'consentBoundary', 'what each signal does must be stated in every locale');
   assert.match(
     STUDIO,
-    /every signal starts off/u,
+    /t\('everySignalStartsOff'\)/u,
     'the checklist must say that nothing is enabled by default',
   );
+  for (const [index, pattern] of [/awalnya mati/u, /starts off/u].entries()) {
+    assert.match(CATALOGUES[index].studio.everySignalStartsOff, pattern,
+      `${['id', 'en'][index]}: the checklist must say every signal starts disabled`);
+  }
 });
 
 test('H-3 an irreversible action says so before it is taken', () => {
@@ -265,7 +271,11 @@ test('H-6 the whole rubric is visible without remembering it', () => {
 
 test('H-6 a chart explains its own encoding in place', () => {
   const charts = read('apps/web/components/delivery-charts.tsx');
-  assert.match(charts, /The dashed line marks/u, 'a reference line must be named where it is drawn');
+  assert.match(charts, /t\('averageLegend'/u, 'a reference line must be named where it is drawn');
+  for (const [index, pattern] of [/garis putus-putus/iu, /dashed line/iu].entries()) {
+    assert.match(CATALOGUES[index].deliveryMetrics.averageLegend, pattern,
+      `${['id', 'en'][index]}: the chart must name the reference line`);
+  }
   assert.match(charts, /reading-legend/u, 'the legend must live beside the chart');
 });
 
@@ -359,7 +369,9 @@ test('H-10 the limits of the analysis are documented in the product, not a manua
     /\b(stateless|deterministic|criterionEngines|semanticAvailable)\b/u,
     'the landing loop must not name internal stages',
   );
-  assert.match(PRACTICE, /not confidence or speaking ability/u, 'the review must state what it is not');
+  assert.match(PRACTICE, /t\('resultMeasuresEvidence'/u, 'the review must state what it is not');
+  everyLocaleTranslates('practice', 'resultMeasuresEvidence',
+    'the review boundary must exist in every locale');
   // INV-6: a number may describe one rehearsal, never the speaker, and it must
   // say so beside itself. Checked in every locale — a boundary that exists only
   // in English does not bound anything for the reader it was written for.

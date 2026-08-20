@@ -28,6 +28,8 @@ export interface WordingCueSummary {
   invites: string;
 }
 
+type WordingLanguage = 'id-ID' | 'en-US';
+
 interface WordingCueDefinition {
   kind: WordingCueKind;
   label: string;
@@ -89,7 +91,35 @@ export function findWordingCues(value: string): WordingCueMatch[] {
   return matchWordingCues(tokenizeSpeech(value));
 }
 
-export function summarizeWordingCues(value: string): WordingCueSummary[] {
+function invitedQuestion(
+  definition: WordingCueDefinition,
+  language: WordingLanguage | undefined,
+): string {
+  if (language === undefined) return definition.invites;
+  if (language === 'id-ID') {
+    if (/^[a-z ]+$/u.test(definition.label) && definition.tokens.some((token) => (
+      ['many', 'some', 'several', 'often', 'maybe', 'probably', 'perhaps', 'kind', 'sort', 'i'].includes(token)
+    ))) {
+      return definition.kind === 'vague-quantity'
+        ? 'Berapa tepatnya?'
+        : 'Sudah pasti atau belum?';
+    }
+    return definition.invites;
+  }
+  if (definition.tokens.some((token) => (
+    ['banyak', 'beberapa', 'sebagian', 'cukup', 'lumayan', 'sering', 'kayaknya', 'sepertinya', 'mungkin', 'agak', 'hampir', 'kira'].includes(token)
+  ))) {
+    return definition.kind === 'vague-quantity'
+      ? 'How many exactly?'
+      : 'Is that verified or still uncertain?';
+  }
+  return definition.invites;
+}
+
+export function summarizeWordingCues(
+  value: string,
+  language?: WordingLanguage,
+): WordingCueSummary[] {
   const definitions = [...SINGLE_TOKEN_CUES, ...BIGRAM_CUES];
   const counts = new Map<string, number>();
   for (const match of findWordingCues(value)) {
@@ -102,7 +132,7 @@ export function summarizeWordingCues(value: string): WordingCueSummary[] {
         kind: definition.kind,
         label: definition.label,
         count,
-        invites: definition.invites,
+        invites: invitedQuestion(definition, language),
       }];
     })
     .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));

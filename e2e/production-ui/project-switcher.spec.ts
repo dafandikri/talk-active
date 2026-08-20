@@ -174,7 +174,7 @@ test('the switcher reports what each project actually holds', async ({ page }) =
 
   const switcher = page.locator('.project-switcher');
   await expect(switcher.locator('.project-switcher-meta'))
-    .toHaveText('3 synced attempts · 1 browser-only summary');
+    .toHaveText('3 latihan tersinkron · 1 ringkasan khusus browser');
 
   await switcher.locator('select').selectOption('p-empty');
   await expect(switcher.locator('.project-switcher-meta')).toContainText('Belum ada percobaan yang tersimpan di proyek ini');

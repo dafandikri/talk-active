@@ -46,7 +46,7 @@ test('complete coverage switches the pose rather than repeating the gap', async 
   const mascot = page.locator('.focus-mascot');
   await expect(mascot).toHaveAttribute('data-coach', 'supported');
   await expect(mascot).toHaveJSProperty('complete', true);
-  await expect(page.locator('.coach-bubble')).not.toContainText('gap is still open');
+  await expect(page.locator('.coach-bubble')).toHaveText('Setiap kriteria sudah didukung. Naikkan standarnya?');
 });
 
 test('each state draws a different pose, so the state is visible not just labelled', async ({ page }) => {
@@ -106,8 +106,8 @@ test('the band names the recurring gap and the direction of the run', async ({ p
   const band = page.locator('.insight-band');
   await expect(band).toBeVisible();
   await expect(band.getByText('Differentiation', { exact: true })).toBeVisible();
-  await expect(band.getByText('Unsupported in 3 of 3 saved attempts.')).toBeVisible();
-  await expect(band.getByText(/Naik 48 poin|Up 48 points/)).toBeVisible();
+  await expect(band.getByText('Belum didukung pada 3 dari 3 latihan tersimpan.')).toBeVisible();
+  await expect(band.getByText('Naik 48 poin')).toBeVisible();
   // The figure never gets to stand alone.
   await expect(band.getByText(/bukan nilai untuk Anda/i)).toBeVisible();
   // The chart is readable without seeing it.

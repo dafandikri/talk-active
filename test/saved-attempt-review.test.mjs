@@ -71,6 +71,14 @@ test('saved detail does not expose aggregate delivery scores after their compone
     'the saved format must say no aggregate score is shown');
 });
 
+test('saved delivery boundaries follow the interface locale, not persisted English copy', () => {
+  assert.match(review, /delivery \? t\('metricsBoundary'\) : t\('noDeliveryObservation'\)/u);
+  assert.doesNotMatch(review, /delivery\?\.boundary/u);
+  for (const [index, pattern] of [/heuristik latihan/u, /rehearsal heuristics/u].entries()) {
+    assert.match(catalogues[index].metricsBoundary ?? '', pattern);
+  }
+});
+
 test('delivery moments are semantic controls that seek with context', () => {
   assert.match(review, /video\.currentTime = Math\.max\(0, event\.startMs \/ 1_000 - 2\)/u);
   assert.match(review, /video\.scrollIntoView\(\{ behavior: 'smooth', block: 'center' \}\)/u);
@@ -78,7 +86,9 @@ test('delivery moments are semantic controls that seek with context', () => {
   assert.match(review, /<li key=\{event\.id\}>\s*<button/u);
   assert.match(review, /<time dateTime=/u);
   assert.match(review, /disabled=\{!recordingReady\}/u);
-  assert.match(review, /aria-label=\{`Timeline lasting \$\{formatClock\(timelineDurationMs\)\} with rubric, voice, and camera lanes`\}/u);
+  assert.match(review, /aria-label=\{t\('timelineLabel', \{ duration: formatClock\(timelineDurationMs\) \}\)\}/u);
+  everyLocaleSays('timelineLabel', /rubrik.*suara.*kamera|rubric.*voice.*camera/iu,
+    'the saved timeline must name all three lanes');
 });
 
 test('recording deletion is explicit and preserves the saved feedback contract', () => {

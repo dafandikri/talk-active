@@ -78,33 +78,50 @@ export function MultimodalReview({
     visual: visualScore,
     vocalExcludedReason: t('noTimingAvailable'),
     visualExcludedReason: visual
-      ? `Landmarks held for ${trackingPercent}% of sampled frames, below the 80% floor this reading requires.`
+      ? t('trackingBelowFloor', { tracking: trackingPercent, floor: 80 })
       : t('cameraNotPart'),
   });
   const replayEvents = [
-    ...speechDisruptions.map((event, index) => ({
+    ...speechDisruptions.map((event, index) => {
+      const filler = event.label.match(/[“"]([^”"]+)[”"]/u)?.[1] ?? event.label;
+      const label = event.kind === 'prolonged-voicing'
+        ? t('prolongedVoicing')
+        : event.kind === 'repeated-start'
+          ? t('repeatedStart')
+          : t('possibleFiller', { filler });
+      const detail = event.kind === 'prolonged-voicing'
+        ? t('prolongedVoicingDetail', { seconds: (event.durationMs / 1_000).toFixed(1) })
+        : event.kind === 'repeated-start'
+          ? t('repeatedStartDetail')
+          : t('interimFillerDetail');
+      return {
       key: `speech-${event.startMs}-${index}`,
       startMs: event.startMs,
       endMs: event.endMs,
       lane: 'voice' as const,
-      label: event.label,
-      detail: event.evidence,
-      source: event.source === 'interim-transcript' ? 'dictation cue' : 'voice cue',
-    })),
+      label,
+      detail,
+      source: event.source === 'interim-transcript'
+        ? t('dictationCue')
+        : event.source === 'combined'
+          ? t('combinedVoiceCue')
+          : t('voiceCue'),
+    };
+    }),
     ...(visual?.events ?? []).map((event, index) => ({
       key: `vision-${event.startMs}-${index}`,
       startMs: event.startMs,
       endMs: event.endMs,
       lane: 'camera' as const,
-      label: event.label,
+      label: t(`visionEvent.${event.kind}`),
       detail: t('landmarkBoundary'),
-      source: 'camera cue',
+      source: t('cameraCue'),
     })),
   ].sort((left, right) => left.startMs - right.startMs);
   const timelineDurationMs = Math.max(1_000, result.sessionDurationSeconds * 1_000);
   const timelineLanes = [
-    { id: 'voice' as const, label: 'Voice', events: replayEvents.filter((event) => event.lane === 'voice') },
-    { id: 'camera' as const, label: 'Camera', events: replayEvents.filter((event) => event.lane === 'camera') },
+    { id: 'voice' as const, label: t('voiceLane'), events: replayEvents.filter((event) => event.lane === 'voice') },
+    { id: 'camera' as const, label: t('cameraLane'), events: replayEvents.filter((event) => event.lane === 'camera') },
   ];
   const rubricEntries = rubricTimeline ?? [];
   const coverage = summarizeRubricCoverage(rubricEntries);
@@ -136,7 +153,7 @@ export function MultimodalReview({
         <p>{t('evidenceStaysAbove')}</p>
       </div>
     </div>
-    <p className="review-delivery-boundary"><strong>{t('boundary')}</strong> These deterministic readings describe one rehearsal attempt, not the speaker. They do not measure confidence, ability, truth, emotion, personality, intent, health, skill, or hiring suitability.</p>
+    <p className="review-delivery-boundary"><strong>{t('boundary')}</strong> {t('boundaryBody')}</p>
 
     {onRetakeCriterion && missingCriteria.length > 0 && <section className="review-retake-strip" aria-labelledby="retakeTitle">
       <div><p className="overline">{t('fixOneGap')}</p><h3 id="retakeTitle">{t('addMissingClaim')}</h3></div>
@@ -149,21 +166,23 @@ export function MultimodalReview({
     <section className="review-unified-timeline" aria-labelledby="timelineTitle">
       <div className="section-title-row">
         <div><p className="overline">{t('oneTimeline')}</p><h3 id="timelineTitle">{t('rubricVoiceCamera')}</h3></div>
-        <span className="timeline-duration">{formatTime(timelineDurationMs)} total{limitMs !== null ? ` · ${formatTime(limitMs)} limit` : ''}</span>
+        <span className="timeline-duration">{limitMs !== null
+          ? t('timelineDurationWithLimit', { total: formatTime(timelineDurationMs), limit: formatTime(limitMs) })
+          : t('timelineDuration', { total: formatTime(timelineDurationMs) })}</span>
       </div>
       <p className="timeline-legend">
-        <span data-evidence="found"><i aria-hidden="true" />evidence cited</span>
-        <span data-evidence="reused"><i aria-hidden="true" />quote shared with another criterion</span>
-        <span data-evidence="absent"><i aria-hidden="true" />nothing cited</span>
-        <span className="timeline-legend-observation"><i aria-hidden="true" />browser observation</span>
-        {cutPercent !== null && <span className="timeline-legend-cut"><i aria-hidden="true" />stated limit</span>}
+        <span data-evidence="found"><i aria-hidden="true" />{t('legendEvidenceCited')}</span>
+        <span data-evidence="reused"><i aria-hidden="true" />{t('legendSharedQuote')}</span>
+        <span data-evidence="absent"><i aria-hidden="true" />{t('legendNothingCited')}</span>
+        <span className="timeline-legend-observation"><i aria-hidden="true" />{t('legendBrowserObservation')}</span>
+        {cutPercent !== null && <span className="timeline-legend-cut"><i aria-hidden="true" />{t('legendStatedLimit')}</span>}
       </p>
       {/* One lane per criterion, and never a lane that hides because it has
           nothing to say. Folding the whole rubric into a single "Rubric" track
           made every criterion look identical and made an uncited one vanish
           entirely — which is precisely the criterion the student needs to see.
           The empty lane IS the finding, so it stays on screen and says so. */}
-      <div className="attempt-timeline review-attempt-timeline" aria-label={`Timeline lasting ${formatTime(timelineDurationMs)} with rubric, voice, and camera lanes`}>
+      <div className="attempt-timeline review-attempt-timeline" aria-label={t('timelineLabel', { duration: formatTime(timelineDurationMs) })}>
         {rubricEntries.map((entry) => {
           const startMs = entry.evidence?.startMs ?? null;
           const endMs = entry.evidence?.endMs ?? startMs;
@@ -172,7 +191,10 @@ export function MultimodalReview({
             <div
               className="timeline-track"
               data-evidence={entry.state}
-              aria-label={`${entry.label}: ${entry.state === 'absent' ? 'no evidence cited' : entry.state === 'reused' ? 'cites a quote shared with another criterion' : 'evidence cited'}`}
+              aria-label={t('criterionLaneLabel', {
+                criterion: entry.label,
+                state: entry.state === 'absent' ? t('stateNoEvidence') : entry.state === 'reused' ? t('stateSharedEvidence') : t('stateEvidenceCited'),
+              })}
             >
               {cutPercent !== null && <i className="timeline-cutline" style={{ left: `${cutPercent}%` }} aria-hidden="true" />}
               {startMs !== null
@@ -184,21 +206,21 @@ export function MultimodalReview({
                     width: `${Math.max(((endMs ?? startMs) - startMs) / timelineDurationMs * 100, 1.5)}%`,
                   }}
                   onClick={() => playFrom(startMs)}
-                  title={`${formatTime(startMs)} · ${entry.label}`}
-                  aria-label={`Around ${formatTime(startMs)}, cited evidence for ${entry.label}. ${recordingUrl ? t('playFromBefore') : t('noReplayRecorded')}`}
+                  title={t('evidenceMarkTitle', { time: formatTime(startMs), criterion: entry.label })}
+                  aria-label={t('evidenceMarkLabel', { time: formatTime(startMs), criterion: entry.label, action: recordingUrl ? t('playFromBefore') : t('noReplayRecorded') })}
                   disabled={!recordingUrl}
                 />
                 : <span className="timeline-lane-note" data-evidence={entry.state}>
                   {entry.evidence
-                    ? 'cited; this transcript has no clock position'
-                    : 'no evidence cited'}
+                    ? t('citedWithoutClock')
+                    : t('noEvidenceCited')}
                 </span>}
             </div>
           </div>;
         })}
         {timelineLanes.map((lane) => <div className="timeline-lane" key={lane.id}>
           <span className="timeline-lane-label">{lane.label}</span>
-          <div className="timeline-track" aria-label={`${lane.label}: ${lane.events.length} timestamped ${lane.events.length === 1 ? 'cue' : 'cues'}`}>
+          <div className="timeline-track" aria-label={t('observationLaneLabel', { lane: lane.label, count: lane.events.length })}>
             {cutPercent !== null && <i className="timeline-cutline" style={{ left: `${cutPercent}%` }} aria-hidden="true" />}
             {lane.events.length === 0 && <span className="timeline-lane-note">{t('noTimestampedCue')}</span>}
             {lane.events.map((event) => {
@@ -210,8 +232,8 @@ export function MultimodalReview({
                 type="button"
                 style={{ left: `${left}%`, width: `${Math.max(span, 1.5)}%` }}
                 onClick={() => playFrom(event.startMs)}
-                title={`${formatTime(event.startMs)} · ${event.label}`}
-                aria-label={`${formatTime(event.startMs)}, ${event.label}. ${recordingUrl ? t('playFromBefore') : t('noReplayRecorded')}`}
+                title={t('observationMarkTitle', { time: formatTime(event.startMs), label: event.label })}
+                aria-label={t('observationMarkLabel', { time: formatTime(event.startMs), label: event.label, action: recordingUrl ? t('playFromBefore') : t('noReplayRecorded') })}
                 disabled={!recordingUrl}
               />;
             })}
@@ -219,19 +241,19 @@ export function MultimodalReview({
         </div>)}
         <p className="timeline-axis" aria-hidden="true"><span>0:00</span><span>{formatTime(timelineDurationMs / 2)}</span><span>{formatTime(timelineDurationMs)}</span></p>
       </div>
-      <p className="timeline-rubric-summary">{coverage.found + coverage.reused} of {coverage.total} criteria cite a span. {answerWindowCount > 0
+      <p className="timeline-rubric-summary">{t('rubricCoverageSummary', { cited: coverage.found + coverage.reused, total: coverage.total })} {answerWindowCount > 0
         ? t('answerWindowsOnClock', { count: answerWindowCount })
         : coverage.timed > 0
           ? t('coarseTiming', { count: coverage.timed })
           : t('noClockPosition')}</p>
       {limitMs !== null && <p className="timeline-bell-note" role="note">
         {cutPercent === null
-          ? <>This attempt finished {formatTime(limitMs - timelineDurationMs)} inside the {formatTime(limitMs)} limit.</>
+          ? t('finishedInsideLimit', { margin: formatTime(limitMs - timelineDurationMs), limit: formatTime(limitMs) })
           : beyondTheBell.length > 0
-            ? <>An evaluator stopping at {formatTime(limitMs)} never hears the cited evidence for <strong>{beyondTheBell.map((entry) => entry.label).join(', ')}</strong>.</>
+            ? t.rich('evaluatorStopsAt', { limit: formatTime(limitMs), labels: beyondTheBell.map((entry) => entry.label).join(', '), b: (chunks) => <strong>{chunks}</strong> })
             : coverage.timed > 0
-              ? <>Every timed citation landed before the limit, though the attempt ran {formatTime(timelineDurationMs - limitMs)} over.</>
-              : <>This attempt ran {formatTime(timelineDurationMs - limitMs)} over the limit.</>}
+              ? t('citationsBeforeLimit', { over: formatTime(timelineDurationMs - limitMs) })
+              : t('ranOverLimit', { over: formatTime(timelineDurationMs - limitMs) })}
       </p>}
 
       {/* The replay follows the shared clock directly. A timestamp can now move
@@ -243,19 +265,19 @@ export function MultimodalReview({
         </div>
         {recordingUrl
           ? <>
-            <video ref={videoRef} className="recording-player" src={recordingUrl} controls playsInline preload="metadata" aria-label="Recorded attempt replay" />
-            <p className="recording-sync-status">Timeline controls start two seconds before an observation and bring this replay into view so you can judge its context yourself.</p>
+            <video ref={videoRef} className="recording-player" src={recordingUrl} controls playsInline preload="metadata" aria-label={t('replayVideoLabel')} />
+            <p className="recording-sync-status">{t('timelineSyncNote')}</p>
             <div className="recording-review-actions">
-              <a className="button button-secondary" href={recordingUrl} download={`talk-active-attempt.${result.recording?.mimeType.includes('mp4') ? 'mp4' : 'webm'}`}>Download this replay</a>
-              {savedAttemptId && <a className="text-button" href={`/attempts/${savedAttemptId}${projectId ? `?project=${encodeURIComponent(projectId)}` : ''}`}>Open saved review</a>}
+              <a className="button button-secondary" href={recordingUrl} download={`talk-active-attempt.${result.recording?.mimeType.includes('mp4') ? 'mp4' : 'webm'}`}>{t('downloadReplay')}</a>
+              {savedAttemptId && <a className="text-button" href={`/attempts/${savedAttemptId}${projectId ? `?project=${encodeURIComponent(projectId)}` : ''}`}>{t('openSavedReview')}</a>}
             </div>
           </>
-          : <p className="performance-empty">No camera-and-microphone replay was kept. The rubric evidence and timestamped observations above remain usable.</p>}
+          : <p className="performance-empty">{t('noReplayKept')}</p>}
         {recordingStatus && <p className="recording-sync-status" role="status">{recordingStatus}</p>}
       </section>
 
       <details className="review-disclosure review-timeline-disclosure">
-        <summary><span>{t('readAsText')}</span><strong>{rubricEntries.length + replayEvents.length} items</strong></summary>
+        <summary><span>{t('readAsText')}</span><strong>{t('itemCount', { count: rubricEntries.length + replayEvents.length })}</strong></summary>
         <div className="review-disclosure-body">
           <h4>{t('rubricEvidenceOnTimeline')}</h4>
           {rubricEntries.length > 0
@@ -276,7 +298,7 @@ export function MultimodalReview({
               if (segment.labels.length === 0) return <span key={index}>{segment.text}</span>;
               const labels = segment.labels.join(' · ');
               return segment.startMs !== null && recordingUrl
-                ? <button key={index} type="button" onClick={() => playFrom(segment.startMs ?? 0)} title={`${labels} — play from ${formatTime(segment.startMs)}`}><mark>{segment.text}</mark><small>{labels}</small></button>
+                ? <button key={index} type="button" onClick={() => playFrom(segment.startMs ?? 0)} title={t('citationPlayTitle', { labels, time: formatTime(segment.startMs) })}><mark>{segment.text}</mark><small>{labels}</small></button>
                 : <mark key={index} title={labels}>{segment.text}<small>{labels}</small></mark>;
             })}</p>
             <small>{t('markedTextBoundary')}</small>
@@ -289,15 +311,15 @@ export function MultimodalReview({
       <summary><span><small>{t('deliveryDetails')}</small>{t('fullReadings')}</span><strong>{t('inspect')}</strong></summary>
       <div className="review-disclosure-body">
         <ReadingComposition reading={reading} headingId="rehearsalReadingLabel" />
-        <p className="delivery-boundary"><strong>{t('oneAttemptBoundary')}</strong> The bar is the complete arithmetic: each block is as wide as the share it carried and as full as it scored. Unmeasured signals are excluded from the mean rather than counted as zero.</p>
+        <p className="delivery-boundary"><strong>{t('oneAttemptBoundary')}</strong> {t('compositionBody')}</p>
 
         <dl className="review-raw-summary">
           <div><dt>{t('answerDuration')}</dt><dd>{formatTime(result.durationSeconds * 1_000)}</dd></div>
           <div><dt>{t('sessionDuration')}</dt><dd>{formatTime(result.sessionDurationSeconds * 1_000)}</dd></div>
           <div><dt>{t('transcriptWords')}</dt><dd>{result.metrics.wordCount}</dd></div>
-          <div><dt>{t('speakingPace')}</dt><dd>{result.metrics.wordsPerMinute} words/min</dd></div>
+          <div><dt>{t('speakingPace')}</dt><dd>{t('wordsPerMinuteValue', { count: result.metrics.wordsPerMinute })}</dd></div>
           <div><dt>{t('measurementCoverage')}</dt><dd>{Math.round(result.metrics.measurementCoverage)}%</dd></div>
-          <div><dt>{t('transcriptSource')}</dt><dd>{result.transcriptSource === 'web-speech' ? t('browserDictation') : 'Typed'}</dd></div>
+          <div><dt>{t('transcriptSource')}</dt><dd>{result.transcriptSource === 'web-speech' ? t('browserDictation') : t('typedTranscript')}</dd></div>
         </dl>
 
         <div className="performance-details">
@@ -305,13 +327,13 @@ export function MultimodalReview({
             <h3>{t('voiceReadings')}</h3>
             <ul className="metric-band-list">{result.metrics.vocal.metrics.map((metric) => <MetricBand metric={metric} key={metric.id} />)}</ul>
             {(result.metrics.fillers.length > 0 || result.metrics.repeatedWordEvents.length > 0) && <div className="event-timeline transcript-cue-list"><span>{t('transcriptCueEvidence')}</span>
-              {result.metrics.fillers.map((filler) => <p key={filler.label}><time>filler</time><span><q>{filler.label}</q> × {filler.count}</span></p>)}
-              {result.metrics.repeatedWordEvents.map((event) => <p key={`${event.word}-${event.tokenIndex}`}><time>{event.timestampSeconds === null ? `word ${event.tokenIndex + 1}` : formatTime(event.timestampSeconds * 1_000)}</time><span><q>{event.word}</q> repeated {event.additionalOccurrences + 1} times in sequence</span></p>)}
+              {result.metrics.fillers.map((filler) => <p key={filler.label}><time>{t('filler')}</time><span><q>{filler.label}</q> × {filler.count}</span></p>)}
+              {result.metrics.repeatedWordEvents.map((event) => <p key={`${event.word}-${event.tokenIndex}`}><time>{event.timestampSeconds === null ? t('wordPosition', { position: event.tokenIndex + 1 }) : formatTime(event.timestampSeconds * 1_000)}</time><span><q>{event.word}</q> {t('repeatedInSequence', { count: event.additionalOccurrences + 1 })}</span></p>)}
             </div>}
             {result.audioSummary && <dl className="review-audio-summary">
-              <div><dt>{t('observedAudio')}</dt><dd>{result.audioSummary.observedSeconds.toFixed(1)}s</dd></div>
-              <div><dt>{t('quietTime')}</dt><dd>{result.audioSummary.quietSeconds.toFixed(1)}s</dd></div>
-              <div><dt>{t('pauseTime')}</dt><dd>{result.audioSummary.pauseSeconds.toFixed(1)}s</dd></div>
+              <div><dt>{t('observedAudio')}</dt><dd>{t('secondsValue', { value: result.audioSummary.observedSeconds.toFixed(1) })}</dd></div>
+              <div><dt>{t('quietTime')}</dt><dd>{t('secondsValue', { value: result.audioSummary.quietSeconds.toFixed(1) })}</dd></div>
+              <div><dt>{t('pauseTime')}</dt><dd>{t('secondsValue', { value: result.audioSummary.pauseSeconds.toFixed(1) })}</dd></div>
               <div><dt>{t('pauseCandidates')}</dt><dd>{result.audioSummary.pauseCount}</dd></div>
               <div><dt>{t('pitchSamples')}</dt><dd>{result.audioSummary.pitchSampleCount}</dd></div>
             </dl>}
@@ -323,7 +345,7 @@ export function MultimodalReview({
               <ul className="raw-observation-list">{visual.mode === 'interview' ? <>
                 <li><span><strong>{t('reliableFaceTracking')}</strong><small>{t('framesWithLandmarks')}</small></span><b>{visual.metrics.trackingCoveragePercent}%</b></li>
                 <li><span><strong>{t('faceFraming')}</strong><small>{t('measuredAfterCalibration')}</small></span><b>{visual.metrics.framedPercent}%</b></li>
-                <li><span><strong>{t('cameraFacing')}</strong><small>{t('notEyeContact')}</small></span><b>{visual.metrics.cameraFacingPercent ?? 'n/a'}{visual.metrics.cameraFacingPercent === null ? '' : '%'}</b></li>
+                <li><span><strong>{t('cameraFacing')}</strong><small>{t('notEyeContact')}</small></span><b>{visual.metrics.cameraFacingPercent ?? t('notAvailable')}{visual.metrics.cameraFacingPercent === null ? '' : '%'}</b></li>
               </> : <>
                 <li><span><strong>{t('fullBodyVisibility')}</strong><small>{t('completePose')}</small></span><b>{visual.metrics.fullBodyVisiblePercent}%</b></li>
                 <li><span><strong>{t('handVisibility')}</strong><small>{t('bothWrists')}</small></span><b>{visual.metrics.handsVisiblePercent}%</b></li>
@@ -336,8 +358,11 @@ export function MultimodalReview({
 
         <div className="review-limitations">
           <h3>{t('cannotSay')}</h3>
-          <p>{result.metrics.boundary} Audio and interim-dictation events are experimental candidates, not diagnoses; emphasis, held vowels, noise suppression, microphone gating, or ordinary phrasing can produce similar patterns. They do not change the vocal or rubric reading.</p>
-          {visual && visual.limitations.length > 0 && <ul>{visual.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul>}
+          <p>{t('metricsBoundary')} {t('experimentalCandidates')}</p>
+          {visual && <ul>{visual.mode === 'interview'
+            ? <><li>{t('interviewVisionLimitation')}</li><li>{t('cameraCueLimitationInterview')}</li></>
+            : <><li>{t('presentationVisionLimitation')}</li><li>{t('cameraCueLimitationPresentation')}</li></>}
+          </ul>}
         </div>
       </div>
     </details>

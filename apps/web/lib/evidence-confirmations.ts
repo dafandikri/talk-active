@@ -4,6 +4,7 @@ import {
   analyzeSpeech,
   type EvidenceCriterion,
 } from './analyzer.ts';
+import type { ProjectLanguage } from './contracts.ts';
 import { normaliseForGrounding } from './grounding.ts';
 
 export const LOCAL_EVIDENCE_CONFIRMATIONS_KEY = 'talkactive.production.evidence-confirmations.v1';
@@ -66,6 +67,7 @@ export function rejudgeLocalEvidence(
   transcript: string,
   criterion: EvidenceCriterion,
   durationSeconds: number,
+  language: ProjectLanguage = 'id-ID',
 ): { criterion: EvidenceCriterion; judgeQuestion: string; drill: string } {
   const reducedTranscript = sentenceWithoutRejectedEvidence(transcript, criterion.excerpt);
   if (!reducedTranscript) {
@@ -87,6 +89,7 @@ export function rejudgeLocalEvidence(
     transcript: reducedTranscript,
     rubricText: `${criterion.label} | ${criterion.signals.join(', ') || criterion.requirementText}`,
     durationSeconds,
+    language,
   });
   const next = rerun.criteria[0];
   if (!next) throw new Error('The local re-judge returned no criterion.');
