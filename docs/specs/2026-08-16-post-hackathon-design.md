@@ -300,6 +300,9 @@ For this spec, step 7 is a **translation-only** pass on `practice-room.tsx`. The
 blocked on this workstream finishing, so that a translation bug and a state-ordering bug cannot
 arrive in the same diff looking alike.
 
+The approved split and its state/reset contract are specified in
+[`2026-08-20-practice-room-state-graph.md`](./2026-08-20-practice-room-state-graph.md).
+
 **Done when.** Every user-facing string resolves through the catalogue; both locales render
 every screen with no missing-key fallback; route paths and all `e2e/production-ui/` specs are
 unchanged; `pnpm check` green.
