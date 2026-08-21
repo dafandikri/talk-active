@@ -151,6 +151,7 @@ stay green long after the thing the string names is gone. Every `pnpm` command n
 | `pnpm typecheck` | Types only. |
 | `pnpm golden:capture` | Rewrites the analyzer baseline. Deliberate acts only; see below. |
 | `pnpm project` | Compact agent-facing project context (TOON). |
+| `pnpm check:gateway` | Fails when no AI Gateway key has usable runway left. Skips, never blocks, without an authenticated Vercel CLI. |
 | `pnpm rubric` · `pnpm finals` | Scorecard and the strict readiness gate. Historical; both relate to the finished event. |
 | `pnpm check:proposal` | Rebuilds and verifies the proposal PDF (needs `tectonic`). |
 

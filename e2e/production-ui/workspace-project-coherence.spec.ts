@@ -235,7 +235,12 @@ test('an unavailable deep link falls back to an owned project and repairs the UR
 
   await page.goto('/workspace?project=project-that-is-not-owned');
   await expect(page).toHaveURL(`/workspace?project=${PITCH_PROJECT_ID}`);
-  await expect(page.getByRole('status'))
+  // The rubric loader publishes its own role="status" while it fetches, so an
+  // unscoped status lookup resolves to two elements whenever this assertion
+  // wins the race against it. Naming the notice keeps the assertion strict:
+  // with no matching status at all it still fails, it just no longer fails for
+  // the unrelated reason that the page was still loading.
+  await expect(page.getByRole('status').filter({ hasText: 'Proyek itu tidak tersedia' }))
     .toContainText('Proyek itu tidak tersedia. English product pitch ditampilkan sebagai gantinya.');
   await expect(page.locator('.project-kicker')).toContainText('English product pitch');
   await expect(page.locator('.rubric-health .mini-criterion')).toHaveText([

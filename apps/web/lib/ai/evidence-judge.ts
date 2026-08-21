@@ -11,6 +11,11 @@ import type { Criterion, ProjectLanguage } from '../contracts.ts';
 import { analyzeSpeech } from '../analyzer.ts';
 import { findGroundedSpan, normaliseForGrounding } from '../grounding.ts';
 import { signalWithinDeadline } from './deadline.ts';
+import {
+  isGatewayAuthFailure,
+  recordSemanticAuthFailure,
+  recordSemanticSuccess,
+} from './semantic-health.ts';
 
 export const MAX_EVIDENCE_SPAN_CHARS = 300;
 
@@ -522,6 +527,9 @@ export async function judgeCriterion(
         attempts: attempt,
         degradedReason: null,
       };
+      // An accepted response is proof the credential is alive, so a stale
+      // suspicion from an earlier outage must not outlive it.
+      recordSemanticSuccess();
       emitEvent(options, {
         type: 'evidence_attempt_completed',
         criterionId: criterion.id,
@@ -547,6 +555,9 @@ export async function judgeCriterion(
     } catch (error) {
       const outcome = attemptOutcome(error);
       if (outcome === 'grounding_rejected') groundingRejections += 1;
+      // A rejected credential is not a provider hiccup: it will reject every
+      // later call too, so the interface must stop advertising the tier.
+      if (isGatewayAuthFailure(error)) recordSemanticAuthFailure();
       emitEvent(options, {
         type: 'evidence_attempt_completed',
         criterionId: criterion.id,
