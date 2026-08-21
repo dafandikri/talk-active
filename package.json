@@ -7,7 +7,8 @@
   "scripts": {
     "build": "pnpm --filter @talk-active/web build",
     "build:production": "pnpm --filter @talk-active/web build",
-    "check": "node --test && pnpm check:production && node scripts/project.mjs check && node scripts/finals-rubric.mjs check",
+    "check": "node --test && pnpm check:production && node scripts/project.mjs check && node scripts/finals-rubric.mjs check && pnpm check:gateway",
+    "check:gateway": "node scripts/gateway-key.mjs check",
     "check:production": "pnpm typecheck:production && pnpm build:production && pnpm test:production:browser",
     "check:proposal": "docs/proposal/build.sh",
     "dev": "pnpm --filter @talk-active/web dev",

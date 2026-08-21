@@ -7,10 +7,15 @@ import {
   CONTRACT_VERSION,
 } from '@/lib/contracts';
 import { optionalUserId } from '@/lib/auth-session';
+import { semanticCredentialSuspect } from '@/lib/ai/semantic-health';
 
 export async function GET(request: Request) {
   await connection();
-  const semanticAvailable = aiRateLimitConfigured();
+  // Configuration says the tier was asked for; observed health says it can
+  // still answer. A credential that has already been seen rejecting calls
+  // withdraws the claim, so the interface stops offering a tier that cannot
+  // run. This narrows the window rather than closing it — see semantic-health.
+  const semanticAvailable = aiRateLimitConfigured() && !semanticCredentialSuspect();
   const databaseAvailable = Boolean(process.env.DATABASE_URL?.trim());
   const accountsAvailable = Boolean(
     databaseAvailable && process.env.BETTER_AUTH_SECRET?.trim(),
